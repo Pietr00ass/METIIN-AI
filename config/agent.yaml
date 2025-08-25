@@ -1,0 +1,18 @@
+window:
+  title_substr: "Metin2"
+controls:
+  keys: {forward: "w", left: "a", back: "s", right: "d"}
+detector:
+  model_path: "runs/detect/train/weights/best.pt"
+  classes: ["metin","boss","potwory"]
+  conf_thr: 0.5
+  iou_thr: 0.45
+policy:
+  deadzone_x: 0.05
+  desired_box_w: 0.12
+  key_repeat_ms: 60
+stuck:
+  flow_window: 0.8
+  min_flow_mag: 0.7
+  rotate_ms_on_stuck: 250
+priority: ["boss","metin","potwory"]
