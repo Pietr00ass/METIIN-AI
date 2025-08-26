@@ -7,6 +7,7 @@ import easyocr
 
 from recorder.window_capture import WindowCapture
 from .template_matcher import TemplateMatcher
+from .wasd import KeyHold
 
 pyautogui.PAUSE = 0.02
 
@@ -26,6 +27,7 @@ class Teleporter:
         self.tm = TemplateMatcher(templates_dir)
         self.reader = easyocr.Reader(["pl", "en"], gpu=False) if use_ocr else None
         self.dry = dry
+        self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))
 
     def _frame(self) -> np.ndarray:
         fr = self.win.grab()
@@ -40,7 +42,11 @@ class Teleporter:
     def open_panel(self) -> None:
         self.win.focus()
         if not self.dry:
-            pyautogui.hotkey("ctrl", "x")
+            self.keys.press("ctrl")
+            self.keys.press("x")
+            time.sleep(0.05)
+            self.keys.release("x")
+            self.keys.release("ctrl")
             time.sleep(0.35)
 
     def go_page(self, page_label: str, thresh: float = 0.82) -> bool:
