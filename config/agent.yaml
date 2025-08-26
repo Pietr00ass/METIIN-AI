@@ -16,3 +16,9 @@ stuck:
   min_flow_mag: 0.7
   rotate_ms_on_stuck: 250
 priority: ["boss","metin","potwory"]
+teleport:
+  slots:
+    - {page: "Strona I", slot: 1}
+    - {page: "Strona I", slot: 2}
+    # … kolejne wpisy
+channels: [1,2,3,4,5,6,7,8]
