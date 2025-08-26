@@ -346,6 +346,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 "idle_sec": float(self.idle_sec.value()),
             },
             "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
+            "templates_dir": "assets/templates",
         }
         return cfg
 
@@ -380,7 +381,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if not win.locate(timeout=5):
                     self.set_status("Nie znaleziono okna.")
                     return
-                tp = Teleporter(win, use_ocr=True)
+                tp = Teleporter(win, cfg["templates_dir"], use_ocr=True)
                 ok = tp.teleport(point, side)
                 if not ok:
                     self.set_status("Nie udało się kliknąć elementów w panelu teleportu (sprawdź OCR/templates)")
@@ -419,7 +420,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.set_status("Nie znaleziono okna.")
                 return
             ch = int(self.channel_combo.currentText().replace("CH", ""))
-            ok = ChannelSwitcher(win).switch(ch)
+            ok = ChannelSwitcher(win, cfg["templates_dir"]).switch(ch)
             msg = f"Zmieniono kanał na CH{ch}" if ok else "Nie znaleziono przycisku CH – sprawdź szablony."
             self.set_status(msg)
         except Exception as exc:

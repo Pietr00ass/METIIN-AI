@@ -1,5 +1,6 @@
 window:
   title_substr: "Metin2"
+templates_dir: "assets/templates"
 controls:
   keys: {forward: "w", left: "a", back: "s", right: "d"}
 detector:
