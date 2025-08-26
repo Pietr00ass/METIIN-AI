@@ -8,6 +8,8 @@ from .targets import pick_target
 from .avoid import CollisionAvoid
 from .wasd import KeyHold
 from .interaction import burst_click
+from .teleport import Teleporter
+from .channel import ChannelSwitcher
 
 
 logger = logging.getLogger(__name__)
@@ -24,11 +26,22 @@ class HuntDestroy:
         )
         self.avoid = CollisionAvoid()
         # KeyHold z dry-run + watchdogiem fokusu
-        self.keys = KeyHold(dry=cfg.get("dry_run", False), active_fn=getattr(self.win, "is_foreground", None))
+        dry = cfg.get("dry_run", False)
+        self.keys = KeyHold(dry=dry, active_fn=getattr(self.win, "is_foreground", None))
+        self.teleporter = Teleporter(self.win, use_ocr=True, dry=dry)
+        self.channel_switcher = ChannelSwitcher(self.win, dry=dry)
         self.desired_w = cfg["policy"]["desired_box_w"]
         self.deadzone = cfg["policy"]["deadzone_x"]
         self.priority = cfg.get("priority", ["boss", "metin", "potwory"])  # kolejność z GUI
         self.period = 1 / 15
+        self.last_target_time = time.time()
+        self.location_idx = 0
+        self.channel_idx = 0
+        tp_cfg = cfg.get("teleport", {})
+        self.tp_slots = list(tp_cfg.get("slots", []))
+        self.tp_page = tp_cfg.get("page") or tp_cfg.get("page_label")
+        self.channels = list(cfg.get("channels", []))
+        self._teleports = 0
 
     def step(self):
         fr = self.win.grab()
@@ -50,6 +63,28 @@ class HuntDestroy:
         tgt = pick_target(dets, (W, H), priority_order=self.priority)
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
+            now = time.time()
+            if now - self.last_target_time > 10:
+                slot = None
+                try:
+                    if self.tp_slots:
+                        slot = self.tp_slots[self.location_idx % len(self.tp_slots)]
+                        self.teleporter.teleport_slot(slot, self.tp_page)
+                        self._teleports += 1
+                        self.location_idx = (self.location_idx + 1) % len(self.tp_slots)
+                        if self._teleports % 8 == 0 or self.location_idx == 0:
+                            if self.channels:
+                                ch = self.channels[self.channel_idx % len(self.channels)]
+                                try:
+                                    self.channel_switcher.switch(ch)
+                                except Exception:
+                                    logger.warning("Nie udało się zmienić kanału na %s", ch)
+                                self.channel_idx = (self.channel_idx + 1) % len(self.channels)
+                    else:
+                        logger.debug("Lista slotów teleportu jest pusta")
+                except Exception:
+                    logger.warning("Teleportacja na slot %s nie powiodła się", slot)
+                self.last_target_time = now
             return
 
         x1, y1, x2, y2 = tgt["bbox"]
@@ -58,6 +93,7 @@ class HuntDestroy:
         logger.debug(
             "Cel %s: cx=%.2f bw=%.2f", tgt.get("name", "?"), cx, bw
         )
+        self.last_target_time = time.time()
 
         if abs(cx - 0.5) > self.deadzone:
             (self.keys.press("d") if cx > 0.5 else self.keys.press("a"))
