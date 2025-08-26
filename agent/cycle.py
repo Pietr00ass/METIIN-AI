@@ -30,8 +30,9 @@ class CycleFarm:
             raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
 
         self.dry = cfg.get("dry_run", False)
-        self.tp = Teleporter(self.win, use_ocr=True, dry=self.dry)
-        self.ch = ChannelSwitcher(self.win, dry=self.dry)
+        tdir = cfg["templates_dir"]
+        self.tp = Teleporter(self.win, tdir, use_ocr=True, dry=self.dry)
+        self.ch = ChannelSwitcher(self.win, tdir, dry=self.dry)
         self.agent = HuntDestroy(cfg, self.win)
         self.det = ObjectDetector(cfg["detector"]["model_path"], cfg["detector"]["classes"])
         self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))

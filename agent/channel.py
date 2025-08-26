@@ -1,5 +1,6 @@
 from __future__ import annotations
 import time
+import os
 import numpy as np
 import pyautogui
 from recorder.window_capture import WindowCapture
@@ -12,8 +13,14 @@ class ChannelSwitcher:
     Wymaga szablonów: assets/templates/ch1.png ... ch8.png
     """
 
-    def __init__(self, win: WindowCapture, templates_dir: str = "assets/templates", dry: bool = False):
+    def __init__(self, win: WindowCapture, templates_dir: str, dry: bool = False):
         self.win = win
+        if not os.path.isdir(templates_dir):
+            raise FileNotFoundError(f"Brak katalogu z szablonami: {templates_dir}")
+        required = [f"ch{i}.png" for i in range(1, 9)]
+        missing = [p for p in required if not os.path.isfile(os.path.join(templates_dir, p))]
+        if missing:
+            raise FileNotFoundError(f"Brak plików w {templates_dir}: {', '.join(missing)}")
         self.tm = TemplateMatcher(templates_dir)
         self.dry = dry
 
