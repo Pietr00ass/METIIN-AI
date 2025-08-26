@@ -10,7 +10,7 @@ class KbdVisionAgent:
         self.win = WindowCapture(cfg['window']['title_substr'])
         self.keys = KeyHold()
         self.period = 1/15
-        self.flow = FlowStuck(cfg.get('stuck',{}).get('flow_window',0.8), fps=15, min_mag=cfg.get('stuck',{}).get('min_flow_mag',0.7))
+        self.flow = FlowStuck(cfg.get('stuck', {}).get('flow_window', 0.8), fps=15, min_mag=cfg.get('stuck', {}).get('min_flow_mag', 0.7))
         self.net = KbdPolicy(); self.net.load_state_dict(torch.load('checkpoints/kbd_policy.pt', map_location='cpu'))
         self.net.eval()
 
