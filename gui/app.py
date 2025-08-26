@@ -76,7 +76,9 @@ class PreviewWorker(QtCore.QThread):
         try:
             cap = WindowCapture(self.title)
             self.status.emit("Szukam okna…")
-            cap.locate()
+            if not cap.locate(timeout=5):
+                self.status.emit("Nie znaleziono okna.")
+                return
             self.status.emit("Znaleziono okno. Podgląd działa.")
             while not self._stop:
                 fr = cap.grab()
@@ -301,7 +303,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_status("Podaj fragment tytułu okna.")
             return
         wc = WindowCapture(title)
-        wc.locate(); wc.update_region()
+        if not wc.locate(timeout=5):
+            self.set_status("Nie znaleziono okna.")
+            return
+        wc.update_region()
         l, t, w, h = wc.region
         def job():
             try:
@@ -350,7 +355,9 @@ class MainWindow(QtWidgets.QMainWindow):
         def run():
             try:
                 agent = HuntDestroy(cfg, WindowCapture(cfg["window"]["title_substr"]))
-                assert agent.win.locate()
+                if not agent.win.locate(timeout=5):
+                    self.set_status("Nie znaleziono okna.")
+                    return
                 while not self._panic:
                     agent.step(); time.sleep(1/15)
             except Exception as exc:
@@ -370,7 +377,9 @@ class MainWindow(QtWidgets.QMainWindow):
         def run():
             try:
                 win = WindowCapture(cfg["window"]["title_substr"])
-                assert win.locate()
+                if not win.locate(timeout=5):
+                    self.set_status("Nie znaleziono okna.")
+                    return
                 tp = Teleporter(win, use_ocr=True)
                 ok = tp.teleport(point, side)
                 if not ok:
@@ -406,7 +415,9 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             cfg = self.build_cfg()
             win = WindowCapture(cfg["window"]["title_substr"])
-            assert win.locate()
+            if not win.locate(timeout=5):
+                self.set_status("Nie znaleziono okna.")
+                return
             ch = int(self.channel_combo.currentText().replace("CH", ""))
             ok = ChannelSwitcher(win).switch(ch)
             msg = f"Zmieniono kanał na CH{ch}" if ok else "Nie znaleziono przycisku CH – sprawdź szablony."

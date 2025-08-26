@@ -15,7 +15,8 @@ class KbdVisionAgent:
         self.net.eval()
 
     def run(self):
-        assert self.win.locate()
+        if not self.win.locate(timeout=5):
+            raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
         while True:
             t0=time.time()
             fr = self.win.grab(); frame = np.array(fr)[:,:,:3]

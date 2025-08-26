@@ -12,7 +12,8 @@ class WasdVisionAgent:
         self.hd = None
 
     def run(self):
-        assert self.win.locate(), "Nie znaleziono okna – sprawdź title_substr"
+        if not self.win.locate(timeout=5):
+            raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
         self.hd = HuntDestroy(self.cfg, self.win)
         while True:
             self.hd.step()
