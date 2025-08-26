@@ -72,3 +72,45 @@ class Teleporter:
                 return int((x0 + x1) // 2), int((y0 + y1) // 2)
         return None
 
+    # ---- teleportacja ----
+    def teleport_slot(self, slot: int, page_label: str) -> bool:
+        """Teleportuj do danego numeru slotu na podanej stronie.
+
+        Zwraca ``True`` gdy udało się kliknąć w przycisk ``Wczytaj`` dla
+        wskazanego slotu. Metoda korzysta z prostego OCR do odszukania
+        wiersza z numerem slotu.
+        """
+
+        # otwórz panel i przejdź do strony
+        self.open_panel()
+        if not self.go_page(page_label):
+            return False
+
+        # wyszukaj wiersz slotu (OCR)
+        pos = self._find_row_by_text(str(slot))
+        if pos is None:
+            return False
+
+        # przekształć współrzędne z ROI na współrzędne ekranu
+        L, T, w, h = self.win.region
+        roi_x = int(w * 0.05)
+        roi_y = int(h * 0.16)
+        abs_x = L + roi_x + pos[0]
+        abs_y = T + roi_y + pos[1]
+        self._safe_click(abs_x, abs_y)
+        time.sleep(0.15)
+
+        # przycisk "wczytaj"
+        frame = self._frame()
+        m = self.tm.find(frame, "wczytaj", thresh=0.8, multi_scale=True)
+        if not m:
+            return False
+        cx, cy = m["center"]
+        self._safe_click(L + cx, T + cy)
+        time.sleep(0.35)
+        return True
+
+    def teleport(self, slot: int, page_label: str) -> bool:
+        """Zachowana dla kompatybilności nazwa ``teleport``."""
+        return self.teleport_slot(slot, page_label)
+

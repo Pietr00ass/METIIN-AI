@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import numpy as np
 
 from recorder.window_capture import WindowCapture
@@ -60,3 +61,99 @@ class CycleFarm:
         frame = np.array(fr)[:, :, :3].copy()
         dets = self.det.infer(frame)
         return bool(dets)
+
+    # ---- główna pętla cyklu ----
+    def run(self, page_label, ch_from, ch_to, slots, per_spot_sec, clear_sec):
+        """Główna pętla cyklu farmienia.
+
+        Parameters
+        ----------
+        page_label: str
+            Etykieta strony teleportu.
+        ch_from, ch_to: int
+            Zakres kanałów do cyklicznego odwiedzenia.
+        slots: Iterable[int]
+            Kolekcja numerów slotów do odwiedzenia.
+        per_spot_sec: float
+            Maksymalny czas polowania na jednym spocie.
+        clear_sec: float
+            Czas bez celu po którym uznajemy spot za czysty.
+        """
+
+        # Przejście przez kanały oraz sloty
+        for ch in range(ch_from, ch_to + 1):
+            if self._stop:
+                break
+
+            # zmiana kanału
+            try:
+                self.ch.switch(ch)
+            except Exception:
+                pass
+
+            for slot in slots:
+                if self._stop:
+                    break
+
+                # sprawdzenie cooldownu dla (ch, slot)
+                now = time.time()
+                key = (ch, slot)
+                last = self.cooldown.get(key, 0)
+                if now - last < self.cooldown_min * 60:
+                    continue
+
+                # teleportacja do slotu
+                try:
+                    # większość logiki teleportu (otwarcie panelu itp.)
+                    # znajduje się w klasie Teleporter
+                    if hasattr(self.tp, "teleport_slot"):
+                        self.tp.teleport_slot(slot, page_label)
+                    else:
+                        self.tp.teleport(slot, page_label)
+                except Exception:
+                    # jeśli teleportacja się nie udała, pomijamy slot
+                    self.cooldown[key] = now
+                    continue
+
+                # ewentualne skanowanie po teleportacji
+                if not self._any_target_seen():
+                    time.sleep(self.idle_before_scan)
+                    for _ in range(self.sweeps):
+                        if self._stop:
+                            break
+                        self.keys.press(self.spin_key)
+                        time.sleep(self.sweep_ms / 1000.0)
+                        self.keys.release(self.spin_key)
+                        time.sleep(self.pause_between_sweeps)
+
+                # jeżeli nadal brak celu, od razu kolejny slot
+                if not self._any_target_seen() or self._stop:
+                    self.cooldown[key] = time.time()
+                    continue
+
+                # główna pętla polowania na spocie
+                t_end = time.time() + float(per_spot_sec)
+                last_seen = time.time()
+                while time.time() < t_end and not self._stop:
+                    self.agent.step()
+                    if self._any_target_seen():
+                        last_seen = time.time()
+                    elif time.time() - last_seen > float(clear_sec):
+                        # spróbuj przeskanować otoczenie
+                        time.sleep(self.idle_before_scan)
+                        for _ in range(self.sweeps):
+                            if self._stop:
+                                break
+                            self.keys.press(self.spin_key)
+                            time.sleep(self.sweep_ms / 1000.0)
+                            self.keys.release(self.spin_key)
+                            time.sleep(self.pause_between_sweeps)
+                        if not self._any_target_seen():
+                            break
+                        last_seen = time.time()
+
+                # zapisz cooldown na odwiedzony slot
+                self.cooldown[key] = time.time()
+
+        # zakończ po przejściu całego cyklu
+        return
