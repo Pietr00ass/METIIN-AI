@@ -11,6 +11,16 @@ VK_CODES = {
     "d": ord("D"),
     "shift": win32con.VK_SHIFT,
     "space": win32con.VK_SPACE,
+    "ctrl": win32con.VK_CONTROL,
+    "x": ord("X"),
+    "1": ord("1"),
+    "2": ord("2"),
+    "3": ord("3"),
+    "4": ord("4"),
+    "5": ord("5"),
+    "6": ord("6"),
+    "7": ord("7"),
+    "8": ord("8"),
 }
 
 
