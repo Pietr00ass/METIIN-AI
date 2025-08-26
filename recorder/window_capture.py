@@ -17,10 +17,25 @@ class WindowCapture:
         self.region = None       # (left, top, width, height)
         self.sct = mss.mss()
 
-    def locate(self) -> bool:
-        """Znajdź okno po fragmencie tytułu i ustaw region."""
+    def locate(self, timeout: float | None = None) -> bool:
+        """Znajdź okno po fragmencie tytułu i ustaw region.
+
+        Parameters
+        ----------
+        timeout: float | None
+            Maksymalny czas oczekiwania w sekundach. ``None`` oznacza nieskończone
+            oczekiwanie.
+
+        Returns
+        -------
+        bool
+            ``True`` jeśli okno zostało znalezione, ``False`` w przeciwnym razie.
+        """
         needle = (self.title_substr or "").lower()
+        start = time.time()
+        attempts = 0
         while True:
+            attempts += 1
             wins = [w for w in gw.getAllWindows() if needle in (w.title or "").lower()]
             if wins:
                 w = wins[0]
@@ -33,6 +48,8 @@ class WindowCapture:
                 self.win = w
                 self.update_region()
                 return True
+            if timeout is not None and (time.time() - start) >= timeout:
+                return False
             time.sleep(self.poll_sec)
 
     def update_region(self):

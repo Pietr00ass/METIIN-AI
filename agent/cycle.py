@@ -26,7 +26,8 @@ class CycleFarm:
     def __init__(self, cfg: dict):
         self.cfg = cfg
         self.win = WindowCapture(cfg["window"]["title_substr"])
-        assert self.win.locate()
+        if not self.win.locate(timeout=5):
+            raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
 
         self.dry = cfg.get("dry_run", False)
         self.tp = Teleporter(self.win, use_ocr=True, dry=self.dry)
