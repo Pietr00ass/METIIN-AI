@@ -5,10 +5,10 @@ import win32api
 import win32con
 
 VK_CODES = {
-    "w": win32con.VK_KEY_W,
-    "a": win32con.VK_KEY_A,
-    "s": win32con.VK_KEY_S,
-    "d": win32con.VK_KEY_D,
+    "w": ord("W"),
+    "a": ord("A"),
+    "s": ord("S"),
+    "d": ord("D"),
     "shift": win32con.VK_SHIFT,
     "space": win32con.VK_SPACE,
 }
