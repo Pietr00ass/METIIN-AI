@@ -340,7 +340,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 "sweep_ms": int(self.sweep_ms.value()),
                 "idle_sec": float(self.idle_sec.value()),
             },
-            "cooldowns": {"slot_minutes": int(self.cooldown_spin.value())},
+            "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
         }
         return cfg
 
