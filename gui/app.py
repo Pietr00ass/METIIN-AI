@@ -19,6 +19,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+import json
 
 import cv2
 import numpy as np
@@ -145,6 +146,16 @@ class MainWindow(QtWidgets.QMainWindow):
         left.addWidget(QtWidgets.QLabel("Klasy obiektów:"))
         left.addWidget(self.classes_edit)
 
+        # templates directory
+        left.addWidget(QtWidgets.QLabel("Katalog szablonów:"))
+        tmpl_layout = QtWidgets.QHBoxLayout()
+        self.templates_dir_edit = QtWidgets.QLineEdit("assets/templates")
+        self.btn_templates_dir = QtWidgets.QPushButton("Wybierz…")
+        tmpl_layout.addWidget(self.templates_dir_edit)
+        tmpl_layout.addWidget(self.btn_templates_dir)
+        left.addLayout(tmpl_layout)
+        self.btn_templates_dir.clicked.connect(self.browse_templates_dir)
+
         # priority list
         left.addWidget(QtWidgets.QLabel("Priorytety (przeciągnij aby zmienić):"))
         self.prio_list = QtWidgets.QListWidget()
@@ -221,6 +232,12 @@ class MainWindow(QtWidgets.QMainWindow):
                   self.btn_cycle, self.btn_ch, self.btn_stop, self.btn_train]:
             left.addWidget(b)
 
+        # config save/load
+        self.btn_save_cfg = QtWidgets.QPushButton("Zapisz konfigurację")
+        self.btn_load_cfg = QtWidgets.QPushButton("Wczytaj konfigurację")
+        left.addWidget(self.btn_save_cfg)
+        left.addWidget(self.btn_load_cfg)
+
         left.addStretch(1)
         self.status_label = QtWidgets.QLabel("Gotowy.")
         self.status_label.setWordWrap(True)
@@ -250,6 +267,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_ch.clicked.connect(self.change_channel)
         self.btn_stop.clicked.connect(self.stop_all)
         self.btn_train.clicked.connect(self.train_yolo_api)
+        self.btn_save_cfg.clicked.connect(self.save_config)
+        self.btn_load_cfg.clicked.connect(self.load_config)
         # hotkey F12
         self.start_hotkey_listener()
 
@@ -259,6 +278,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
+
+    def browse_templates_dir(self) -> None:
+        path = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Wybierz katalog z szablonami", self.templates_dir_edit.text()
+        )
+        if path:
+            self.templates_dir_edit.setText(path)
 
     def show_frame(self, frame: np.ndarray) -> None:
         """Display a frame in the video QLabel."""
@@ -346,9 +372,61 @@ class MainWindow(QtWidgets.QMainWindow):
                 "idle_sec": float(self.idle_sec.value()),
             },
             "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
-            "templates_dir": "assets/templates",
+            "templates_dir": self.templates_dir_edit.text().strip(),
         }
         return cfg
+
+    def save_config(self) -> None:
+        cfg = self.build_cfg()
+        cfg["teleport"] = {
+            "point": self.tp_point.text().strip(),
+            "side": self.tp_side.text().strip(),
+            "minutes": int(self.tp_minutes.value()),
+        }
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Zapisz konfigurację", "config.json", "JSON (*.json)"
+        )
+        if path:
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(cfg, f, indent=2, ensure_ascii=False)
+                self.set_status("Zapisano konfigurację.")
+            except Exception as exc:
+                self.set_status(f"Błąd zapisu: {exc}")
+
+    def load_config(self) -> None:
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Wczytaj konfigurację", "", "JSON (*.json)"
+        )
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+        except Exception as exc:
+            self.set_status(f"Błąd wczytywania: {exc}")
+            return
+        self.title_edit.setText(cfg.get("window", {}).get("title_substr", ""))
+        det = cfg.get("detector", {})
+        self.model_path.setText(det.get("model_path", ""))
+        self.classes_edit.setText(",".join(det.get("classes", [])))
+        self.deadzone.setValue(float(cfg.get("policy", {}).get("deadzone_x", 0.05)))
+        self.desired_w.setValue(float(cfg.get("policy", {}).get("desired_box_w", 0.12)))
+        self.dry_run_chk.setChecked(bool(cfg.get("dry_run", False)))
+        scan = cfg.get("scan", {})
+        self.sweeps.setValue(int(scan.get("sweeps", 8)))
+        self.sweep_ms.setValue(int(scan.get("sweep_ms", 250)))
+        self.idle_sec.setValue(float(scan.get("idle_sec", 1.5)))
+        self.cooldown_spin.setValue(int(cfg.get("cooldowns", {}).get("slot_min", 10)))
+        self.templates_dir_edit.setText(cfg.get("templates_dir", "assets/templates"))
+        self.prio_list.clear()
+        for name in cfg.get("priority", []):
+            self.prio_list.addItem(QtWidgets.QListWidgetItem(name))
+        tp = cfg.get("teleport", {})
+        self.tp_point.setText(tp.get("point", ""))
+        self.tp_side.setText(tp.get("side", ""))
+        self.tp_minutes.setValue(int(tp.get("minutes", 10)))
+        self.set_status("Wczytano konfigurację.")
 
     # ---------- agent actions ----------
     def start_agent(self) -> None:
