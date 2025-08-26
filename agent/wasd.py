@@ -1,7 +1,17 @@
 from __future__ import annotations
 import threading
 import time
-import pyautogui
+import win32api
+import win32con
+
+VK_CODES = {
+    "w": win32con.VK_KEY_W,
+    "a": win32con.VK_KEY_A,
+    "s": win32con.VK_KEY_S,
+    "d": win32con.VK_KEY_D,
+    "shift": win32con.VK_SHIFT,
+    "space": win32con.VK_SPACE,
+}
 
 
 class KeyHold:
@@ -14,6 +24,12 @@ class KeyHold:
         self.lock = threading.Lock()
         self.dry = dry
         self.active_fn = active_fn
+        self.hwnd = None
+        if active_fn is not None:
+            try:
+                self.hwnd = getattr(active_fn.__self__, "hwnd", lambda: None)()
+            except Exception:
+                self.hwnd = None
         self._stop = False
         self._wd = threading.Thread(target=self._watchdog, daemon=True)
         self._wd.start()
@@ -35,20 +51,20 @@ class KeyHold:
     def press(self, key: str):
         with self.lock:
             if key not in self.down:
-                if not self.dry:
-                    pyautogui.keyDown(key)
+                if not self.dry and self.hwnd:
+                    win32api.PostMessage(self.hwnd, win32con.WM_KEYDOWN, VK_CODES[key], 0)
                 self.down.add(key)
 
     def release(self, key: str):
         with self.lock:
             if key in self.down:
-                if not self.dry:
-                    pyautogui.keyUp(key)
+                if not self.dry and self.hwnd:
+                    win32api.PostMessage(self.hwnd, win32con.WM_KEYUP, VK_CODES[key], 0)
                 self.down.remove(key)
 
     def release_all(self):
         with self.lock:
-            if not self.dry:
+            if not self.dry and self.hwnd:
                 for k in list(self.down):
-                    pyautogui.keyUp(k)
+                    win32api.PostMessage(self.hwnd, win32con.WM_KEYUP, VK_CODES[k], 0)
             self.down.clear()
