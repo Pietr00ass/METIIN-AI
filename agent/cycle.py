@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import logging
 import numpy as np
 
 from recorder.window_capture import WindowCapture
@@ -9,6 +10,9 @@ from agent.channel import ChannelSwitcher
 from agent.hunt_destroy import HuntDestroy
 from agent.detector import ObjectDetector
 from agent.wasd import KeyHold
+
+
+logger = logging.getLogger(__name__)
 
 
 class CycleFarm:
@@ -86,10 +90,11 @@ class CycleFarm:
                 break
 
             # zmiana kanału
+            logger.info("Przechodzę na kanał %s", ch)
             try:
                 self.ch.switch(ch)
             except Exception:
-                pass
+                logger.warning("Nie udało się zmienić kanału na %s", ch)
 
             for slot in slots:
                 if self._stop:
@@ -100,9 +105,11 @@ class CycleFarm:
                 key = (ch, slot)
                 last = self.cooldown.get(key, 0)
                 if now - last < self.cooldown_min * 60:
+                    logger.debug("Pomijam slot %s na kanale %s - cooldown", slot, ch)
                     continue
 
                 # teleportacja do slotu
+                logger.info("Teleportuję na slot %s (ch%s)", slot, ch)
                 try:
                     # większość logiki teleportu (otwarcie panelu itp.)
                     # znajduje się w klasie Teleporter
@@ -111,12 +118,14 @@ class CycleFarm:
                     else:
                         self.tp.teleport(slot, page_label)
                 except Exception:
+                    logger.warning("Teleportacja na slot %s kanału %s nie powiodła się", slot, ch)
                     # jeśli teleportacja się nie udała, pomijamy slot
                     self.cooldown[key] = now
                     continue
 
                 # ewentualne skanowanie po teleportacji
                 if not self._any_target_seen():
+                    logger.debug("Brak celu po teleportacji – skanuję otoczenie")
                     time.sleep(self.idle_before_scan)
                     for _ in range(self.sweeps):
                         if self._stop:
@@ -128,10 +137,12 @@ class CycleFarm:
 
                 # jeżeli nadal brak celu, od razu kolejny slot
                 if not self._any_target_seen() or self._stop:
+                    logger.info("Brak celu na slocie %s kanału %s", slot, ch)
                     self.cooldown[key] = time.time()
                     continue
 
                 # główna pętla polowania na spocie
+                logger.debug("Rozpoczynam polowanie na slocie %s kanału %s", slot, ch)
                 t_end = time.time() + float(per_spot_sec)
                 last_seen = time.time()
                 while time.time() < t_end and not self._stop:
@@ -149,6 +160,7 @@ class CycleFarm:
                             self.keys.release(self.spin_key)
                             time.sleep(self.pause_between_sweeps)
                         if not self._any_target_seen():
+                            logger.debug("Pole czyste – przechodzę dalej")
                             break
                         last_seen = time.time()
 

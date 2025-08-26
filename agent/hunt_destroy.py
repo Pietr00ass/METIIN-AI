@@ -1,5 +1,6 @@
 from __future__ import annotations
 import time
+import logging
 import numpy as np
 
 from .detector import ObjectDetector
@@ -7,6 +8,9 @@ from .targets import pick_target
 from .avoid import CollisionAvoid
 from .wasd import KeyHold
 from .interaction import burst_click
+
+
+logger = logging.getLogger(__name__)
 
 
 class HuntDestroy:
@@ -31,22 +35,29 @@ class HuntDestroy:
         frame = np.array(fr)[:, :, :3].copy()
         H, W = frame.shape[:2]
         dets = self.det.infer(frame)
+        logger.debug("Wykryto %s obiektów", len(dets))
         steer = self.avoid.steer(frame)
 
         # sterowanie
         self.keys.release_all()
         if steer == "left":
+            logger.debug("Omijanie przeszkody: skręt w lewo")
             self.keys.press("a")
         elif steer == "right":
+            logger.debug("Omijanie przeszkody: skręt w prawo")
             self.keys.press("d")
 
         tgt = pick_target(dets, (W, H), priority_order=self.priority)
         if tgt is None:
+            logger.debug("Brak celu w zasięgu")
             return
 
         x1, y1, x2, y2 = tgt["bbox"]
         cx = (x1 + x2) / 2 / W
         bw = (x2 - x1) / W
+        logger.debug(
+            "Cel %s: cx=%.2f bw=%.2f", tgt.get("name", "?"), cx, bw
+        )
 
         if abs(cx - 0.5) > self.deadzone:
             (self.keys.press("d") if cx > 0.5 else self.keys.press("a"))
@@ -60,4 +71,5 @@ class HuntDestroy:
             # w dry-run nie klikamy realnie – burst_click sam używa pyautogui
             if hasattr(self.keys, "dry") and self.keys.dry:
                 return
+            logger.debug("Atakuję cel" )
             burst_click((x1, y1, x2, y2), (left, top, w, h))
