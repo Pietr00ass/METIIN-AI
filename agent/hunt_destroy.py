@@ -28,8 +28,9 @@ class HuntDestroy:
         # KeyHold z dry-run + watchdogiem fokusu
         dry = cfg.get("dry_run", False)
         self.keys = KeyHold(dry=dry, active_fn=getattr(self.win, "is_foreground", None))
-        self.teleporter = Teleporter(self.win, use_ocr=True, dry=dry)
-        self.channel_switcher = ChannelSwitcher(self.win, dry=dry)
+        tdir = cfg["templates_dir"]
+        self.teleporter = Teleporter(self.win, tdir, use_ocr=True, dry=dry)
+        self.channel_switcher = ChannelSwitcher(self.win, tdir, dry=dry)
         self.desired_w = cfg["policy"]["desired_box_w"]
         self.deadzone = cfg["policy"]["deadzone_x"]
         self.priority = cfg.get("priority", ["boss", "metin", "potwory"])  # kolejność z GUI
