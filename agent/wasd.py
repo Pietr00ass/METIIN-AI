@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import ctypes
-from ctypes import wintypes
+import logging
 import threading
 import time
-import logging
-
+from ctypes import wintypes
 
 # ---------------------------------------------------------------------------
 # ``SendInput`` helpers working with scan codes
@@ -243,4 +242,3 @@ class KeyHold:
             for k in list(self.down):
                 self._up(k)
             self.down.clear()
-

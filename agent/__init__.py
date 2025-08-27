@@ -9,9 +9,10 @@ never cause runtime errors.
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 from typing import Any, Dict
-import copy
+
 import yaml
 
 # ---------------------------------------------------------------------------
@@ -105,5 +106,6 @@ def get_config(path: str | Path = "config/agent.yaml") -> Dict[str, Any]:
     if _cfg is None:
         _cfg = load_config(path)
     return _cfg
+
 
 __all__ = ["get_config", "load_config"]

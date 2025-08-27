@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import List, Dict
 
 import time
-import numpy as np
+from typing import Dict, List
+
 import cv2
+import numpy as np
 from ultralytics import YOLO
 
 # ogranicz wątki OpenCV na Windows (stabilniej na CPU)

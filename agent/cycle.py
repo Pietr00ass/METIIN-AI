@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import time
 import logging
+import time
+
 import numpy as np
 
-from recorder.window_capture import WindowCapture
-from agent.teleport import Teleporter
-from agent.channel import ChannelSwitcher
-from agent.hunt_destroy import HuntDestroy
-from agent.detector import ObjectDetector
-from agent.wasd import KeyHold
-from agent.scanner import AreaScanner
 from agent import get_config
-
+from agent.channel import ChannelSwitcher
+from agent.detector import ObjectDetector
+from agent.hunt_destroy import HuntDestroy
+from agent.scanner import AreaScanner
+from agent.teleport import Teleporter
+from agent.wasd import KeyHold
+from recorder.window_capture import WindowCapture
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,9 @@ class CycleFarm:
         self.ch = ChannelSwitcher(self.win, tdir, dry=self.dry)
         self.agent = HuntDestroy(cfg, self.win)
         self.det = ObjectDetector(cfg["paths"]["model"], cfg["detector"]["classes"])
-        self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))
+        self.keys = KeyHold(
+            dry=self.dry, active_fn=getattr(self.win, "is_foreground", None)
+        )
         self._stop = False
 
         # progi i priorytety
@@ -134,7 +136,9 @@ class CycleFarm:
                     else:
                         self.tp.teleport(slot, page_label)
                 except Exception:
-                    logger.warning("Teleportacja na slot %s kanału %s nie powiodła się", slot, ch)
+                    logger.warning(
+                        "Teleportacja na slot %s kanału %s nie powiodła się", slot, ch
+                    )
                     # jeśli teleportacja się nie udała, pomijamy slot
                     self.cooldown[key] = now
                     continue

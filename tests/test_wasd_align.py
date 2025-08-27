@@ -1,7 +1,7 @@
+import json
 import os
 import sys
 import types
-import json
 from unittest.mock import patch
 
 # Make repository root importable and stub optional modules
@@ -12,9 +12,10 @@ sys.modules.setdefault("cv2", cv2_stub)
 # Ensure the real numpy package is used even if previous tests stubbed it
 sys.modules.pop("numpy", None)
 import numpy as np
+
 sys.modules.setdefault("yaml", types.ModuleType("yaml"))
-import agent.wasd as wasd
-from recorder import align_wasd
+import agent.wasd as wasd  # noqa: E402
+from recorder import align_wasd  # noqa: E402
 
 
 def test_resolve_key_strips_prefix():
@@ -70,10 +71,13 @@ def test_align_ignores_non_wasd_keys(tmp_path):
 
     saved = []
 
-    with patch.object(align_wasd.cv2, "CAP_PROP_FPS", 0, create=True), \
-         patch.object(align_wasd.cv2, "VideoCapture", lambda path: DummyCap(frames), create=True), \
-         patch.object(align_wasd.cv2, "resize", dummy_resize, create=True), \
-         patch.object(align_wasd.np, "savez_compressed", lambda path, img=None, y=None: saved.append(y)):
+    with patch.object(align_wasd.cv2, "CAP_PROP_FPS", 0, create=True), patch.object(
+        align_wasd.cv2, "VideoCapture", lambda path: DummyCap(frames), create=True
+    ), patch.object(align_wasd.cv2, "resize", dummy_resize, create=True), patch.object(
+        align_wasd.np,
+        "savez_compressed",
+        lambda path, img=None, y=None: saved.append(y),
+    ):
         align_wasd.align(str(video_path), str(events_path), tmp_path)
 
     assert [y.tolist() for y in saved] == [

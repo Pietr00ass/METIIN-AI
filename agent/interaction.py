@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import time
+
 import pyautogui
 
 try:  # avoid circular import during tests
@@ -10,6 +12,7 @@ except Exception:  # pragma: no cover - optional dependency in tests
 _LAST_CLICK_TS = 0.0
 _MAX_CPS = 5  # klików na sekundę (limit bezpieczeństwa)
 
+
 def _rate_limit_ok() -> bool:
     global _LAST_CLICK_TS
     now = time.time()
@@ -19,7 +22,10 @@ def _rate_limit_ok() -> bool:
         return True
     return False
 
-def click_bbox_center(bbox, region, rate_limit: bool = True, win: WindowCapture | None = None) -> bool:
+
+def click_bbox_center(
+    bbox, region, rate_limit: bool = True, win: WindowCapture | None = None
+) -> bool:
     """Kliknij w środek ``bbox`` w obrębie ``region`` jeśli okno jest aktywne.
 
     Parameters

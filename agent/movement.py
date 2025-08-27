@@ -1,7 +1,8 @@
 from __future__ import annotations
-import logging
-from .wasd import KeyHold
 
+import logging
+
+from .wasd import KeyHold
 
 logger = logging.getLogger(__name__)
 

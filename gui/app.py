@@ -40,17 +40,16 @@ import time
 import cv2
 import numpy as np
 import pyautogui
-from PySide6 import QtCore, QtGui, QtWidgets
 from pynput import keyboard
+from PySide6 import QtCore, QtGui, QtWidgets
 
-from recorder.window_capture import WindowCapture
+from agent.channel import ChannelSwitcher
+from agent.cycle import CycleFarm
 from agent.detector import ObjectDetector
 from agent.hunt_destroy import HuntDestroy
 from agent.teleport import Teleporter
-from agent.cycle import CycleFarm
-from agent.channel import ChannelSwitcher
 from agent.wasd import KeyHold
-
+from recorder.window_capture import WindowCapture
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -93,7 +92,9 @@ class PreviewWorker(QtCore.QThread):
         self._overlay = False
         self._classes: list[str] | None = None
 
-    def configure_overlay(self, model_path: str | None, classes: list[str] | None, enabled: bool):
+    def configure_overlay(
+        self, model_path: str | None, classes: list[str] | None, enabled: bool
+    ):
         """Enable or disable overlay and load the model lazily."""
         self._overlay = enabled
         self._classes = classes
@@ -118,7 +119,9 @@ class PreviewWorker(QtCore.QThread):
             self.status.emit("Znaleziono okno. Podgląd działa.")
             while not self._stop:
                 fr = cap.grab()
-                frame = np.array(fr)[:, :, :3].copy()  # convert BGRA to BGR and ensure contiguous
+                frame = np.array(fr)[
+                    :, :, :3
+                ].copy()  # convert BGRA to BGR and ensure contiguous
                 if self._overlay and self._det:
                     try:
                         dets = self._det.infer(frame)
@@ -226,9 +229,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # scan configuration
         scan_form = QtWidgets.QFormLayout()
-        self.sweeps = QtWidgets.QSpinBox(); self.sweeps.setRange(1, 20); self.sweeps.setValue(8)
-        self.sweep_ms = QtWidgets.QSpinBox(); self.sweep_ms.setRange(50, 1000); self.sweep_ms.setValue(250)
-        self.idle_sec = QtWidgets.QDoubleSpinBox(); self.idle_sec.setRange(0.5, 5.0); self.idle_sec.setSingleStep(0.1); self.idle_sec.setValue(1.5)
+        self.sweeps = QtWidgets.QSpinBox()
+        self.sweeps.setRange(1, 20)
+        self.sweeps.setValue(8)
+        self.sweep_ms = QtWidgets.QSpinBox()
+        self.sweep_ms.setRange(50, 1000)
+        self.sweep_ms.setValue(250)
+        self.idle_sec = QtWidgets.QDoubleSpinBox()
+        self.idle_sec.setRange(0.5, 5.0)
+        self.idle_sec.setSingleStep(0.1)
+        self.idle_sec.setValue(1.5)
         scan_form.addRow("Skan sweeps:", self.sweeps)
         scan_form.addRow("Sweep ms:", self.sweep_ms)
         scan_form.addRow("Idle sec:", self.idle_sec)
@@ -237,9 +247,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # teleportation controls
         left.addWidget(QtWidgets.QLabel("Teleportacja:"))
-        self.tp_point = QtWidgets.QLineEdit(); self.tp_point.setPlaceholderText("Nazwa punktu (OCR lub template)")
-        self.tp_side  = QtWidgets.QLineEdit(); self.tp_side.setPlaceholderText("Strona/mapa (np. Strona I)")
-        self.tp_minutes = QtWidgets.QSpinBox(); self.tp_minutes.setRange(1, 180); self.tp_minutes.setValue(10)
+        self.tp_point = QtWidgets.QLineEdit()
+        self.tp_point.setPlaceholderText("Nazwa punktu (OCR lub template)")
+        self.tp_side = QtWidgets.QLineEdit()
+        self.tp_side.setPlaceholderText("Strona/mapa (np. Strona I)")
+        self.tp_minutes = QtWidgets.QSpinBox()
+        self.tp_minutes.setRange(1, 180)
+        self.tp_minutes.setValue(10)
         form2 = QtWidgets.QFormLayout()
         form2.addRow("Punkt:", self.tp_point)
         form2.addRow("Strona:", self.tp_side)
@@ -254,7 +268,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # cooldown
         left.addWidget(QtWidgets.QLabel("Cooldown slotów (minuty):"))
-        self.cooldown_spin = QtWidgets.QSpinBox(); self.cooldown_spin.setRange(1, 60); self.cooldown_spin.setValue(10)
+        self.cooldown_spin = QtWidgets.QSpinBox()
+        self.cooldown_spin.setRange(1, 60)
+        self.cooldown_spin.setValue(10)
         left.addWidget(self.cooldown_spin)
 
         # UI scale selector (allow arbitrary scaling)
@@ -268,15 +284,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # action buttons
         self.btn_preview = QtWidgets.QPushButton("Start podglądu")
-        self.btn_record  = QtWidgets.QPushButton("Nagrywaj dane (5 min)")
-        self.btn_agent   = QtWidgets.QPushButton("Start agenta (YOLO + WASD)")
+        self.btn_record = QtWidgets.QPushButton("Nagrywaj dane (5 min)")
+        self.btn_agent = QtWidgets.QPushButton("Start agenta (YOLO + WASD)")
         self.btn_tp_hunt = QtWidgets.QPushButton("Teleportuj i poluj")
-        self.btn_cycle   = QtWidgets.QPushButton("Cykl 8×8 (sloty×kanały)")
-        self.btn_ch      = QtWidgets.QPushButton("Zmień kanał")
-        self.btn_stop    = QtWidgets.QPushButton("STOP (F12)")
-        self.btn_train   = QtWidgets.QPushButton("Trenuj YOLO")
-        for b in [self.btn_preview, self.btn_record, self.btn_agent, self.btn_tp_hunt,
-                  self.btn_cycle, self.btn_ch, self.btn_stop, self.btn_train]:
+        self.btn_cycle = QtWidgets.QPushButton("Cykl 8×8 (sloty×kanały)")
+        self.btn_ch = QtWidgets.QPushButton("Zmień kanał")
+        self.btn_stop = QtWidgets.QPushButton("STOP (F12)")
+        self.btn_train = QtWidgets.QPushButton("Trenuj YOLO")
+        for b in [
+            self.btn_preview,
+            self.btn_record,
+            self.btn_agent,
+            self.btn_tp_hunt,
+            self.btn_cycle,
+            self.btn_ch,
+            self.btn_stop,
+            self.btn_train,
+        ]:
             left.addWidget(b)
 
         # config save/load
@@ -379,7 +403,9 @@ class MainWindow(QtWidgets.QMainWindow):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w = rgb.shape[:2]
         bytes_per_line = rgb.strides[0]
-        qimg = QtGui.QImage(rgb.data, w, h, bytes_per_line, QtGui.QImage.Format.Format_RGB888)
+        qimg = QtGui.QImage(
+            rgb.data, w, h, bytes_per_line, QtGui.QImage.Format.Format_RGB888
+        )
         pix = QtGui.QPixmap.fromImage(qimg).scaled(
             self.video.width(), self.video.height(), QtCore.Qt.KeepAspectRatio
         )
@@ -403,13 +429,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.preview_thread.frame_ready.connect(self.show_frame)
         self.preview_thread.status.connect(self.set_status)
         classes = [c.strip() for c in self.classes_edit.text().split(",") if c.strip()]
-        self.preview_thread.configure_overlay(self.model_path.text().strip(), classes, self.overlay_chk.isChecked())
+        self.preview_thread.configure_overlay(
+            self.model_path.text().strip(), classes, self.overlay_chk.isChecked()
+        )
         self.preview_thread.start()
         self.btn_preview.setText("Stop podglądu")
 
     # ---------- recording ----------
     def record_data(self) -> None:
         from recorder.capture import record_session
+
         title = self.title_edit.text().strip()
         if not title:
             self.set_status("Podaj fragment tytułu okna.")
@@ -420,13 +449,19 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         wc.update_region()
         l, t, w, h = wc.region
+
         def job():
             try:
                 self.set_status("Nagrywanie 5 min…")
-                record_session("data/recordings", region=(l, t, w, h), fps=15, duration_sec=300)
-                self.set_status("Nagrywanie zakończone. Użyj narzędzia 'extract_frames'.")
+                record_session(
+                    "data/recordings", region=(l, t, w, h), fps=15, duration_sec=300
+                )
+                self.set_status(
+                    "Nagrywanie zakończone. Użyj narzędzia 'extract_frames'."
+                )
             except Exception as exc:
                 self.set_status(f"Błąd nagrywania: {exc}")
+
         threading.Thread(target=job, daemon=True).start()
 
     # ---------- configuration ----------
@@ -441,7 +476,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 "model": self.model_path.text().strip(),
             },
             "controls": {
-                "keys": {"forward": "w", "left": "a", "back": "s", "right": "d", "rotate": "e"},
+                "keys": {
+                    "forward": "w",
+                    "left": "a",
+                    "back": "s",
+                    "right": "d",
+                    "rotate": "e",
+                },
                 "key_repeat_ms": 60,
                 "mouse_pause": 0.02,
             },
@@ -454,7 +495,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 "deadzone_x": float(self.deadzone.value()),
                 "desired_box_w": float(self.desired_w.value()),
             },
-            "stuck": {"flow_window": 0.8, "min_flow_mag": 0.7, "rotate_ms_on_stuck": 250},
+            "stuck": {
+                "flow_window": 0.8,
+                "min_flow_mag": 0.7,
+                "rotate_ms_on_stuck": 250,
+            },
             "priority": prio,
             "dry_run": self.dry_run_chk.isChecked(),
             "scan": {
@@ -530,29 +575,34 @@ class MainWindow(QtWidgets.QMainWindow):
     # ---------- agent actions ----------
     def start_agent(self) -> None:
         cfg = self.build_cfg()
+
         def run():
             try:
                 agent = HuntDestroy(cfg, WindowCapture(cfg["window"]["title_substr"]))
                 if not agent.win.locate(timeout=5):
                     self.set_status("Nie znaleziono okna.")
                     return
-                period = cfg.get("scan", {}).get("period", 1/15)
+                period = cfg.get("scan", {}).get("period", 1 / 15)
                 while not self._panic:
-                    agent.step(); time.sleep(period)
+                    agent.step()
+                    time.sleep(period)
             except Exception as exc:
                 self.set_status(f"Błąd agenta: {exc}")
+
         self._panic = False
         self.agent_thread = threading.Thread(target=run, daemon=True)
         self.agent_thread.start()
         self.set_status("Agent YOLO+WASD uruchomiony.")
 
     def start_tp_and_hunt(self) -> None:
-        point = self.tp_point.text().strip(); side = self.tp_side.text().strip()
+        point = self.tp_point.text().strip()
+        side = self.tp_side.text().strip()
         minutes = int(self.tp_minutes.value())
         if not point or not side:
             self.set_status("Uzupełnij punkt i stronę teleportacji.")
             return
         cfg = self.build_cfg()
+
         def run():
             try:
                 win = WindowCapture(cfg["window"]["title_substr"])
@@ -562,15 +612,19 @@ class MainWindow(QtWidgets.QMainWindow):
                 tp = Teleporter(win, cfg["paths"]["templates_dir"], use_ocr=True)
                 ok = tp.teleport(point, side)
                 if not ok:
-                    self.set_status("Nie udało się kliknąć elementów w panelu teleportu (sprawdź OCR/templates)")
+                    self.set_status(
+                        "Nie udało się kliknąć elementów w panelu teleportu (sprawdź OCR/templates)"
+                    )
                 hd = HuntDestroy(cfg, win)
                 t_end = time.time() + minutes * 60
-                period = cfg.get("scan", {}).get("period", 1/15)
+                period = cfg.get("scan", {}).get("period", 1 / 15)
                 while time.time() < t_end and not self._panic:
-                    hd.step(); time.sleep(period)
+                    hd.step()
+                    time.sleep(period)
                 self.set_status("Zakończono 'Teleportuj i poluj'.")
             except Exception as exc:
                 self.set_status(f"Błąd teleport+poluj: {exc}")
+
         self._panic = False
         self.agent_thread = threading.Thread(target=run, daemon=True)
         self.agent_thread.start()
@@ -615,7 +669,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 ch = int(self.channel_combo.currentText().replace("CH", ""))
                 ok = ChannelSwitcher(win, cfg["paths"]["templates_dir"]).switch(ch)
                 msg = (
-                    f"Zmieniono kanał na CH{ch}" if ok else "Nie znaleziono przycisku CH – sprawdź szablony."
+                    f"Zmieniono kanał na CH{ch}"
+                    if ok
+                    else "Nie znaleziono przycisku CH – sprawdź szablony."
                 )
                 self.set_status(msg)
             except Exception as exc:
@@ -637,16 +693,20 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
             self.cycle_agent = None
         if self.preview_thread and self.preview_thread.isRunning():
-            self.preview_thread.stop(); self.preview_thread.wait(); self.preview_thread = None
+            self.preview_thread.stop()
+            self.preview_thread.wait()
+            self.preview_thread = None
             self.btn_preview.setText("Start podglądu")
         self.set_status("STOP – wszystkie klawisze zwolnione.")
 
     def train_yolo_api(self) -> None:
         """Train YOLO using ultralytics API (runs asynchronously)."""
+
         def job():
             try:
                 self.set_status("Trening YOLO – start…")
                 from ultralytics import YOLO
+
                 model = YOLO("yolov8n.pt")
                 model.train(
                     data="datasets/mt2/data.yaml",
@@ -655,9 +715,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     batch=16,
                     device="cpu",
                 )
-                self.set_status("Trening zakończony. Wybierz runs/detect/train/weights/best.pt")
+                self.set_status(
+                    "Trening zakończony. Wybierz runs/detect/train/weights/best.pt"
+                )
             except Exception as exc:
                 self.set_status(f"Błąd treningu: {exc}")
+
         threading.Thread(target=job, daemon=True).start()
 
     # ---------- hotkey ----------
@@ -668,6 +731,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.stop_all()
             except Exception:
                 pass
+
         self._hotkey_listener = keyboard.Listener(on_press=on_press)
         self._hotkey_listener.daemon = True
         self._hotkey_listener.start()

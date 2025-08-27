@@ -1,7 +1,8 @@
+import importlib
 import os
 import sys
 import types
-import importlib
+
 import pytest
 
 # Make repository root importable and stub optional heavy dependencies.
@@ -16,6 +17,8 @@ cv2_stub.setNumThreads = lambda n: None
 sys.modules["cv2"] = cv2_stub
 
 ultra_stub = types.ModuleType("ultralytics")
+
+
 class _DummyYOLO:
     def __init__(self, *args, **kwargs):
         pass
@@ -26,6 +29,7 @@ class _DummyYOLO:
             boxes = []
 
         return [_Res()]
+
 
 ultra_stub.YOLO = _DummyYOLO
 sys.modules.setdefault("ultralytics", ultra_stub)
@@ -41,6 +45,8 @@ easyocr_stub.Reader = lambda *a, **k: None
 sys.modules.setdefault("easyocr", easyocr_stub)
 
 teleport_mod = types.ModuleType("agent.teleport")
+
+
 class _DummyTeleporter:
     def __init__(self, *a, **k):
         pass
@@ -48,16 +54,20 @@ class _DummyTeleporter:
     def teleport_slot(self, *a, **k):
         pass
 
+
 teleport_mod.Teleporter = _DummyTeleporter
 sys.modules["agent.teleport"] = teleport_mod
 
 channel_mod = types.ModuleType("agent.channel")
+
+
 class _DummyChannelSwitcher:
     def __init__(self, *a, **k):
         pass
 
     def switch(self, *a, **k):
         pass
+
 
 channel_mod.ChannelSwitcher = _DummyChannelSwitcher
 sys.modules["agent.channel"] = channel_mod
@@ -148,4 +158,3 @@ def test_hunt_destroy_continuous_movement(monkeypatch):
     assert agent.keys.pressed.count("d") == 1
     assert agent.keys.pressed.count("a") == 1
     assert agent.keys.released == ["d"]
-

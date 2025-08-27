@@ -1,9 +1,10 @@
 from __future__ import annotations
-import time
-import logging
-from .teleport import Teleporter
-from .channel import ChannelSwitcher
 
+import logging
+import time
+
+from .channel import ChannelSwitcher
+from .teleport import Teleporter
 
 logger = logging.getLogger(__name__)
 

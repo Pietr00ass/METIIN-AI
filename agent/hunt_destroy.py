@@ -1,19 +1,20 @@
 from __future__ import annotations
-import time
+
 import logging
+import time
+
 import numpy as np
 
-from .detector import ObjectDetector
-from .targets import pick_target
+from . import get_config
 from .avoid import CollisionAvoid
-from .wasd import KeyHold
-from .interaction import burst_click
-from .teleport import Teleporter
 from .channel import ChannelSwitcher
+from .detector import ObjectDetector
+from .interaction import burst_click
 from .movement import MovementController
 from .search import SearchManager
-from . import get_config
-
+from .targets import pick_target
+from .teleport import Teleporter
+from .wasd import KeyHold
 
 logger = logging.getLogger(__name__)
 

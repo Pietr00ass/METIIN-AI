@@ -5,7 +5,6 @@ import logging
 
 from ultralytics import YOLO
 
-
 logging.basicConfig(level=logging.INFO)
 
 
@@ -36,4 +35,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
