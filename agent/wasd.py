@@ -6,6 +6,8 @@ import threading
 import time
 import logging
 
+from .keycodes import SCANCODES, EXTENDED_KEYS, VK_CODES
+
 
 # ---------------------------------------------------------------------------
 # ``SendInput`` helpers working with scan codes
@@ -70,31 +72,6 @@ def _send_scan(scan: int, keyup: bool = False, extended: bool = False) -> None:
     _user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp))
 
 
-SCANCODES = {
-    "w": 0x11,
-    "a": 0x1E,
-    "s": 0x1F,
-    "d": 0x20,
-    "space": 0x39,
-    "shift": 0x2A,
-    "ctrl": 0x1D,
-    "alt": 0x38,
-    "x": 0x2D,
-    "1": 0x02,
-    "2": 0x03,
-    "3": 0x04,
-    "4": 0x05,
-    "5": 0x06,
-    "6": 0x07,
-    "7": 0x08,
-    "8": 0x09,
-}
-
-# Keys that require the extended flag when sent via ``SendInput``.
-EXTENDED_KEYS = {"up", "down", "left", "right"}
-
-# Backwards compatibility: expose ``VK_CODES`` and helpers used in tests.
-VK_CODES = SCANCODES
 
 
 def key_down(scan: int, extended: bool = False) -> None:

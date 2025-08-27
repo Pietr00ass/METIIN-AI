@@ -7,6 +7,8 @@ import mss
 import numpy as np
 from pynput import mouse, keyboard
 
+from agent.keycodes import pynput_key_name
+
 class InputLogger:
     def __init__(self):
         self.buffer = []  # (ts, kind, payload)
@@ -18,12 +20,18 @@ class InputLogger:
                 self.buffer.append((time.time(), 'click', {'x': x, 'y': y, 'button': str(button)}))
 
     def on_press(self, key):
+        name = pynput_key_name(key)
+        if name is None:
+            return
         with self._lock:
-            self.buffer.append((time.time(), 'key', {'key': str(key), 'down': True}))
+            self.buffer.append((time.time(), 'key', {'key': name, 'down': True}))
 
     def on_release(self, key):
+        name = pynput_key_name(key)
+        if name is None:
+            return
         with self._lock:
-            self.buffer.append((time.time(), 'key', {'key': str(key), 'down': False}))
+            self.buffer.append((time.time(), 'key', {'key': name, 'down': False}))
 
     def flush(self):
         with self._lock:

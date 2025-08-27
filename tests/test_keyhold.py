@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 sys.modules.setdefault("yaml", types.ModuleType("yaml"))
 
 import agent.wasd as wasd
+import agent.keycodes as keycodes
 
 
 def test_dry_mode_skips_sendinput():
@@ -39,8 +40,8 @@ def test_press_release_calls_sendinput_when_active():
         kh.release("w")
         kh.stop()
 
-    mock_down.assert_called_once_with(wasd.VK_CODES["w"])
-    mock_up.assert_called_once_with(wasd.VK_CODES["w"])
+    mock_down.assert_called_once_with(keycodes.SCANCODES["w"])
+    mock_up.assert_called_once_with(keycodes.SCANCODES["w"])
 
 
 def test_press_skipped_when_window_inactive():
