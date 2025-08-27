@@ -54,3 +54,37 @@ def test_inputlogger_records_down_up_pairs():
         (1.0, "key", {"key": "a", "down": True}),
         (2.0, "key", {"key": "a", "down": False}),
     ]
+
+
+def test_on_release_includes_scan_vk_codes():
+    """on_release should preserve scan and vk codes in the payload."""
+
+    logger = capture.InputLogger()
+
+    class Key:
+        def __init__(self, scan, vk):
+            self.scan = scan
+            self.vk = vk
+
+    # Use known mappings from agent.wasd
+    import agent.wasd as wasd
+
+    key = Key(wasd.SCANCODES["a"], wasd.VK_CODES["a"])
+
+    with patch("time.time", return_value=0.0):
+        logger.on_release(key)
+
+    events = logger.flush()
+
+    assert events == [
+        (
+            0.0,
+            "key",
+            {
+                "key": "a",
+                "down": False,
+                "scan": wasd.SCANCODES["a"],
+                "vk": wasd.VK_CODES["a"],
+            },
+        )
+    ]
