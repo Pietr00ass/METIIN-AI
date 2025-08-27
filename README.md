@@ -1,7 +1,7 @@
 # METIIN-AI
 
 ## Project Overview
-METIIN-AI provides vision-based automation for the Metin2 game. It captures the game window, detects objects with a YOLO model and drives the character through keyboard input. The repository includes tools for recording gameplay, training YOLO models and running either a Qt GUI or lightweight agent scripts.
+METIIN-AI provides vision-based automation for the Metin2 game. It captures the game window, detects objects with a YOLO model and drives the character through keyboard input. The repository includes tools for recording gameplay, training YOLO models and running either a Qt GUI or lightweight agent scripts.  The project is developed primarily on Windows but most components also run under Linux.
 
 ## Prerequisites
 ### Hardware
@@ -10,14 +10,23 @@ METIIN-AI provides vision-based automation for the Metin2 game. It captures the 
 
 ### Software
 - Python 3.10+
-- pip for dependency management
+- ``pip`` for dependency management
+- On Windows the [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) are required by the ``pywin32`` package.
 
 ## Dependency Installation
 1. Create and activate a Python environment.
+   ```bash
+   python -m venv .venv
+   # PowerShell
+   .venv\Scripts\activate
+   # or on Linux / macOS
+   source .venv/bin/activate
+   ```
 2. Install runtime dependencies:
    ```bash
    pip install -r requirements.txt
    ```
+3. (Optional) Install GPU versions of ``torch``/``torchvision`` to speed up training and inference.
 
 ## Model Training
 YOLO models are trained with the Ultralytics API. Prepare a dataset YAML and run:
@@ -44,9 +53,18 @@ WasdVisionAgent(cfg).run()
 PY
 ```
 
-## Configuration and Templates
-- Agent settings such as window title, detector paths and movement policy live in [`config/agent.yaml`](config/agent.yaml).
-- UI templates for channel buttons, teleport pages and other elements are stored in [`assets/templates/`](assets/templates/). Use `tools/capture_template.py` to capture additional templates.
+## Configuration
+All runtime options live in [`config/agent.yaml`](config/agent.yaml).  Key fields include:
+
+- **window.title_substr** – fragment of the Metin2 window title used to locate it.
+- **paths.model** – path to the trained YOLO weights.
+- **controls.keys** – mapping of movement/rotation keys.
+- **scan** – settings for scanning the area by rotating the camera (key, number and duration of sweeps).
+
+The file ships with sensible defaults; copy it and adjust values for your setup.  Missing entries fall back to built‑in defaults.
+
+### Templates
+UI templates for channel buttons, teleport pages and other elements are stored in [`assets/templates/`](assets/templates/). Use `tools/capture_template.py` to capture additional templates.
 
 ## Recording Input
 

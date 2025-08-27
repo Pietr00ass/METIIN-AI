@@ -52,7 +52,17 @@ class CycleFarm:
         self.sweeps = int(scan.get("sweeps", 8))
         self.idle_before_scan = float(scan.get("idle_sec", 1.5))
         self.pause_between_sweeps = float(scan.get("pause", 0.12))
-        self.scanner = AreaScanner(self.keys, self.spin_key, self.sweep_ms, self.sweeps, self.idle_before_scan, self.pause_between_sweeps)
+        # AreaScanner emulates a human turning in place by repeatedly holding the
+        # camera‑rotate key.  This reveals monsters that might spawn behind the
+        # player after teleportation.
+        self.scanner = AreaScanner(
+            self.keys,
+            self.spin_key,
+            self.sweep_ms,
+            self.sweeps,
+            self.idle_before_scan,
+            self.pause_between_sweeps,
+        )
 
         # cooldown slotów
         self.cooldown = {}
