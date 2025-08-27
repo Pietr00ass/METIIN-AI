@@ -49,17 +49,41 @@ class InputLogger:
     # ``pynput`` compatibility helpers used in tests
     def on_press(self, key):  # pragma: no cover - simple passthrough
         from agent.wasd import resolve_key
+
+        payload = {"key": resolve_key(key), "down": True}
+
+        if isinstance(key, dict):
+            scan = key.get("scan")
+            vk = key.get("vk")
+        else:
+            scan = getattr(key, "scan", None)
+            vk = getattr(key, "vk", None)
+        if scan is not None:
+            payload["scan"] = scan
+        if vk is not None:
+            payload["vk"] = vk
+
         with self._lock:
-            self.buffer.append(
-                (time.time(), "key", {"key": resolve_key(str(key)), "down": True})
-            )
+            self.buffer.append((time.time(), "key", payload))
 
     def on_release(self, key):  # pragma: no cover - simple passthrough
         from agent.wasd import resolve_key
+
+        payload = {"key": resolve_key(key), "down": False}
+
+        if isinstance(key, dict):
+            scan = key.get("scan")
+            vk = key.get("vk")
+        else:
+            scan = getattr(key, "scan", None)
+            vk = getattr(key, "vk", None)
+        if scan is not None:
+            payload["scan"] = scan
+        if vk is not None:
+            payload["vk"] = vk
+
         with self._lock:
-            self.buffer.append(
-                (time.time(), "key", {"key": resolve_key(str(key)), "down": False})
-            )
+            self.buffer.append((time.time(), "key", payload))
 
     def start(self):
         """Begin capturing keyboard events using a low‑level hook."""
