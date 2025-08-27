@@ -22,6 +22,16 @@ def test_resolve_key_strips_prefix():
     assert wasd.resolve_key("w") == "w"
 
 
+def test_resolve_key_from_scan():
+    sc = wasd.SCANCODES["w"]
+    assert wasd.resolve_key({"scan": sc}) == "w"
+
+
+def test_resolve_key_from_vk():
+    vk = wasd.VK_CODES["a"]
+    assert wasd.resolve_key({"vk": vk}) == "a"
+
+
 def test_align_ignores_non_wasd_keys(tmp_path):
     events = [
         {"ts": 0.05, "kind": "key", "payload": {"key": "space", "down": True}},
