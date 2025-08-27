@@ -5,25 +5,51 @@ from pathlib import Path
 import cv2
 import mss
 import numpy as np
-from pynput import mouse, keyboard
+from pynput import mouse
+
+try:  # ``keyboard`` provides low level scan‑code events
+    import keyboard as _keyboard
+except Exception:  # pragma: no cover - library may be missing on CI
+    _keyboard = None
 
 class InputLogger:
-    def __init__(self):
+    """Collects mouse clicks and raw keyboard scan‑code events."""
+
+    def __init__(self) -> None:
         self.buffer = []  # (ts, kind, payload)
         self._lock = threading.Lock()
+        self._kb_hook = None
 
+    # --- mouse -----------------------------------------------------------------
     def on_click(self, x, y, button, pressed):
         if pressed:
             with self._lock:
-                self.buffer.append((time.time(), 'click', {'x': x, 'y': y, 'button': str(button)}))
+                self.buffer.append(
+                    (time.time(), "click", {"x": x, "y": y, "button": str(button)})
+                )
 
-    def on_press(self, key):
+    # --- keyboard --------------------------------------------------------------
+    def _on_key_event(self, event):
+        """Internal callback used by the ``keyboard`` hook."""
         with self._lock:
-            self.buffer.append((time.time(), 'key', {'key': str(key), 'down': True}))
+            self.buffer.append(
+                (
+                    time.time(),
+                    "key",
+                    {"scancode": event.scan_code, "down": event.event_type == "down"},
+                )
+            )
 
-    def on_release(self, key):
-        with self._lock:
-            self.buffer.append((time.time(), 'key', {'key': str(key), 'down': False}))
+    def start(self):
+        """Begin capturing keyboard events using a low‑level hook."""
+        if _keyboard is None:
+            raise RuntimeError("keyboard library not available")
+        self._kb_hook = _keyboard.hook(self._on_key_event)
+
+    def stop(self):
+        if _keyboard is not None and self._kb_hook is not None:
+            _keyboard.unhook(self._kb_hook)
+            self._kb_hook = None
 
     def flush(self):
         with self._lock:
@@ -42,8 +68,9 @@ def record_session(out_dir: str, region=(0, 0, 1280, 720), fps=15, duration_sec=
     vw = cv2.VideoWriter(str(video_path), cv2.VideoWriter_fourcc(*'mp4v'), fps, (region[2], region[3]))
 
     logger = InputLogger()
-    ml = mouse.Listener(on_click=logger.on_click); ml.start()
-    kl = keyboard.Listener(on_press=logger.on_press, on_release=logger.on_release); kl.start()
+    logger.start()
+    ml = mouse.Listener(on_click=logger.on_click)
+    ml.start()
 
     period = 1.0 / fps
     t_end = time.time() + duration_sec
@@ -58,5 +85,5 @@ def record_session(out_dir: str, region=(0, 0, 1280, 720), fps=15, duration_sec=
             if dt < period:
                 time.sleep(period - dt)
 
-    vw.release(); ml.stop(); kl.stop()
+    vw.release(); ml.stop(); logger.stop()
     return str(video_path), str(events_path)
