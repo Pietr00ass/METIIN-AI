@@ -428,9 +428,16 @@ class MainWindow(QtWidgets.QMainWindow):
         prio = self.current_priority()
         cfg = {
             "window": {"title_substr": title},
-            "controls": {"keys": {"forward": "w", "left": "a", "back": "s", "right": "d", "rotate": "e"}},
+            "paths": {
+                "templates_dir": self.templates_dir_edit.text().strip(),
+                "model": self.model_path.text().strip(),
+            },
+            "controls": {
+                "keys": {"forward": "w", "left": "a", "back": "s", "right": "d", "rotate": "e"},
+                "key_repeat_ms": 60,
+                "mouse_pause": 0.02,
+            },
             "detector": {
-                "model_path": self.model_path.text().strip(),
                 "classes": classes,
                 "conf_thr": 0.5,
                 "iou_thr": 0.45,
@@ -438,7 +445,6 @@ class MainWindow(QtWidgets.QMainWindow):
             "policy": {
                 "deadzone_x": float(self.deadzone.value()),
                 "desired_box_w": float(self.desired_w.value()),
-                "key_repeat_ms": 60,
             },
             "stuck": {"flow_window": 0.8, "min_flow_mag": 0.7, "rotate_ms_on_stuck": 250},
             "priority": prio,
@@ -448,9 +454,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 "sweeps": int(self.sweeps.value()),
                 "sweep_ms": int(self.sweep_ms.value()),
                 "idle_sec": float(self.idle_sec.value()),
+                "period": 0.066,
+                "pause": 0.12,
             },
             "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
-            "templates_dir": self.templates_dir_edit.text().strip(),
             "ui": {"scale": float(self.scale_spin.value())},
         }
         return cfg
@@ -487,7 +494,8 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.title_edit.setText(cfg.get("window", {}).get("title_substr", ""))
         det = cfg.get("detector", {})
-        self.model_path.setText(det.get("model_path", ""))
+        paths = cfg.get("paths", {})
+        self.model_path.setText(paths.get("model", ""))
         self.classes_edit.setText(",".join(det.get("classes", [])))
         self.deadzone.setValue(float(cfg.get("policy", {}).get("deadzone_x", 0.05)))
         self.desired_w.setValue(float(cfg.get("policy", {}).get("desired_box_w", 0.12)))
@@ -497,7 +505,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sweep_ms.setValue(int(scan.get("sweep_ms", 250)))
         self.idle_sec.setValue(float(scan.get("idle_sec", 1.5)))
         self.cooldown_spin.setValue(int(cfg.get("cooldowns", {}).get("slot_min", 10)))
-        self.templates_dir_edit.setText(cfg.get("templates_dir", "assets/templates"))
+        self.templates_dir_edit.setText(paths.get("templates_dir", "assets/templates"))
         ui = cfg.get("ui", {})
         scale = float(ui.get("scale", 1.0))
         self.scale_spin.setValue(scale)
@@ -520,8 +528,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 if not agent.win.locate(timeout=5):
                     self.set_status("Nie znaleziono okna.")
                     return
+                period = cfg.get("scan", {}).get("period", 1/15)
                 while not self._panic:
-                    agent.step(); time.sleep(1/15)
+                    agent.step(); time.sleep(period)
             except Exception as exc:
                 self.set_status(f"Błąd agenta: {exc}")
         self._panic = False
@@ -542,14 +551,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 if not win.locate(timeout=5):
                     self.set_status("Nie znaleziono okna.")
                     return
-                tp = Teleporter(win, cfg["templates_dir"], use_ocr=True)
+                tp = Teleporter(win, cfg["paths"]["templates_dir"], use_ocr=True)
                 ok = tp.teleport(point, side)
                 if not ok:
                     self.set_status("Nie udało się kliknąć elementów w panelu teleportu (sprawdź OCR/templates)")
                 hd = HuntDestroy(cfg, win)
                 t_end = time.time() + minutes * 60
+                period = cfg.get("scan", {}).get("period", 1/15)
                 while time.time() < t_end and not self._panic:
-                    hd.step(); time.sleep(1/15)
+                    hd.step(); time.sleep(period)
                 self.set_status("Zakończono 'Teleportuj i poluj'.")
             except Exception as exc:
                 self.set_status(f"Błąd teleport+poluj: {exc}")
@@ -561,11 +571,18 @@ class MainWindow(QtWidgets.QMainWindow):
     def start_cycle(self) -> None:
         page = self.tp_side.text().strip() or None
         cfg = self.build_cfg()
+        cycle_cfg = cfg.get("cycle", {})
         def run():
             try:
                 cf = CycleFarm(cfg)
-                cf.run(page_label=page, ch_from=1, ch_to=8,
-                       slots=range(1, 9), per_spot_sec=90, clear_sec=6)
+                cf.run(
+                    page_label=page,
+                    ch_from=cycle_cfg.get("ch_from", 1),
+                    ch_to=cycle_cfg.get("ch_to", 8),
+                    slots=cycle_cfg.get("slots", list(range(1, 9))),
+                    per_spot_sec=cycle_cfg.get("per_spot_sec", 90),
+                    clear_sec=cycle_cfg.get("clear_sec", 6),
+                )
                 self.set_status("Cykl 8×8 zakończony.")
             except Exception as exc:
                 self.set_status(f"Błąd cyklu: {exc}")
@@ -581,7 +598,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.set_status("Nie znaleziono okna.")
                 return
             ch = int(self.channel_combo.currentText().replace("CH", ""))
-            ok = ChannelSwitcher(win, cfg["templates_dir"]).switch(ch)
+            ok = ChannelSwitcher(win, cfg["paths"]["templates_dir"]).switch(ch)
             msg = f"Zmieniono kanał na CH{ch}" if ok else "Nie znaleziono przycisku CH – sprawdź szablony."
             self.set_status(msg)
         except Exception as exc:

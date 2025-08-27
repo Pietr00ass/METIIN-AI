@@ -10,6 +10,7 @@ from agent.channel import ChannelSwitcher
 from agent.hunt_destroy import HuntDestroy
 from agent.detector import ObjectDetector
 from agent.wasd import KeyHold
+from agent import get_config
 
 
 logger = logging.getLogger(__name__)
@@ -23,18 +24,19 @@ class CycleFarm:
     Ma cooldown slotów (minuty) by nie wracać od razu.
     """
 
-    def __init__(self, cfg: dict):
+    def __init__(self, cfg: dict | None = None):
+        cfg = cfg or get_config()
         self.cfg = cfg
         self.win = WindowCapture(cfg["window"]["title_substr"])
         if not self.win.locate(timeout=5):
             raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
 
         self.dry = cfg.get("dry_run", False)
-        tdir = cfg["templates_dir"]
-        self.tp = Teleporter(self.win, tdir, use_ocr=True, dry=self.dry)
+        tdir = cfg["paths"]["templates_dir"]
+        self.tp = Teleporter(self.win, tdir, use_ocr=True, dry=self.dry, cfg=cfg)
         self.ch = ChannelSwitcher(self.win, tdir, dry=self.dry)
         self.agent = HuntDestroy(cfg, self.win)
-        self.det = ObjectDetector(cfg["detector"]["model_path"], cfg["detector"]["classes"])
+        self.det = ObjectDetector(cfg["paths"]["model"], cfg["detector"]["classes"])
         self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))
         self._stop = False
 

@@ -10,31 +10,34 @@ from .wasd import KeyHold
 from .interaction import burst_click
 from .teleport import Teleporter
 from .channel import ChannelSwitcher
+from . import get_config
 
 
 logger = logging.getLogger(__name__)
 
 
 class HuntDestroy:
-    def __init__(self, cfg, window_capture):
+    def __init__(self, cfg=None, window_capture=None):
+        cfg = cfg or get_config()
+        self.cfg = cfg
         self.win = window_capture
         self.det = ObjectDetector(
-            cfg["detector"]["model_path"],
+            cfg["paths"]["model"],
             cfg["detector"]["classes"],
-            cfg["detector"]["conf_thr"],
-            cfg["detector"]["iou_thr"],
+            cfg["detector"].get("conf_thr", 0.5),
+            cfg["detector"].get("iou_thr", 0.45),
         )
         self.avoid = CollisionAvoid()
         # KeyHold z dry-run + watchdogiem fokusu
         dry = cfg.get("dry_run", False)
         self.keys = KeyHold(dry=dry, active_fn=getattr(self.win, "is_foreground", None))
-        tdir = cfg["templates_dir"]
-        self.teleporter = Teleporter(self.win, tdir, use_ocr=True, dry=dry)
+        tdir = cfg["paths"]["templates_dir"]
+        self.teleporter = Teleporter(self.win, tdir, use_ocr=True, dry=dry, cfg=cfg)
         self.channel_switcher = ChannelSwitcher(self.win, tdir, dry=dry)
-        self.desired_w = cfg["policy"]["desired_box_w"]
-        self.deadzone = cfg["policy"]["deadzone_x"]
+        self.desired_w = cfg["policy"].get("desired_box_w", 0.12)
+        self.deadzone = cfg["policy"].get("deadzone_x", 0.05)
         self.priority = cfg.get("priority", ["boss", "metin", "potwory"])  # kolejność z GUI
-        self.period = 1 / 15
+        self.period = cfg.get("scan", {}).get("period", 1 / 15)
         self.last_target_time = time.time()
         self.location_idx = 0
         self.channel_idx = 0
@@ -42,6 +45,8 @@ class HuntDestroy:
         self.tp_slots = list(tp_cfg.get("slots", []))
         self.tp_page = tp_cfg.get("page") or tp_cfg.get("page_label")
         self.channels = list(cfg.get("channels", []))
+        self.no_target_sec = tp_cfg.get("no_target_sec", 10)
+        self.channel_every = tp_cfg.get("channel_every", 8)
         self._teleports = 0
         self._last_tgt = None
         self._prev_names: set[str] = set()
@@ -73,7 +78,7 @@ class HuntDestroy:
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
             now = time.time()
-            if now - self.last_target_time > 10:
+            if now - self.last_target_time > self.no_target_sec:
                 slot = None
                 try:
                     if self.tp_slots:
@@ -81,7 +86,7 @@ class HuntDestroy:
                         self.teleporter.teleport_slot(slot, self.tp_page)
                         self._teleports += 1
                         self.location_idx = (self.location_idx + 1) % len(self.tp_slots)
-                        if self._teleports % 8 == 0 or self.location_idx == 0:
+                        if self._teleports % self.channel_every == 0 or self.location_idx == 0:
                             if self.channels:
                                 ch = self.channels[self.channel_idx % len(self.channels)]
                                 try:
