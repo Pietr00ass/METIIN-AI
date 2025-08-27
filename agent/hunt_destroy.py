@@ -59,14 +59,13 @@ class HuntDestroy:
         self._prev_names = cur_names
         steer = self.avoid.steer(frame)
 
-        # sterowanie
-        self.keys.release_all()
+        desired_keys: set[str] = set()
         if steer == "left":
             logger.debug("Omijanie przeszkody: skręt w lewo")
-            self.keys.press("a")
+            desired_keys.add("a")
         elif steer == "right":
             logger.debug("Omijanie przeszkody: skręt w prawo")
-            self.keys.press("d")
+            desired_keys.add("d")
 
         tgt = pick_target(dets, (W, H), priority_order=self.priority)
         if tgt is None and self._last_tgt is not None:
@@ -95,6 +94,11 @@ class HuntDestroy:
                 except Exception:
                     logger.warning("Teleportacja na slot %s nie powiodła się", slot)
                 self.last_target_time = now
+
+            for k in self.keys.down - desired_keys:
+                self.keys.release(k)
+            for k in desired_keys - self.keys.down:
+                self.keys.press(k)
             self._last_tgt = tgt
             return
 
@@ -108,16 +112,21 @@ class HuntDestroy:
         self._last_tgt = tgt
 
         if abs(cx - 0.5) > self.deadzone:
-            (self.keys.press("d") if cx > 0.5 else self.keys.press("a"))
+            desired_keys.add("d" if cx > 0.5 else "a")
         if bw < self.desired_w * 0.95:
-            self.keys.press("w")
+            desired_keys.add("w")
         elif bw > self.desired_w * 1.25:
-            self.keys.press("s")
+            desired_keys.add("s")
+
+        for k in self.keys.down - desired_keys:
+            self.keys.release(k)
+        for k in desired_keys - self.keys.down:
+            self.keys.press(k)
 
         if bw >= self.desired_w * 0.9:
             left, top, w, h = self.win.region
             # w dry-run nie klikamy realnie – burst_click sam używa pyautogui
             if hasattr(self.keys, "dry") and self.keys.dry:
                 return
-            logger.debug("Atakuję cel" )
+            logger.debug("Atakuję cel")
             burst_click((x1, y1, x2, y2), (left, top, w, h))
