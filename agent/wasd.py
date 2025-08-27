@@ -4,6 +4,7 @@ import ctypes
 from ctypes import wintypes
 import threading
 import time
+import logging
 
 
 # ---------------------------------------------------------------------------
@@ -11,6 +12,8 @@ import time
 # ---------------------------------------------------------------------------
 
 PUL = ctypes.POINTER(ctypes.c_ulong)
+
+logger = logging.getLogger(__name__)
 
 
 class KEYBDINPUT(ctypes.Structure):
@@ -153,17 +156,21 @@ class KeyHold:
     def press(self, key: str):
         with self.lock:
             if key not in self.down:
+                logger.debug("Naciśnięto klawisz %s", key)
                 self._down(key)
                 self.down.add(key)
 
     def release(self, key: str):
         with self.lock:
             if key in self.down:
+                logger.debug("Zwolniono klawisz %s", key)
                 self._up(key)
                 self.down.remove(key)
 
     def release_all(self):
         with self.lock:
+            if self.down:
+                logger.debug("Zwolniono wszystkie klawisze: %s", list(self.down))
             for k in list(self.down):
                 self._up(k)
             self.down.clear()
