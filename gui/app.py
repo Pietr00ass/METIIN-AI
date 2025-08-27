@@ -20,6 +20,7 @@ import threading
 import time
 from pathlib import Path
 import json
+import logging
 
 import cv2
 import numpy as np
@@ -36,12 +37,29 @@ from agent.channel import ChannelSwitcher
 from agent.wasd import KeyHold
 
 
+logging.basicConfig(level=logging.DEBUG)
+
+
 # Configure Qt DPI behaviour for Windows to avoid crashes when changing DPI awareness.
 os.environ.setdefault("QT_QPA_PLATFORM", "windows:dpiawareness=1")
 os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
 os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "0")
 
 pyautogui.FAILSAFE = False  # disable the corner failsafe to avoid unintended exceptions
+
+
+class QtLogHandler(QtCore.QObject, logging.Handler):
+    """Forward logging records to Qt via a signal."""
+
+    log = QtCore.Signal(str)
+
+    def __init__(self) -> None:
+        QtCore.QObject.__init__(self)
+        logging.Handler.__init__(self)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        msg = self.format(record)
+        self.log.emit(msg)
 
 
 class PreviewWorker(QtCore.QThread):
@@ -237,6 +255,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_load_cfg = QtWidgets.QPushButton("Wczytaj konfigurację")
         left.addWidget(self.btn_save_cfg)
         left.addWidget(self.btn_load_cfg)
+        # logs
+        left.addWidget(QtWidgets.QLabel("Logi:"))
+        log_lvl_layout = QtWidgets.QHBoxLayout()
+        log_lvl_layout.addWidget(QtWidgets.QLabel("Poziom:"))
+        self.log_level_combo = QtWidgets.QComboBox()
+        self.log_level_combo.addItems(["DEBUG", "INFO"])
+        log_lvl_layout.addWidget(self.log_level_combo)
+        left.addLayout(log_lvl_layout)
+        self.log_view = QtWidgets.QPlainTextEdit()
+        self.log_view.setReadOnly(True)
+        left.addWidget(self.log_view)
 
         left.addStretch(1)
         self.status_label = QtWidgets.QLabel("Gotowy.")
@@ -272,12 +301,22 @@ class MainWindow(QtWidgets.QMainWindow):
         # hotkey F12
         self.start_hotkey_listener()
 
+        # logging setup
+        self.log_handler = QtLogHandler()
+        self.log_handler.log.connect(self.log_view.appendPlainText)
+        self.logger = logging.getLogger()
+        self.logger.addHandler(self.log_handler)
+        self.log_level_combo.currentTextChanged.connect(
+            lambda lvl: self.logger.setLevel(getattr(logging, lvl))
+        )
+
     # ---------- helpers ----------
     def current_priority(self) -> list[str]:
         return [self.prio_list.item(i).text() for i in range(self.prio_list.count())]
 
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
+        logging.info(text)
 
     def browse_templates_dir(self) -> None:
         path = QtWidgets.QFileDialog.getExistingDirectory(
