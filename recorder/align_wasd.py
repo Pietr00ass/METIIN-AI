@@ -24,12 +24,9 @@ def align(video_path, events_path, out_dir, image_size=224, region=None):
         ok, frame = cap.read(); idx+=1
         if not ok: break
         ts = idx / max(fps,1.0)
-        for (t,typ,k) in list(keys):
-            if abs(t - ts) <= 0.05:
-                if 'w' in k: held['w'] = (typ=='down')
-                if 'a' in k: held['a'] = (typ=='down')
-                if 's' in k: held['s'] = (typ=='down')
-                if 'd' in k: held['d'] = (typ=='down')
+        for (t, typ, k) in list(keys):
+            if abs(t - ts) <= 0.05 and k in ('w', 'a', 's', 'd'):
+                held[k] = typ == 'down'
         img = cv2.resize(frame, (image_size,image_size))
         y = np.array([held['w'],held['a'],held['s'],held['d']], dtype=np.float32)
         np.savez_compressed(Path(out_dir)/f"kbd_{idx:07d}.npz", img=img[:,:,::-1], y=y)

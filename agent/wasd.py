@@ -97,6 +97,19 @@ EXTENDED_KEYS = {"up", "down", "left", "right"}
 VK_CODES = SCANCODES
 
 
+def resolve_key(key: str) -> str:
+    """Normalize ``pynput``-style key names.
+
+    ``pynput`` represents special keys as ``Key.space`` etc.  For the purposes
+    of WASD handling we only care about the literal key name, so the ``Key.``
+    prefix is stripped before returning.
+    """
+
+    if isinstance(key, str) and key.startswith("Key."):
+        return key.split(".", 1)[1]
+    return key
+
+
 def key_down(scan: int, extended: bool = False) -> None:
     _send_scan(scan, extended=extended)
 
