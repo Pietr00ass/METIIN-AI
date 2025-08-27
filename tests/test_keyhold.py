@@ -2,6 +2,7 @@ import os
 import sys
 import types
 from unittest.mock import patch
+import pytest
 
 
 # Make repository root importable and provide a stub ``yaml`` module so that the
@@ -54,6 +55,20 @@ def test_press_release_i_calls_sendinput_when_active():
 
     mock_down.assert_called_once_with(wasd.SCANCODES["i"])
     mock_up.assert_called_once_with(wasd.SCANCODES["i"])
+
+
+@pytest.mark.parametrize("key", ["up", "down", "left", "right"])
+def test_press_release_arrow_calls_sendinput_with_extended(key):
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up:
+        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+        kh.press(key)
+        kh.release(key)
+        kh.stop()
+
+    mock_down.assert_called_once_with(wasd.SCANCODES[key], extended=True)
+    mock_up.assert_called_once_with(wasd.SCANCODES[key], extended=True)
 
 
 def test_press_skipped_when_window_inactive():

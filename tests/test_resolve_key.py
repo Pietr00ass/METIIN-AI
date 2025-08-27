@@ -5,6 +5,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import agent.wasd as wasd
+import pytest
 
 
 def test_resolve_key_only_scan():
@@ -26,3 +27,11 @@ def test_resolve_key_i_scan_and_vk():
 
 def test_resolve_key_key_prefix():
     assert wasd.resolve_key("Key.space") == "space"
+
+
+@pytest.mark.parametrize("key", ["up", "down", "left", "right"])
+def test_resolve_key_arrows(key):
+    sc = wasd.SCANCODES[key]
+    vk = wasd.VK_CODES[key]
+    assert wasd.resolve_key({"scan": sc}) == key
+    assert wasd.resolve_key({"vk": vk}) == key
