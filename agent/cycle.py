@@ -10,6 +10,7 @@ from agent.channel import ChannelSwitcher
 from agent.hunt_destroy import HuntDestroy
 from agent.detector import ObjectDetector
 from agent.wasd import KeyHold
+from agent.scanner import AreaScanner
 from agent import get_config
 
 
@@ -51,6 +52,7 @@ class CycleFarm:
         self.sweeps = int(scan.get("sweeps", 8))
         self.idle_before_scan = float(scan.get("idle_sec", 1.5))
         self.pause_between_sweeps = float(scan.get("pause", 0.12))
+        self.scanner = AreaScanner(self.keys, self.spin_key, self.sweep_ms, self.sweeps, self.idle_before_scan, self.pause_between_sweeps)
 
         # cooldown slotów
         self.cooldown = {}
@@ -130,14 +132,7 @@ class CycleFarm:
                 # ewentualne skanowanie po teleportacji
                 if not self._any_target_seen():
                     logger.debug("Brak celu po teleportacji – skanuję otoczenie")
-                    time.sleep(self.idle_before_scan)
-                    for _ in range(self.sweeps):
-                        if self._stop:
-                            break
-                        self.keys.press(self.spin_key)
-                        time.sleep(self.sweep_ms / 1000.0)
-                        self.keys.release(self.spin_key)
-                        time.sleep(self.pause_between_sweeps)
+                    self.scanner.scan()
 
                 # jeżeli nadal brak celu, od razu kolejny slot
                 if not self._any_target_seen() or self._stop:
@@ -155,14 +150,7 @@ class CycleFarm:
                         last_seen = time.time()
                     elif time.time() - last_seen > float(clear_sec):
                         # spróbuj przeskanować otoczenie
-                        time.sleep(self.idle_before_scan)
-                        for _ in range(self.sweeps):
-                            if self._stop:
-                                break
-                            self.keys.press(self.spin_key)
-                            time.sleep(self.sweep_ms / 1000.0)
-                            self.keys.release(self.spin_key)
-                            time.sleep(self.pause_between_sweeps)
+                        self.scanner.scan()
                         if not self._any_target_seen():
                             logger.debug("Pole czyste – przechodzę dalej")
                             break
