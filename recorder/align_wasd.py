@@ -1,16 +1,21 @@
 import json, cv2, numpy as np
 from pathlib import Path
+from agent.wasd import resolve_key
 
 def align(video_path, events_path, out_dir, image_size=224, region=None):
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     keys = []
-    with open(events_path,'r') as f:
+    with open(events_path, 'r') as f:
         for line in f:
             e = json.loads(line)
             if e['kind'] == 'key':
-                k = e['payload']['key'].lower()
-                if any(ch in k for ch in ['w','a','s','d']):
-                    keys.append((e['ts'], 'down' if e['payload'].get('down',False) else 'up', k))
+                p = e['payload']
+                k = resolve_key(p)
+                if not k:
+                    continue
+                k = k.lower()
+                if any(ch in k for ch in ['w', 'a', 's', 'd']):
+                    keys.append((e['ts'], 'down' if p.get('down', False) else 'up', k))
     held = { 'w':False,'a':False,'s':False,'d':False }
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)

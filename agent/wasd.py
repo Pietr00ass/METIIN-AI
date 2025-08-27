@@ -90,11 +90,33 @@ SCANCODES = {
     "8": 0x09,
 }
 
+# Reverse map allowing lookup by scan or virtual key code.
+REVERSE_SCANCODES = {v: k for k, v in SCANCODES.items()}
+
 # Keys that require the extended flag when sent via ``SendInput``.
 EXTENDED_KEYS = {"up", "down", "left", "right"}
 
 # Backwards compatibility: expose ``VK_CODES`` and helpers used in tests.
 VK_CODES = SCANCODES
+
+
+def resolve_key(payload: dict) -> str | None:
+    """Resolve key name from an event payload.
+
+    The payload may contain a textual ``key`` field or numeric ``scan``/``vk``
+    codes.  Returns ``None`` if the key cannot be determined.
+    """
+
+    k = payload.get("key")
+    if k:
+        return k
+    scan = payload.get("scan")
+    if scan in REVERSE_SCANCODES:
+        return REVERSE_SCANCODES[scan]
+    vk = payload.get("vk")
+    if vk in REVERSE_SCANCODES:
+        return REVERSE_SCANCODES[vk]
+    return None
 
 
 def key_down(scan: int, extended: bool = False) -> None:

@@ -19,11 +19,25 @@ class InputLogger:
 
     def on_press(self, key):
         with self._lock:
-            self.buffer.append((time.time(), 'key', {'key': str(key), 'down': True}))
+            payload = {'key': str(key), 'down': True}
+            vk = getattr(key, 'vk', None)
+            if vk is not None:
+                payload['vk'] = vk
+            scan = getattr(key, 'scan', None)
+            if scan is not None:
+                payload['scan'] = scan
+            self.buffer.append((time.time(), 'key', payload))
 
     def on_release(self, key):
         with self._lock:
-            self.buffer.append((time.time(), 'key', {'key': str(key), 'down': False}))
+            payload = {'key': str(key), 'down': False}
+            vk = getattr(key, 'vk', None)
+            if vk is not None:
+                payload['vk'] = vk
+            scan = getattr(key, 'scan', None)
+            if scan is not None:
+                payload['scan'] = scan
+            self.buffer.append((time.time(), 'key', payload))
 
     def flush(self):
         with self._lock:
