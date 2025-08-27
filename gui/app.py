@@ -18,9 +18,16 @@ import sys
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Ensure project root on ``sys.path`` when executed as a module (``python -m``)
+# Ensure project root on ``sys.path`` regardless of package depth
 # ---------------------------------------------------------------------------
-ROOT_DIR = Path(__file__).resolve().parent.parent
+# Walk up the directory tree until both ``agent`` and ``recorder`` packages
+# are found.  This allows running the module with ``python -m gui.app`` even if
+# the project is nested deeper in the filesystem hierarchy.
+ROOT_DIR = Path(__file__).resolve()
+for parent in ROOT_DIR.parents:
+    if (parent / "agent").exists() and (parent / "recorder").exists():
+        ROOT_DIR = parent
+        break
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
