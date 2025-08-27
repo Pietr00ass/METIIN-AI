@@ -242,11 +242,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cooldown_spin = QtWidgets.QSpinBox(); self.cooldown_spin.setRange(1, 60); self.cooldown_spin.setValue(10)
         left.addWidget(self.cooldown_spin)
 
-        # UI scale selector
+        # UI scale selector (allow arbitrary scaling)
         left.addWidget(QtWidgets.QLabel("Skala UI:"))
-        self.scale_combo = QtWidgets.QComboBox()
-        self.scale_combo.addItems(["1.0", "1.25", "1.5", "1.75", "2.0"])
-        left.addWidget(self.scale_combo)
+        self.scale_spin = QtWidgets.QDoubleSpinBox()
+        self.scale_spin.setRange(0.5, 3.0)
+        self.scale_spin.setSingleStep(0.1)
+        self.scale_spin.setDecimals(2)
+        self.scale_spin.setValue(1.0)
+        left.addWidget(self.scale_spin)
 
         # action buttons
         self.btn_preview = QtWidgets.QPushButton("Start podglądu")
@@ -309,7 +312,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_train.clicked.connect(self.train_yolo_api)
         self.btn_save_cfg.clicked.connect(self.save_config)
         self.btn_load_cfg.clicked.connect(self.load_config)
-        self.scale_combo.currentTextChanged.connect(lambda s: self.apply_scale(float(s)))
+        self.scale_spin.valueChanged.connect(self.apply_scale)
         # hotkey F12
         self.start_hotkey_listener()
 
@@ -440,7 +443,7 @@ class MainWindow(QtWidgets.QMainWindow):
             },
             "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
             "templates_dir": self.templates_dir_edit.text().strip(),
-            "ui": {"scale": float(self.scale_combo.currentText())},
+            "ui": {"scale": float(self.scale_spin.value())},
         }
         return cfg
 
@@ -489,11 +492,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.templates_dir_edit.setText(cfg.get("templates_dir", "assets/templates"))
         ui = cfg.get("ui", {})
         scale = float(ui.get("scale", 1.0))
-        idx = self.scale_combo.findText(str(scale))
-        if idx >= 0:
-            self.scale_combo.setCurrentIndex(idx)
-        else:
-            self.scale_combo.setCurrentText(str(scale))
+        self.scale_spin.setValue(scale)
         self.apply_scale(scale)
         self.prio_list.clear()
         for name in cfg.get("priority", []):
