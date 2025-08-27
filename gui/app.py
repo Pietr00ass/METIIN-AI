@@ -313,6 +313,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # thread references
         self.preview_thread: PreviewWorker | None = None
         self.agent_thread: threading.Thread | None = None
+        self.cycle_agent: CycleFarm | None = None
         self._panic = False
         self._hotkey_listener = None
 
@@ -579,9 +580,11 @@ class MainWindow(QtWidgets.QMainWindow):
         page = self.tp_side.text().strip() or None
         cfg = self.build_cfg()
         cycle_cfg = cfg.get("cycle", {})
+
         def run():
             try:
                 cf = CycleFarm(cfg)
+                self.cycle_agent = cf
                 cf.run(
                     page_label=page,
                     ch_from=cycle_cfg.get("ch_from", 1),
@@ -593,23 +596,33 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.set_status("Cykl 8×8 zakończony.")
             except Exception as exc:
                 self.set_status(f"Błąd cyklu: {exc}")
+            finally:
+                self.cycle_agent = None
+
         self._panic = False
-        threading.Thread(target=run, daemon=True).start()
+        self.agent_thread = threading.Thread(target=run, daemon=True)
+        self.agent_thread.start()
         self.set_status("Start cyklu 8×8…")
 
     def change_channel(self) -> None:
-        try:
-            cfg = self.build_cfg()
-            win = WindowCapture(cfg["window"]["title_substr"])
-            if not win.locate(timeout=5):
-                self.set_status("Nie znaleziono okna.")
-                return
-            ch = int(self.channel_combo.currentText().replace("CH", ""))
-            ok = ChannelSwitcher(win, cfg["paths"]["templates_dir"]).switch(ch)
-            msg = f"Zmieniono kanał na CH{ch}" if ok else "Nie znaleziono przycisku CH – sprawdź szablony."
-            self.set_status(msg)
-        except Exception as exc:
-            self.set_status(f"Błąd zmiany kanału: {exc}")
+        def job():
+            try:
+                cfg = self.build_cfg()
+                win = WindowCapture(cfg["window"]["title_substr"])
+                if not win.locate(timeout=5):
+                    self.set_status("Nie znaleziono okna.")
+                    return
+                ch = int(self.channel_combo.currentText().replace("CH", ""))
+                ok = ChannelSwitcher(win, cfg["paths"]["templates_dir"]).switch(ch)
+                msg = (
+                    f"Zmieniono kanał na CH{ch}" if ok else "Nie znaleziono przycisku CH – sprawdź szablony."
+                )
+                self.set_status(msg)
+            except Exception as exc:
+                self.set_status(f"Błąd zmiany kanału: {exc}")
+
+        threading.Thread(target=job, daemon=True).start()
+        self.set_status("Zmiana kanału…")
 
     def stop_all(self) -> None:
         self._panic = True
@@ -617,6 +630,12 @@ class MainWindow(QtWidgets.QMainWindow):
             KeyHold().release_all()
         except Exception:
             pass
+        if self.cycle_agent:
+            try:
+                self.cycle_agent.stop()
+            except Exception:
+                pass
+            self.cycle_agent = None
         if self.preview_thread and self.preview_thread.isRunning():
             self.preview_thread.stop(); self.preview_thread.wait(); self.preview_thread = None
             self.btn_preview.setText("Start podglądu")
