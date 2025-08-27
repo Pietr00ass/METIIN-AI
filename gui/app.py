@@ -14,13 +14,21 @@ configuring the rotation scan used to locate objects when none are visible.
 Dependencies: PySide6, numpy, OpenCV, pyautogui, pynput, ultralytics.
 """
 
-import os
 import sys
-import threading
-import time
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Ensure project root on ``sys.path`` when executed as a module (``python -m``)
+# ---------------------------------------------------------------------------
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 import json
 import logging
+import os
+import threading
+import time
 
 import cv2
 import numpy as np
