@@ -5,35 +5,9 @@ from ctypes import wintypes
 import threading
 import time
 
-# Selected virtual-key codes used by the agent.  These values normally come
-# from ``win32con`` but are duplicated here to keep the module importable on
-# non-Windows platforms (e.g. during tests in dry mode).
-VK_SHIFT = 0x10
-VK_SPACE = 0x20
-VK_CONTROL = 0x11
-
-VK_CODES = {
-    "w": ord("W"),
-    "a": ord("A"),
-    "s": ord("S"),
-    "d": ord("D"),
-    "shift": VK_SHIFT,
-    "space": VK_SPACE,
-    "ctrl": VK_CONTROL,
-    "x": ord("X"),
-    "1": ord("1"),
-    "2": ord("2"),
-    "3": ord("3"),
-    "4": ord("4"),
-    "5": ord("5"),
-    "6": ord("6"),
-    "7": ord("7"),
-    "8": ord("8"),
-}
-
 
 # ---------------------------------------------------------------------------
-# Helpers around the ``SendInput`` Windows API
+# ``SendInput`` helpers working with scan codes
 # ---------------------------------------------------------------------------
 
 PUL = ctypes.POINTER(ctypes.c_ulong)
@@ -60,7 +34,8 @@ class INPUT(ctypes.Structure):
 
 INPUT_KEYBOARD = 1
 KEYEVENTF_KEYUP = 0x0002
-
+KEYEVENTF_SCANCODE = 0x0008
+KEYEVENTF_EXTENDEDKEY = 0x0001
 
 if hasattr(ctypes, "windll"):
     _user32 = ctypes.windll.user32
@@ -68,20 +43,21 @@ else:
     _user32 = None
 
 
-def _send_input(vk: int, flags: int) -> None:
-    """Low level wrapper over ``SendInput``.
-
-    When running on non-Windows platforms ``_user32`` is ``None`` and the
-    function becomes a no-op which keeps the module importable for tests.
-    """
+def _send_scan(scan: int, keyup: bool = False, extended: bool = False) -> None:
+    """Send a single keyboard event using the provided scan code."""
 
     if _user32 is None:
         return
 
-    scan = _user32.MapVirtualKeyW(vk, 0)
+    flags = KEYEVENTF_SCANCODE
+    if keyup:
+        flags |= KEYEVENTF_KEYUP
+    if extended:
+        flags |= KEYEVENTF_EXTENDEDKEY
+
     extra = ctypes.c_ulong(0)
     ki = KEYBDINPUT(
-        wVk=vk,
+        wVk=0,
         wScan=scan,
         dwFlags=flags,
         time=0,
@@ -91,16 +67,39 @@ def _send_input(vk: int, flags: int) -> None:
     _user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp))
 
 
-def key_down(vk: int) -> None:
-    """Simulate key press for the given virtual-key code."""
+SCANCODES = {
+    "w": 0x11,
+    "a": 0x1E,
+    "s": 0x1F,
+    "d": 0x20,
+    "space": 0x39,
+    "shift": 0x2A,
+    "ctrl": 0x1D,
+    "alt": 0x38,
+    "x": 0x2D,
+    "1": 0x02,
+    "2": 0x03,
+    "3": 0x04,
+    "4": 0x05,
+    "5": 0x06,
+    "6": 0x07,
+    "7": 0x08,
+    "8": 0x09,
+}
 
-    _send_input(vk, 0)
+# Keys that require the extended flag when sent via ``SendInput``.
+EXTENDED_KEYS = {"up", "down", "left", "right"}
+
+# Backwards compatibility: expose ``VK_CODES`` and helpers used in tests.
+VK_CODES = SCANCODES
 
 
-def key_up(vk: int) -> None:
-    """Simulate key release for the given virtual-key code."""
+def key_down(scan: int, extended: bool = False) -> None:
+    _send_scan(scan, extended=extended)
 
-    _send_input(vk, KEYEVENTF_KEYUP)
+
+def key_up(scan: int, extended: bool = False) -> None:
+    _send_scan(scan, keyup=True, extended=extended)
 
 
 class KeyHold:
@@ -131,23 +130,41 @@ class KeyHold:
         self._stop = True
         self.release_all()
 
+    def _down(self, key: str) -> None:
+        if self.dry or (self.active_fn is not None and not self.active_fn()):
+            return
+        scan = SCANCODES[key]
+        extended = key in EXTENDED_KEYS
+        if extended:
+            key_down(scan, extended=True)
+        else:
+            key_down(scan)
+
+    def _up(self, key: str) -> None:
+        if self.dry or (self.active_fn is not None and not self.active_fn()):
+            return
+        scan = SCANCODES[key]
+        extended = key in EXTENDED_KEYS
+        if extended:
+            key_up(scan, extended=True)
+        else:
+            key_up(scan)
+
     def press(self, key: str):
         with self.lock:
             if key not in self.down:
-                if not self.dry and (self.active_fn is None or self.active_fn()):
-                    key_down(VK_CODES[key])
+                self._down(key)
                 self.down.add(key)
 
     def release(self, key: str):
         with self.lock:
             if key in self.down:
-                if not self.dry and (self.active_fn is None or self.active_fn()):
-                    key_up(VK_CODES[key])
+                self._up(key)
                 self.down.remove(key)
 
     def release_all(self):
         with self.lock:
-            if not self.dry:
-                for k in list(self.down):
-                    key_up(VK_CODES[k])
+            for k in list(self.down):
+                self._up(k)
             self.down.clear()
+
