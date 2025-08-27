@@ -47,3 +47,17 @@ PY
 ## Configuration and Templates
 - Agent settings such as window title, detector paths and movement policy live in [`config/agent.yaml`](config/agent.yaml).
 - UI templates for channel buttons, teleport pages and other elements are stored in [`assets/templates/`](assets/templates/). Use `tools/capture_template.py` to capture additional templates.
+
+## Recording Input
+
+`recorder/capture.py` logs mouse clicks and raw keyboard scan codes. The
+keyboard listener relies on a low‑level hook provided by the
+[`keyboard`](https://github.com/boppreh/keyboard) package.
+
+* **Windows** – uses the native `SetWindowsHookEx` API through the library.
+* **Linux** – reads events from `/dev/input`; this normally requires root
+  privileges and may not function under Wayland compositors.
+* **macOS** – only partially supported and may need additional accessibility
+  permissions.
+
+If the hook cannot be installed only mouse clicks will be recorded.
