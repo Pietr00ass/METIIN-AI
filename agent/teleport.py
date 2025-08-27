@@ -61,11 +61,18 @@ class Teleporter:
     def _safe_click(self, x: int, y: int) -> None:
         if self.dry:
             return
+        if not self.win.is_foreground():
+            self.win.focus()
+            if not self.win.is_foreground():
+                return
         pyautogui.moveTo(x, y, duration=self.click_duration)
         pyautogui.click()
 
     def open_panel(self) -> None:
-        self.win.focus()
+        if not self.win.is_foreground():
+            self.win.focus()
+            if not self.win.is_foreground():
+                return
         if not self.dry:
             self.keys.press("ctrl")
             self.keys.press("x")

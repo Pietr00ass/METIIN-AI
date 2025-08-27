@@ -42,7 +42,12 @@ class ChannelSwitcher:
             if m:
                 L, T, _, _ = self.win.region
                 cx, cy = m["center"]
-                self.win.focus()
+
+                if not self.win.is_foreground():
+                    self.win.focus()
+                    if not self.win.is_foreground():
+                        return False
+
                 if not self.dry:
                     pyautogui.moveTo(L + cx, T + cy, duration=0.05)
                     pyautogui.click()

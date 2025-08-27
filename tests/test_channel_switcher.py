@@ -51,6 +51,8 @@ class DummyWin:
         return np.zeros((300, 300, 4), dtype=np.uint8)
     def focus(self):
         pass
+    def is_foreground(self):
+        return True
 
 
 def _setup_templates(tmp_path):

@@ -84,4 +84,4 @@ class HuntDestroy:
             if hasattr(self.keys, "dry") and self.keys.dry:
                 return
             logger.debug("Atakuję cel")
-            burst_click(tgt["bbox"], (left, top, w, h))
+            burst_click(tgt["bbox"], (left, top, w, h), win=self.win)
