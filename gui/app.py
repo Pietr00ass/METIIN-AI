@@ -41,9 +41,11 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 # Configure Qt DPI behaviour for Windows to avoid crashes when changing DPI awareness.
+# Allow users to override DPI options via environment variables; default to enabling
+# automatic scaling so the UI can be scaled later.
 os.environ.setdefault("QT_QPA_PLATFORM", "windows:dpiawareness=1")
-os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
-os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "0")
+os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "1")
+os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 
 pyautogui.FAILSAFE = False  # disable the corner failsafe to avoid unintended exceptions
 
@@ -138,8 +140,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
+        self.scale = 1.0
+        self.base_font_pt = QtWidgets.QApplication.font().pointSizeF()
+        self.base_window_size = QtCore.QSize(1200, 800)
+        self.base_video_size = QtCore.QSize(860, 480)
         self.setWindowTitle("Metin2 Vision Agent – Panel")
-        self.resize(1200, 800)
 
         # central layout
         central = QtWidgets.QWidget(self)
@@ -237,6 +242,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cooldown_spin = QtWidgets.QSpinBox(); self.cooldown_spin.setRange(1, 60); self.cooldown_spin.setValue(10)
         left.addWidget(self.cooldown_spin)
 
+        # UI scale selector
+        left.addWidget(QtWidgets.QLabel("Skala UI:"))
+        self.scale_combo = QtWidgets.QComboBox()
+        self.scale_combo.addItems(["1.0", "1.25", "1.5", "1.75", "2.0"])
+        left.addWidget(self.scale_combo)
+
         # action buttons
         self.btn_preview = QtWidgets.QPushButton("Start podglądu")
         self.btn_record  = QtWidgets.QPushButton("Nagrywaj dane (5 min)")
@@ -276,7 +287,7 @@ class MainWindow(QtWidgets.QMainWindow):
         right = QtWidgets.QVBoxLayout()
         layout.addLayout(right, 2)
         self.video = QtWidgets.QLabel()
-        self.video.setMinimumSize(860, 480)
+        self.video.setMinimumSize(self.base_video_size)
         self.video.setStyleSheet("background:#222; border:1px solid #444")
         self.video.setAlignment(QtCore.Qt.AlignCenter)
         right.addWidget(self.video)
@@ -298,6 +309,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_train.clicked.connect(self.train_yolo_api)
         self.btn_save_cfg.clicked.connect(self.save_config)
         self.btn_load_cfg.clicked.connect(self.load_config)
+        self.scale_combo.currentTextChanged.connect(lambda s: self.apply_scale(float(s)))
         # hotkey F12
         self.start_hotkey_listener()
 
@@ -309,6 +321,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.log_level_combo.currentTextChanged.connect(
             lambda lvl: self.logger.setLevel(getattr(logging, lvl))
         )
+        self.apply_scale(self.scale)
 
     # ---------- helpers ----------
     def current_priority(self) -> list[str]:
@@ -317,6 +330,21 @@ class MainWindow(QtWidgets.QMainWindow):
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
         logging.info(text)
+
+    def apply_scale(self, scale: float) -> None:
+        """Apply scaling to window size, video widget and global font."""
+        self.scale = scale
+        self.resize(
+            int(self.base_window_size.width() * scale),
+            int(self.base_window_size.height() * scale),
+        )
+        self.video.setMinimumSize(
+            int(self.base_video_size.width() * scale),
+            int(self.base_video_size.height() * scale),
+        )
+        font = QtGui.QFont()
+        font.setPointSizeF(self.base_font_pt * scale)
+        QtWidgets.QApplication.setFont(font)
 
     def browse_templates_dir(self) -> None:
         path = QtWidgets.QFileDialog.getExistingDirectory(
@@ -412,6 +440,7 @@ class MainWindow(QtWidgets.QMainWindow):
             },
             "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
             "templates_dir": self.templates_dir_edit.text().strip(),
+            "ui": {"scale": float(self.scale_combo.currentText())},
         }
         return cfg
 
@@ -458,6 +487,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.idle_sec.setValue(float(scan.get("idle_sec", 1.5)))
         self.cooldown_spin.setValue(int(cfg.get("cooldowns", {}).get("slot_min", 10)))
         self.templates_dir_edit.setText(cfg.get("templates_dir", "assets/templates"))
+        ui = cfg.get("ui", {})
+        scale = float(ui.get("scale", 1.0))
+        idx = self.scale_combo.findText(str(scale))
+        if idx >= 0:
+            self.scale_combo.setCurrentIndex(idx)
+        else:
+            self.scale_combo.setCurrentText(str(scale))
+        self.apply_scale(scale)
         self.prio_list.clear()
         for name in cfg.get("priority", []):
             self.prio_list.addItem(QtWidgets.QListWidgetItem(name))
