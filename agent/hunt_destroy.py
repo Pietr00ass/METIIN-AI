@@ -43,6 +43,8 @@ class HuntDestroy:
         self.tp_page = tp_cfg.get("page") or tp_cfg.get("page_label")
         self.channels = list(cfg.get("channels", []))
         self._teleports = 0
+        self._last_tgt = None
+        self._prev_names: set[str] = set()
 
     def step(self):
         fr = self.win.grab()
@@ -50,6 +52,11 @@ class HuntDestroy:
         H, W = frame.shape[:2]
         dets = self.det.infer(frame)
         logger.debug("Wykryto %s obiektów", len(dets))
+        cur_names = {d["name"] for d in dets}
+        disappeared = self._prev_names - cur_names
+        for name in disappeared:
+            logger.debug("Obiekt %s zniknął", name)
+        self._prev_names = cur_names
         steer = self.avoid.steer(frame)
 
         # sterowanie
@@ -62,6 +69,8 @@ class HuntDestroy:
             self.keys.press("d")
 
         tgt = pick_target(dets, (W, H), priority_order=self.priority)
+        if tgt is None and self._last_tgt is not None:
+            logger.debug("Cel %s zniknął", self._last_tgt.get("name", "?"))
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
             now = time.time()
@@ -86,6 +95,7 @@ class HuntDestroy:
                 except Exception:
                     logger.warning("Teleportacja na slot %s nie powiodła się", slot)
                 self.last_target_time = now
+            self._last_tgt = tgt
             return
 
         x1, y1, x2, y2 = tgt["bbox"]
@@ -95,6 +105,7 @@ class HuntDestroy:
             "Cel %s: cx=%.2f bw=%.2f", tgt.get("name", "?"), cx, bw
         )
         self.last_target_time = time.time()
+        self._last_tgt = tgt
 
         if abs(cx - 0.5) > self.deadzone:
             (self.keys.press("d") if cx > 0.5 else self.keys.press("a"))
