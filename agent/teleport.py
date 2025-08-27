@@ -9,8 +9,10 @@ import easyocr
 from recorder.window_capture import WindowCapture
 from .template_matcher import TemplateMatcher
 from .wasd import KeyHold
+from . import get_config
 
-pyautogui.PAUSE = 0.02
+CFG = get_config()
+pyautogui.PAUSE = CFG.get("controls", {}).get("mouse_pause", 0.02)
 
 
 class Teleporter:
@@ -23,7 +25,15 @@ class Teleporter:
     Wymaga szablonów: wczytaj.png, strona_I.png..strona_VIII.png
     """
 
-    def __init__(self, win: WindowCapture, templates_dir: str, use_ocr: bool = True, dry: bool = False):
+    def __init__(
+        self,
+        win: WindowCapture,
+        templates_dir: str,
+        use_ocr: bool = True,
+        dry: bool = False,
+        cfg: dict | None = None,
+    ):
+        self.cfg = cfg or CFG
         self.win = win
         if not os.path.isdir(templates_dir):
             raise FileNotFoundError(f"Brak katalogu z szablonami: {templates_dir}")
@@ -35,6 +45,14 @@ class Teleporter:
         self.reader = easyocr.Reader(["pl", "en"], gpu=False) if use_ocr else None
         self.dry = dry
         self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))
+        tp_cfg = self.cfg.get("teleport", {})
+        self.click_duration = tp_cfg.get("click_duration", 0.05)
+        self.open_panel_delay = tp_cfg.get("open_panel_delay", 0.35)
+        self.page_thresh = tp_cfg.get("page_thresh", 0.82)
+        self.after_page_delay = tp_cfg.get("after_page_delay", 0.25)
+        self.row_click_delay = tp_cfg.get("row_click_delay", 0.15)
+        self.load_btn_thresh = tp_cfg.get("load_btn_thresh", 0.8)
+        self.after_load_delay = tp_cfg.get("after_load_delay", 0.35)
 
     def _frame(self) -> np.ndarray:
         fr = self.win.grab()
@@ -43,7 +61,7 @@ class Teleporter:
     def _safe_click(self, x: int, y: int) -> None:
         if self.dry:
             return
-        pyautogui.moveTo(x, y, duration=0.05)
+        pyautogui.moveTo(x, y, duration=self.click_duration)
         pyautogui.click()
 
     def open_panel(self) -> None:
@@ -51,24 +69,24 @@ class Teleporter:
         if not self.dry:
             self.keys.press("ctrl")
             self.keys.press("x")
-            time.sleep(0.05)
+            time.sleep(self.click_duration)
             self.keys.release("x")
             self.keys.release("ctrl")
-            time.sleep(0.35)
+            time.sleep(self.open_panel_delay)
 
-    def go_page(self, page_label: str, thresh: float = 0.82) -> bool:
+    def go_page(self, page_label: str, thresh: float | None = None) -> bool:
         token = page_label.split()[-1].upper().replace(" ", "_")
         name = f"strona_{token}"
         _, _, w, h = self.win.region
         roi = (int(w * 0.05), int(h * 0.82), int(w * 0.9), int(h * 0.16))
         frame = self._frame()
-        m = self.tm.find(frame, name, thresh=thresh, roi=roi, multi_scale=True)
+        m = self.tm.find(frame, name, thresh=thresh or self.page_thresh, roi=roi, multi_scale=True)
         if not m:
             return False
         L, T, _, _ = self.win.region
         cx, cy = m["center"]
         self._safe_click(L + cx, T + cy)
-        time.sleep(0.25)
+        time.sleep(self.after_page_delay)
         return True
 
     def _find_row_by_text(self, target_text: str):
@@ -111,16 +129,16 @@ class Teleporter:
         abs_x = L + roi_x + pos[0]
         abs_y = T + roi_y + pos[1]
         self._safe_click(abs_x, abs_y)
-        time.sleep(0.15)
+        time.sleep(self.row_click_delay)
 
         # przycisk "wczytaj"
         frame = self._frame()
-        m = self.tm.find(frame, "wczytaj", thresh=0.8, multi_scale=True)
+        m = self.tm.find(frame, "wczytaj", thresh=self.load_btn_thresh, multi_scale=True)
         if not m:
             return False
         cx, cy = m["center"]
         self._safe_click(L + cx, T + cy)
-        time.sleep(0.35)
+        time.sleep(self.after_load_delay)
         return True
 
     def teleport(self, slot: int, page_label: str) -> bool:

@@ -129,9 +129,9 @@ def test_hunt_destroy_continuous_movement(monkeypatch):
     monkeypatch.setattr(hd, "burst_click", lambda *a, **k: None)
 
     cfg = {
-        "detector": {"model_path": "", "classes": [], "conf_thr": 0.5, "iou_thr": 0.5},
+        "paths": {"model": "", "templates_dir": ""},
+        "detector": {"classes": [], "conf_thr": 0.5, "iou_thr": 0.5},
         "policy": {"desired_box_w": 0.2, "deadzone_x": 0.1},
-        "templates_dir": "",
         "dry_run": True,
     }
 

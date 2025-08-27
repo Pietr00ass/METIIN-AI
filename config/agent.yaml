@@ -1,25 +1,48 @@
 window:
   title_substr: "Metin2"
-templates_dir: "assets/templates"
+paths:
+  templates_dir: "assets/templates"
+  model: "runs/detect/train/weights/best.pt"
 controls:
-  keys: {forward: "w", left: "a", back: "s", right: "d"}
+  keys:
+    forward: "w"
+    left: "a"
+    back: "s"
+    right: "d"
+    rotate: "e"
+  key_repeat_ms: 60
+  mouse_pause: 0.02
 detector:
-  model_path: "runs/detect/train/weights/best.pt"
   classes: ["metin","boss","potwory"]
   conf_thr: 0.5
   iou_thr: 0.45
 policy:
   deadzone_x: 0.05
   desired_box_w: 0.12
-  key_repeat_ms: 60
 stuck:
   flow_window: 0.8
   min_flow_mag: 0.7
   rotate_ms_on_stuck: 250
+scan:
+  period: 0.066
+  key: "e"
+  sweeps: 8
+  sweep_ms: 250
+  idle_sec: 1.5
+  pause: 0.12
+cooldowns:
+  slot_min: 10
 priority: ["boss","metin","potwory"]
 teleport:
   slots:
     - {page: "Strona I", slot: 1}
     - {page: "Strona I", slot: 2}
-    # … kolejne wpisy
+  no_target_sec: 10
+  channel_every: 8
 channels: [1,2,3,4,5,6,7,8]
+cycle:
+  ch_from: 1
+  ch_to: 8
+  slots: [1,2,3,4,5,6,7,8]
+  per_spot_sec: 90
+  clear_sec: 6
