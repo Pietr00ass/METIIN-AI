@@ -39,8 +39,8 @@ def test_press_release_calls_sendinput_when_active():
         kh.release("w")
         kh.stop()
 
-    mock_down.assert_called_once_with(wasd.VK_CODES["w"])
-    mock_up.assert_called_once_with(wasd.VK_CODES["w"])
+    mock_down.assert_called_once_with(wasd.SCANCODES["w"])
+    mock_up.assert_called_once_with(wasd.SCANCODES["w"])
 
 
 def test_press_skipped_when_window_inactive():

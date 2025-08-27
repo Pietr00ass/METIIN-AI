@@ -93,21 +93,67 @@ SCANCODES = {
 # Keys that require the extended flag when sent via ``SendInput``.
 EXTENDED_KEYS = {"up", "down", "left", "right"}
 
-# Backwards compatibility: expose ``VK_CODES`` and helpers used in tests.
-VK_CODES = SCANCODES
+# Virtual-key codes for the supported keys.  These values match the constants
+# used by the Windows API.
+VK_CODES = {
+    "w": 0x57,
+    "a": 0x41,
+    "s": 0x53,
+    "d": 0x44,
+    "space": 0x20,
+    "shift": 0x10,
+    "ctrl": 0x11,
+    "alt": 0x12,
+    "x": 0x58,
+    "1": 0x31,
+    "2": 0x32,
+    "3": 0x33,
+    "4": 0x34,
+    "5": 0x35,
+    "6": 0x36,
+    "7": 0x37,
+    "8": 0x38,
+}
+
+REVERSE_VK_CODES = {v: k for k, v in VK_CODES.items()}
+REVERSE_SCANCODES = {v: k for k, v in SCANCODES.items()}
 
 
-def resolve_key(key: str) -> str:
-    """Normalize ``pynput``-style key names.
+def resolve_key(key):
+    """Normalize various key representations to a simple string.
 
-    ``pynput`` represents special keys as ``Key.space`` etc.  For the purposes
-    of WASD handling we only care about the literal key name, so the ``Key.``
-    prefix is stripped before returning.
+    ``pynput`` may pass strings like ``Key.space`` or ``Key.shift`` but it can
+    also provide objects exposing ``scan`` or ``vk`` attributes.  This helper
+    accepts any of those forms as well as simple dictionaries used in tests.
     """
 
-    if isinstance(key, str) and key.startswith("Key."):
-        return key.split(".", 1)[1]
-    return key
+    # Simple string form such as ``Key.space`` or ``"w"``
+    if isinstance(key, str):
+        return key.split(".", 1)[1] if key.startswith("Key.") else key
+
+    # Dict style: {"scan": 0x11} or {"vk": 0x57}
+    if isinstance(key, dict):
+        if "scan" in key:
+            return REVERSE_SCANCODES.get(key["scan"], key["scan"])
+        if "vk" in key:
+            return REVERSE_VK_CODES.get(key["vk"], key["vk"])
+
+    # Object with attributes ``scan``/``vk``/``char``
+    for attr in ("char", "scan", "vk"):
+        if hasattr(key, attr):
+            val = getattr(key, attr)
+            if val is None:
+                continue
+            if attr == "char":
+                return val
+            if attr == "scan":
+                return REVERSE_SCANCODES.get(val, val)
+            if attr == "vk":
+                return REVERSE_VK_CODES.get(val, val)
+
+    # Fallback to string representation
+    sval = str(key)
+    return sval.split(".", 1)[1] if sval.startswith("Key.") else sval
 
 
 def key_down(scan: int, extended: bool = False) -> None:
