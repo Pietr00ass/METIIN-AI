@@ -14,16 +14,16 @@ def _rate_limit_ok() -> bool:
         return True
     return False
 
-def click_bbox_center(bbox, region):
+def click_bbox_center(bbox, region, rate_limit: bool = True):
     x1, y1, x2, y2 = bbox
     left, top, width, height = region
     cx = int(left + (x1 + x2) / 2)
     cy = int(top + (y1 + y2) / 2)
-    if _rate_limit_ok():
+    if not rate_limit or _rate_limit_ok():
         pyautogui.moveTo(cx, cy, duration=0)
         pyautogui.click()
 
 def burst_click(bbox, region, n=3, interval=0.08):
     for _ in range(n):
-        click_bbox_center(bbox, region)
+        click_bbox_center(bbox, region, rate_limit=False)
         time.sleep(interval)
