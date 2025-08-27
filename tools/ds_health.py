@@ -1,8 +1,12 @@
 from pathlib import Path
 import statistics as st
+import logging
+
+
+logging.basicConfig(level=logging.INFO)
 
 root = Path("datasets/mt2")
-sizes = []
+sizes: list[float] = []
 counts = {0: 0, 1: 0, 2: 0}
 
 for lbl in (root / "labels" / "train").glob("*.txt"):
@@ -11,6 +15,7 @@ for lbl in (root / "labels" / "train").glob("*.txt"):
         counts[int(c)] += 1
         sizes.append(float(w) * float(h))
 
-print("bbox per class:", counts)
+logging.info("bbox per class: %s", counts)
 if sizes:
-    print("median bbox area:", st.median(sizes))
+    logging.info("median bbox area: %s", st.median(sizes))
+
