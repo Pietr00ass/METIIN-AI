@@ -5,12 +5,18 @@ from pathlib import Path
 import cv2
 import mss
 import numpy as np
-from pynput import mouse
+import types
+try:
+    from pynput import mouse, keyboard
+except Exception:  # pragma: no cover - missing ``pynput.keyboard``
+    from pynput import mouse  # type: ignore
+    keyboard = types.SimpleNamespace()  # type: ignore
 
 try:  # ``keyboard`` provides low level scan‑code events
     import keyboard as _keyboard
 except Exception:  # pragma: no cover - library may be missing on CI
     _keyboard = None
+
 
 class InputLogger:
     """Collects mouse clicks and raw keyboard scan‑code events."""
@@ -38,6 +44,21 @@ class InputLogger:
                     "key",
                     {"scancode": event.scan_code, "down": event.event_type == "down"},
                 )
+            )
+
+    # ``pynput`` compatibility helpers used in tests
+    def on_press(self, key):  # pragma: no cover - simple passthrough
+        from agent.wasd import resolve_key
+        with self._lock:
+            self.buffer.append(
+                (time.time(), "key", {"key": resolve_key(str(key)), "down": True})
+            )
+
+    def on_release(self, key):  # pragma: no cover - simple passthrough
+        from agent.wasd import resolve_key
+        with self._lock:
+            self.buffer.append(
+                (time.time(), "key", {"key": resolve_key(str(key)), "down": False})
             )
 
     def start(self):
