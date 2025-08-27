@@ -10,23 +10,27 @@ process.
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 
 import cv2
-import logging
-
 
 logging.basicConfig(level=logging.INFO)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--rec-dir", default="data/recordings", help="folder z nagraniami")
+    parser.add_argument(
+        "--rec-dir", default="data/recordings", help="folder z nagraniami"
+    )
     parser.add_argument(
         "--out-dir", default="datasets/mt2/images/train", help="folder zapisu klatek"
     )
     parser.add_argument(
-        "--step", type=int, default=15, help="co ile klatek zapisać (przy 15 FPS → 1 kl/s)"
+        "--step",
+        type=int,
+        default=15,
+        help="co ile klatek zapisać (przy 15 FPS → 1 kl/s)",
     )
     args = parser.parse_args()
 
@@ -72,4 +76,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

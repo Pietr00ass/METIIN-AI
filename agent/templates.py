@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import cv2
+
 
 class TemplateMatcher:
     def __init__(self, templates: dict):

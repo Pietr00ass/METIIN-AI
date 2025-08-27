@@ -1,7 +1,6 @@
-from pathlib import Path
-import statistics as st
 import logging
-
+import statistics as st
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,4 +17,3 @@ for lbl in (root / "labels" / "train").glob("*.txt"):
 logging.info("bbox per class: %s", counts)
 if sizes:
     logging.info("median bbox area: %s", st.median(sizes))
-

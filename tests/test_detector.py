@@ -1,7 +1,7 @@
+import importlib
 import os
 import sys
 import types
-import importlib
 from unittest.mock import patch
 
 sys.modules.pop("numpy", None)
@@ -13,16 +13,23 @@ sys.modules.setdefault("yaml", types.ModuleType("yaml"))
 # Provide minimal cv2 stub with ``resize`` so ObjectDetector can downscale frames
 sys.modules["cv2"] = types.SimpleNamespace(
     setNumThreads=lambda *a, **k: None,
-    resize=lambda img, size: np.zeros((size[1], size[0], img.shape[2]), dtype=img.dtype),
+    resize=lambda img, size: np.zeros(
+        (size[1], size[0], img.shape[2]), dtype=img.dtype
+    ),
 )
 
 # Provide a minimal ultralytics stub so agent.detector can be imported
 ultra_stub = types.ModuleType("ultralytics")
+
+
 class _StubYOLO:
     def __init__(self, *a, **k):
         pass
+
     def predict(self, *a, **k):
         return []
+
+
 ultra_stub.YOLO = _StubYOLO
 sys.modules.setdefault("ultralytics", ultra_stub)
 
@@ -32,12 +39,16 @@ import agent.detector as detector
 class FakeTensor:
     def __init__(self, value):
         self.value = value
+
     def cpu(self):
         return self
+
     def numpy(self):
         return np.array(self.value)
+
     def __getitem__(self, idx):
         return FakeTensor(self.value[idx])
+
     def __int__(self):
         return int(self.value)
 

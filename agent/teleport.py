@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-import time
 import os
+import time
+
+import easyocr
 import numpy as np
 import pyautogui
-import easyocr
 
 from recorder.window_capture import WindowCapture
+
+from . import get_config
 from .template_matcher import TemplateMatcher
 from .wasd import KeyHold
-from . import get_config
 
 CFG = get_config()
 pyautogui.PAUSE = CFG.get("controls", {}).get("mouse_pause", 0.02)
@@ -37,14 +39,23 @@ class Teleporter:
         self.win = win
         if not os.path.isdir(templates_dir):
             raise FileNotFoundError(f"Brak katalogu z szablonami: {templates_dir}")
-        required = ["wczytaj.png"] + [f"strona_{r}.png" for r in ["I","II","III","IV","V","VI","VII","VIII"]]
-        missing = [p for p in required if not os.path.isfile(os.path.join(templates_dir, p))]
+        required = ["wczytaj.png"] + [
+            f"strona_{r}.png"
+            for r in ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"]
+        ]
+        missing = [
+            p for p in required if not os.path.isfile(os.path.join(templates_dir, p))
+        ]
         if missing:
-            raise FileNotFoundError(f"Brak plików w {templates_dir}: {', '.join(missing)}")
+            raise FileNotFoundError(
+                f"Brak plików w {templates_dir}: {', '.join(missing)}"
+            )
         self.tm = TemplateMatcher(templates_dir)
         self.reader = easyocr.Reader(["pl", "en"], gpu=False) if use_ocr else None
         self.dry = dry
-        self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))
+        self.keys = KeyHold(
+            dry=self.dry, active_fn=getattr(self.win, "is_foreground", None)
+        )
         tp_cfg = self.cfg.get("teleport", {})
         self.click_duration = tp_cfg.get("click_duration", 0.05)
         self.open_panel_delay = tp_cfg.get("open_panel_delay", 0.35)
@@ -87,7 +98,9 @@ class Teleporter:
         _, _, w, h = self.win.region
         roi = (int(w * 0.05), int(h * 0.82), int(w * 0.9), int(h * 0.16))
         frame = self._frame()
-        m = self.tm.find(frame, name, thresh=thresh or self.page_thresh, roi=roi, multi_scale=True)
+        m = self.tm.find(
+            frame, name, thresh=thresh or self.page_thresh, roi=roi, multi_scale=True
+        )
         if not m:
             return False
         L, T, _, _ = self.win.region
@@ -99,7 +112,7 @@ class Teleporter:
     def _find_row_by_text(self, target_text: str):
         frame = self._frame()
         h, w = frame.shape[:2]
-        roi = frame[int(h * 0.16):int(h * 0.70), int(w * 0.05):int(w * 0.55)]
+        roi = frame[int(h * 0.16) : int(h * 0.70), int(w * 0.05) : int(w * 0.55)]
         if self.reader is None:
             return None
         results = self.reader.readtext(roi)
@@ -140,7 +153,9 @@ class Teleporter:
 
         # przycisk "wczytaj"
         frame = self._frame()
-        m = self.tm.find(frame, "wczytaj", thresh=self.load_btn_thresh, multi_scale=True)
+        m = self.tm.find(
+            frame, "wczytaj", thresh=self.load_btn_thresh, multi_scale=True
+        )
         if not m:
             return False
         cx, cy = m["center"]
@@ -151,4 +166,3 @@ class Teleporter:
     def teleport(self, slot: int, page_label: str) -> bool:
         """Zachowana dla kompatybilności nazwa ``teleport``."""
         return self.teleport_slot(slot, page_label)
-

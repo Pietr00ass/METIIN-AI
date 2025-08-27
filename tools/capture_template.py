@@ -7,14 +7,13 @@ window is missing or inaccessible.  Logging is used instead of ``print`` so
 messages can easily be filtered or redirected.
 """
 
+import logging
 from pathlib import Path
 
 import cv2
 import numpy as np
 
 from recorder.window_capture import WindowCapture
-import logging
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -41,4 +40,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

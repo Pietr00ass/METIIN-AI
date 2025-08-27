@@ -2,8 +2,8 @@ import os
 import sys
 import types
 from unittest.mock import patch
-import pytest
 
+import pytest
 
 # Make repository root importable and provide a stub ``yaml`` module so that the
 # :mod:`agent` package can be imported without optional dependencies.
@@ -80,4 +80,3 @@ def test_press_skipped_when_window_inactive():
         kh.stop()
 
     mock_down.assert_not_called()
-

@@ -4,8 +4,9 @@ import sys
 # Make repository root importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import agent.wasd as wasd
 import pytest
+
+import agent.wasd as wasd
 
 
 def test_resolve_key_only_scan():

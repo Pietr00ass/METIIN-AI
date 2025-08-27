@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import time
+
 import mss
 import pygetwindow as gw
-import win32gui
 import win32con
+import win32gui
 
 
 class WindowCapture:
@@ -13,8 +14,8 @@ class WindowCapture:
     def __init__(self, title_substr: str, poll_sec: float = 0.5):
         self.title_substr = title_substr
         self.poll_sec = poll_sec
-        self.win = None          # pygetwindow.Window
-        self.region = None       # (left, top, width, height)
+        self.win = None  # pygetwindow.Window
+        self.region = None  # (left, top, width, height)
         self.sct = mss.mss()
 
     def locate(self, timeout: float | None = None) -> bool:
@@ -93,4 +94,6 @@ class WindowCapture:
         if self.region is None:
             self.update_region()
         left, top, width, height = self.region
-        return self.sct.grab({'left': left, 'top': top, 'width': width, 'height': height})
+        return self.sct.grab(
+            {"left": left, "top": top, "width": width, "height": height}
+        )
