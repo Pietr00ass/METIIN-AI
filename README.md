@@ -30,7 +30,7 @@ The script saves results under `runs/detect/train` by default. Adjust epochs, im
 ### GUI
 Launch the control panel with real‑time preview and training utilities:
 ```bash
-python gui/app.py
+python -m gui.app
 ```
 
 ### Headless Agent
