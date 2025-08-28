@@ -24,7 +24,7 @@ def test_send_scan_falls_back_on_false_return(caplog):
     with patch.object(wasd, "pydirectinput", fake_pd), patch.object(wasd, "_user32", user32):
         with caplog.at_level(logging.WARNING):
             wasd._send_scan(scan)
-    fake_pd.keyDown.assert_called_once_with("w")
+    fake_pd.keyDown.assert_called_once_with("w", _pause=False)
     user32.SendInput.assert_called_once()
     assert any("pydirectinput.keyDown" in r.message for r in caplog.records)
 
@@ -38,7 +38,7 @@ def test_send_scan_falls_back_on_exception(caplog):
     with patch.object(wasd, "pydirectinput", fake_pd), patch.object(wasd, "_user32", user32):
         with caplog.at_level(logging.WARNING):
             wasd._send_scan(scan, keyup=True)
-    fake_pd.keyUp.assert_called_once_with("w")
+    fake_pd.keyUp.assert_called_once_with("w", _pause=False)
     user32.SendInput.assert_called_once()
     assert any("pydirectinput.keyUp" in r.message for r in caplog.records)
 
