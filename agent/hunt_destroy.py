@@ -9,7 +9,7 @@ from . import get_config
 from .avoid import CollisionAvoid
 from .channel import ChannelSwitcher
 from .detector import ObjectDetector
-from .interaction import burst_click
+from .interaction import click_bbox_center
 from .movement import MovementController
 from .search import SearchManager
 from .targets import pick_target
@@ -77,12 +77,18 @@ class HuntDestroy:
         else:
             self.search.update_last_target()
 
-        bw = self.movement.move(tgt, steer, (W, H))
-        self._last_tgt = tgt
+        bw = None
+        if tgt:
+            x1, y1, x2, y2 = tgt["bbox"]
+            bw = (x2 - x1) / W
 
         if tgt and bw is not None and bw >= self.desired_w * 0.9:
+            self.keys.release_all()
             left, top, w, h = self.win.region
             if hasattr(self.keys, "dry") and self.keys.dry:
                 return
             logger.debug("Atakuję cel")
-            burst_click(tgt["bbox"], (left, top, w, h), win=self.win)
+            click_bbox_center(tgt["bbox"], (left, top, w, h), win=self.win)
+        else:
+            self.movement.move(tgt, steer, (W, H))
+        self._last_tgt = tgt

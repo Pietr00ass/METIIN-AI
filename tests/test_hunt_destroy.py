@@ -136,7 +136,7 @@ def test_hunt_destroy_continuous_movement(monkeypatch):
     monkeypatch.setattr(hd, "CollisionAvoid", lambda: _DummyAvoid())
     monkeypatch.setattr(hd, "KeyHold", _StubKeyHold)
     monkeypatch.setattr(hd, "pick_target", _pick_target)
-    monkeypatch.setattr(hd, "burst_click", lambda *a, **k: None)
+    monkeypatch.setattr(hd, "click_bbox_center", lambda *a, **k: None)
 
     cfg = {
         "paths": {"model": "", "templates_dir": ""},
