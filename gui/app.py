@@ -173,40 +173,39 @@ class MainWindow(QtWidgets.QMainWindow):
         left = QtWidgets.QVBoxLayout()
         layout.addLayout(left, 1)
 
-        # window title
+        # settings group
+        settings_box = QtWidgets.QGroupBox("Ustawienia")
+        settings_form = QtWidgets.QFormLayout(settings_box)
         self.title_edit = QtWidgets.QLineEdit()
         self.title_edit.setPlaceholderText("Fragment tytułu okna (np. Metin2)")
-        left.addWidget(QtWidgets.QLabel("Tytuł okna:"))
-        left.addWidget(self.title_edit)
-
-        # model and classes
+        settings_form.addRow("Tytuł okna:", self.title_edit)
         self.model_path = QtWidgets.QLineEdit("runs/detect/train/weights/best.pt")
+        settings_form.addRow("Ścieżka modelu YOLO:", self.model_path)
         self.classes_edit = QtWidgets.QLineEdit("metin,boss,potwory")
-        left.addWidget(QtWidgets.QLabel("Ścieżka modelu YOLO:"))
-        left.addWidget(self.model_path)
-        left.addWidget(QtWidgets.QLabel("Klasy obiektów:"))
-        left.addWidget(self.classes_edit)
-
-        # templates directory
-        left.addWidget(QtWidgets.QLabel("Katalog szablonów:"))
-        tmpl_layout = QtWidgets.QHBoxLayout()
+        settings_form.addRow("Klasy obiektów:", self.classes_edit)
+        tmpl_widget = QtWidgets.QWidget()
+        tmpl_layout = QtWidgets.QHBoxLayout(tmpl_widget)
+        tmpl_layout.setContentsMargins(0, 0, 0, 0)
         self.templates_dir_edit = QtWidgets.QLineEdit("assets/templates")
         self.btn_templates_dir = QtWidgets.QPushButton("Wybierz…")
         tmpl_layout.addWidget(self.templates_dir_edit)
         tmpl_layout.addWidget(self.btn_templates_dir)
-        left.addLayout(tmpl_layout)
+        settings_form.addRow("Katalog szablonów:", tmpl_widget)
         self.btn_templates_dir.clicked.connect(self.browse_templates_dir)
+        left.addWidget(settings_box)
 
-        # priority list
-        left.addWidget(QtWidgets.QLabel("Priorytety (przeciągnij aby zmienić):"))
+        # agent parameters group
+        agent_box = QtWidgets.QGroupBox("Parametry agenta")
+        agent_layout = QtWidgets.QVBoxLayout(agent_box)
+        agent_layout.addWidget(
+            QtWidgets.QLabel("Priorytety (przeciągnij aby zmienić):")
+        )
         self.prio_list = QtWidgets.QListWidget()
         self.prio_list.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
         for name in ["boss", "metin", "potwory"]:
             self.prio_list.addItem(QtWidgets.QListWidgetItem(name))
-        left.addWidget(self.prio_list)
-
-        # policy controls
-        form = QtWidgets.QFormLayout()
+        agent_layout.addWidget(self.prio_list)
+        policy_form = QtWidgets.QFormLayout()
         self.deadzone = QtWidgets.QDoubleSpinBox()
         self.deadzone.setRange(0.0, 0.5)
         self.deadzone.setSingleStep(0.01)
@@ -215,26 +214,26 @@ class MainWindow(QtWidgets.QMainWindow):
         self.desired_w.setRange(0.02, 0.5)
         self.desired_w.setSingleStep(0.01)
         self.desired_w.setValue(0.12)
-        form.addRow("Deadzone X:", self.deadzone)
-        form.addRow("Desired box W:", self.desired_w)
-        left.addLayout(form)
-
-        # overlay toggle and dry run
+        policy_form.addRow("Deadzone X:", self.deadzone)
+        policy_form.addRow("Desired box W:", self.desired_w)
+        agent_layout.addLayout(policy_form)
         self.overlay_chk = QtWidgets.QCheckBox("Overlay YOLO na podglądzie")
         self.overlay_chk.setChecked(True)
-        left.addWidget(self.overlay_chk)
+        agent_layout.addWidget(self.overlay_chk)
         self.dry_run_chk = QtWidgets.QCheckBox("Dry run (bez klików/klawiszy)")
         self.dry_run_chk.setChecked(False)
-        left.addWidget(self.dry_run_chk)
+        agent_layout.addWidget(self.dry_run_chk)
         self.movement_chk = QtWidgets.QCheckBox("Movement włączony")
         self.movement_chk.setChecked(True)
-        left.addWidget(self.movement_chk)
+        agent_layout.addWidget(self.movement_chk)
         self.rotate_chk = QtWidgets.QCheckBox("Obrót (E) włączony")
         self.rotate_chk.setChecked(True)
-        left.addWidget(self.rotate_chk)
+        agent_layout.addWidget(self.rotate_chk)
+        left.addWidget(agent_box)
 
-        # scan configuration
-        scan_form = QtWidgets.QFormLayout()
+        # scan parameters
+        scan_box = QtWidgets.QGroupBox("Parametry skanu (obrót E)")
+        scan_form = QtWidgets.QFormLayout(scan_box)
         self.sweeps = QtWidgets.QSpinBox()
         self.sweeps.setRange(1, 20)
         self.sweeps.setValue(8)
@@ -248,11 +247,11 @@ class MainWindow(QtWidgets.QMainWindow):
         scan_form.addRow("Skan sweeps:", self.sweeps)
         scan_form.addRow("Sweep ms:", self.sweep_ms)
         scan_form.addRow("Idle sec:", self.idle_sec)
-        left.addWidget(QtWidgets.QLabel("Parametry skanu (obrót E):"))
-        left.addLayout(scan_form)
+        left.addWidget(scan_box)
 
         # teleportation controls
-        left.addWidget(QtWidgets.QLabel("Teleportacja:"))
+        tp_box = QtWidgets.QGroupBox("Teleportacja")
+        tp_form = QtWidgets.QFormLayout(tp_box)
         self.tp_point = QtWidgets.QLineEdit()
         self.tp_point.setPlaceholderText("Nazwa punktu (OCR lub template)")
         self.tp_side = QtWidgets.QLineEdit()
@@ -260,14 +259,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tp_minutes = QtWidgets.QSpinBox()
         self.tp_minutes.setRange(1, 180)
         self.tp_minutes.setValue(10)
-        form2 = QtWidgets.QFormLayout()
-        form2.addRow("Punkt:", self.tp_point)
-        form2.addRow("Strona:", self.tp_side)
-        form2.addRow("Czas (min):", self.tp_minutes)
-        left.addLayout(form2)
+        tp_form.addRow("Punkt:", self.tp_point)
+        tp_form.addRow("Strona:", self.tp_side)
+        tp_form.addRow("Czas (min):", self.tp_minutes)
+        left.addWidget(tp_box)
 
-        # channel hotkeys
-        left.addWidget(QtWidgets.QLabel("Skróty kanałów (Ctrl + klawisz):"))
+        # channels and cooldown
+        ch_box = QtWidgets.QGroupBox("Kanały i cooldown")
+        ch_layout = QtWidgets.QVBoxLayout(ch_box)
+        ch_layout.addWidget(QtWidgets.QLabel("Skróty kanałów (Ctrl + klawisz):"))
         self.ch_key_edits = {}
         ch_form = QtWidgets.QFormLayout()
         for i in range(1, 9):
@@ -275,31 +275,32 @@ class MainWindow(QtWidgets.QMainWindow):
             edit.setMaximumWidth(40)
             self.ch_key_edits[i] = edit
             ch_form.addRow(f"CH{i}:", edit)
-        left.addLayout(ch_form)
-
-        # channel selector
-        left.addWidget(QtWidgets.QLabel("Kanał (minimapa):"))
+        ch_layout.addLayout(ch_form)
+        ch_layout.addWidget(QtWidgets.QLabel("Kanał (minimapa):"))
         self.channel_combo = QtWidgets.QComboBox()
         self.channel_combo.addItems([f"CH{i}" for i in range(1, 9)])
-        left.addWidget(self.channel_combo)
-
-        # cooldown
-        left.addWidget(QtWidgets.QLabel("Cooldown slotów (minuty):"))
+        ch_layout.addWidget(self.channel_combo)
+        ch_layout.addWidget(QtWidgets.QLabel("Cooldown slotów (minuty):"))
         self.cooldown_spin = QtWidgets.QSpinBox()
         self.cooldown_spin.setRange(1, 60)
         self.cooldown_spin.setValue(10)
-        left.addWidget(self.cooldown_spin)
+        ch_layout.addWidget(self.cooldown_spin)
+        left.addWidget(ch_box)
 
-        # UI scale selector (allow arbitrary scaling)
-        left.addWidget(QtWidgets.QLabel("Skala UI:"))
+        # UI scale selector
+        scale_box = QtWidgets.QGroupBox("Skala UI")
+        scale_layout = QtWidgets.QHBoxLayout(scale_box)
         self.scale_spin = QtWidgets.QDoubleSpinBox()
         self.scale_spin.setRange(0.5, 3.0)
         self.scale_spin.setSingleStep(0.1)
         self.scale_spin.setDecimals(2)
         self.scale_spin.setValue(1.0)
-        left.addWidget(self.scale_spin)
+        scale_layout.addWidget(self.scale_spin)
+        left.addWidget(scale_box)
 
         # action buttons
+        actions_box = QtWidgets.QGroupBox("Akcje")
+        actions_layout = QtWidgets.QVBoxLayout(actions_box)
         self.btn_preview = QtWidgets.QPushButton("Start podglądu")
         self.btn_preview.setCheckable(True)
         self.btn_record = QtWidgets.QPushButton("Nagrywaj dane (5 min)")
@@ -325,24 +326,28 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_stop,
             self.btn_train,
         ]:
-            left.addWidget(b)
-
-        # config save/load
+            actions_layout.addWidget(b)
         self.btn_save_cfg = QtWidgets.QPushButton("Zapisz konfigurację")
         self.btn_load_cfg = QtWidgets.QPushButton("Wczytaj konfigurację")
-        left.addWidget(self.btn_save_cfg)
-        left.addWidget(self.btn_load_cfg)
+        actions_layout.addWidget(self.btn_save_cfg)
+        actions_layout.addWidget(self.btn_load_cfg)
+        left.addWidget(actions_box)
+
         # logs
-        left.addWidget(QtWidgets.QLabel("Logi:"))
+        log_box = QtWidgets.QGroupBox("Logi")
+        log_layout = QtWidgets.QVBoxLayout(log_box)
         log_lvl_layout = QtWidgets.QHBoxLayout()
         log_lvl_layout.addWidget(QtWidgets.QLabel("Poziom:"))
         self.log_level_combo = QtWidgets.QComboBox()
         self.log_level_combo.addItems(["DEBUG", "INFO"])
         log_lvl_layout.addWidget(self.log_level_combo)
-        left.addLayout(log_lvl_layout)
+        log_layout.addLayout(log_lvl_layout)
         self.log_view = QtWidgets.QPlainTextEdit()
         self.log_view.setReadOnly(True)
-        left.addWidget(self.log_view)
+        self.log_view.setMaximumBlockCount(3)
+        self.log_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        log_layout.addWidget(self.log_view)
+        left.addWidget(log_box)
 
         left.addStretch(1)
         self.status_label = QtWidgets.QLabel("Gotowy.")
@@ -428,6 +433,9 @@ class MainWindow(QtWidgets.QMainWindow):
         font = QtGui.QFont()
         font.setPointSizeF(self.base_font_pt * effective_scale)
         QtWidgets.QApplication.setFont(font)
+        # Ensure log view shows exactly three lines at the current scale
+        metrics = QtGui.QFontMetrics(font)
+        self.log_view.setFixedHeight(int(metrics.lineSpacing() * 4))
 
         if effective_scale < scale:
             self.set_status("Skala dopasowana do dostępnej rozdzielczości ekranu.")
