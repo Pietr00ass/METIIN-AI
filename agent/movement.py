@@ -49,12 +49,18 @@ class MovementController:
             x1, y1, x2, y2 = tgt["bbox"]
             cx = (x1 + x2) / 2 / W
             bw = (x2 - x1) / W
-            if abs(cx - 0.5) > self.deadzone:
-                desired.add("d" if cx > 0.5 else "a")
-            if bw < self.desired_w * 0.95:
+            dx = cx - 0.5
+            dy = self.desired_w - bw
+
+            if dy > 0:
                 desired.add("w")
-            elif bw > self.desired_w * 1.25:
+            elif dy < 0:
                 desired.add("s")
+
+            if dx > self.deadzone:
+                desired.add("d")
+            elif dx < -self.deadzone:
+                desired.add("a")
 
         for k in self.keys.down - desired:
             self.keys.release(k)
