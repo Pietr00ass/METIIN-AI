@@ -49,6 +49,24 @@ class ChannelSwitcher:
         self.keys = keys
         self.hotkeys = hotkeys or {i: str(i) for i in range(1, 9)}
 
+    def _ensure_active_window(self) -> bool:
+        """Ensure the game window is focused and in the foreground.
+
+        Returns ``True`` if the window appears to be active, ``False``
+        otherwise.  When possible the window is focused twice with a small
+        delay to give the system time to bring it to the front.
+        """
+
+        if hasattr(self.win, "focus"):
+            self.win.focus()
+        if hasattr(self.win, "is_foreground") and not self.win.is_foreground():
+            time.sleep(0.1)
+            if hasattr(self.win, "focus"):
+                self.win.focus()
+            if hasattr(self.win, "is_foreground") and not self.win.is_foreground():
+                return False
+        return True
+
     # ------------------------------------------------------------------
     # Frame helpers
     def _frame(self) -> np.ndarray:
@@ -128,16 +146,8 @@ class ChannelSwitcher:
             if m:
                 L, T, _, _ = self.win.region
                 cx, cy = m["center"]
-
-                # Ensure the game window is focused before clicking.
-                if hasattr(self.win, "focus"):
-                    self.win.focus()
-                if hasattr(self.win, "is_foreground") and not self.win.is_foreground():
-                    time.sleep(0.1)
-                    if hasattr(self.win, "focus"):
-                        self.win.focus()
-                    if hasattr(self.win, "is_foreground") and not self.win.is_foreground():
-                        return False
+                if not self._ensure_active_window():
+                    return False
 
                 if not self.dry:
                     pyautogui.moveTo(L + cx, T + cy, duration=0.05)
@@ -149,6 +159,8 @@ class ChannelSwitcher:
         if self.keys:
             key = self.hotkeys.get(ch)
             if key:
+                if not self._ensure_active_window():
+                    return False
                 self.keys.press("ctrl")
                 self.keys.press(key)
                 self.keys.release(key)
