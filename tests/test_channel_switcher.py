@@ -127,6 +127,7 @@ def test_switch_uses_keys_when_not_found(tmp_path, monkeypatch):
     monkeypatch.setattr(channel, "TemplateMatcher", TM)
 
     presses = []
+    focuses = []
 
     class KH:
         def press(self, key):
@@ -135,9 +136,14 @@ def test_switch_uses_keys_when_not_found(tmp_path, monkeypatch):
         def release(self, key):
             presses.append(f"up-{key}")
 
-    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=False, keys=KH())
+    class Win(DummyWin):
+        def focus(self):
+            focuses.append(1)
+
+    cs = channel.ChannelSwitcher(Win(), str(tmp_path), dry=False, keys=KH())
     assert cs.switch(3, tries=1, post_wait=0) is True
     assert presses == ["down-ctrl", "down-3", "up-3", "up-ctrl"]
+    assert focuses, "focus should be called before sending keys"
 
 
 def test_next_wraps(tmp_path):
