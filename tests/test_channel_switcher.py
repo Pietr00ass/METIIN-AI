@@ -114,6 +114,32 @@ def test_switch_returns_false_when_not_found(tmp_path, monkeypatch):
     assert cs.switch(1, tries=1, post_wait=0) is False
 
 
+def test_switch_uses_keys_when_not_found(tmp_path, monkeypatch):
+    _setup_templates(tmp_path)
+
+    class TM:
+        def __init__(self, *a, **k):
+            pass
+
+        def find(self, frame, name, **kw):
+            return None
+
+    monkeypatch.setattr(channel, "TemplateMatcher", TM)
+
+    presses = []
+
+    class KH:
+        def press(self, key):
+            presses.append(f"down-{key}")
+
+        def release(self, key):
+            presses.append(f"up-{key}")
+
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=False, keys=KH())
+    assert cs.switch(3, tries=1, post_wait=0) is True
+    assert presses == ["down-ctrl", "down-3", "up-3", "up-ctrl"]
+
+
 def test_next_wraps(tmp_path):
     _setup_templates(tmp_path)
     cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True)
