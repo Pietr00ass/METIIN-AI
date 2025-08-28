@@ -146,7 +146,6 @@ class ChannelSwitcher:
                     time.sleep(post_wait)
                 return True
             time.sleep(0.2)
-
         if self.keys:
             key = self.hotkeys.get(ch)
             if key:
@@ -158,7 +157,6 @@ class ChannelSwitcher:
                     time.sleep(post_wait)
                 return True
         return False
-
     def current_channel_guess(self, thresh: float = 0.82) -> Optional[int]:
         """Guess currently selected channel by looking for gold buttons."""
 

@@ -9,7 +9,7 @@ from . import get_config
 from .avoid import CollisionAvoid
 from .channel import ChannelSwitcher
 from .detector import ObjectDetector
-from .interaction import burst_click
+from .interaction import click_bbox_center
 from .movement import MovementController
 from .search import SearchManager
 from .targets import pick_target
@@ -60,6 +60,8 @@ class HuntDestroy:
         )
         self._last_tgt = None
         self._prev_names: set[str] = set()
+        self._spin_start: float | None = None
+        self._spin_dir = "a"
 
     def step(self):
         fr = self.win.grab()
@@ -79,16 +81,38 @@ class HuntDestroy:
             logger.debug("Cel %s zniknął", self._last_tgt.get("name", "?"))
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
-            self.search.handle_no_target()
-        else:
-            self.search.update_last_target()
+            now = time.time()
+            spin_done = False
+            if self._spin_start is None:
+                self._spin_start = now
+                self.keys.press(self._spin_dir)
+            elif now - self._spin_start >= 4:
+                self.keys.release(self._spin_dir)
+                self._spin_start = None
+                self._spin_dir = "d" if self._spin_dir == "a" else "a"
+                spin_done = True
+            if spin_done:
+                self.search.handle_no_target(spin_done)
+            self._last_tgt = None
+            return
 
-        bw = self.movement.move(tgt, steer, (W, H))
-        self._last_tgt = tgt
+        if self._spin_start is not None:
+            self.keys.release(self._spin_dir)
+            self._spin_start = None
+        self.search.update_last_target()
+
+        bw = None
+        if tgt:
+            x1, y1, x2, y2 = tgt["bbox"]
+            bw = (x2 - x1) / W
 
         if tgt and bw is not None and bw >= self.desired_w * 0.9:
+            self.keys.release_all()
             left, top, w, h = self.win.region
             if hasattr(self.keys, "dry") and self.keys.dry:
                 return
             logger.debug("Atakuję cel")
-            burst_click(tgt["bbox"], (left, top, w, h), win=self.win)
+            click_bbox_center(tgt["bbox"], (left, top, w, h), win=self.win)
+        else:
+            self.movement.move(tgt, steer, (W, H))
+        self._last_tgt = tgt

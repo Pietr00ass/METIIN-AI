@@ -117,6 +117,25 @@ class _DummyAvoid:
         return None
 
 
+class _EmptyDetector:
+    def __init__(self, *a, **k):
+        pass
+
+    def infer(self, frame):
+        return []
+
+
+class _StubSearch:
+    def __init__(self, *a, **k):
+        self.calls = 0
+
+    def handle_no_target(self, spin_done):
+        self.calls += 1
+
+    def update_last_target(self):
+        pass
+
+
 class _DummyWin:
     region = (0, 0, 100, 100)
 
@@ -136,7 +155,7 @@ def test_hunt_destroy_continuous_movement(monkeypatch):
     monkeypatch.setattr(hd, "CollisionAvoid", lambda: _DummyAvoid())
     monkeypatch.setattr(hd, "KeyHold", _StubKeyHold)
     monkeypatch.setattr(hd, "pick_target", _pick_target)
-    monkeypatch.setattr(hd, "burst_click", lambda *a, **k: None)
+    monkeypatch.setattr(hd, "click_bbox_center", lambda *a, **k: None)
 
     cfg = {
         "paths": {"model": "", "templates_dir": ""},
@@ -158,3 +177,33 @@ def test_hunt_destroy_continuous_movement(monkeypatch):
     assert agent.keys.pressed.count("d") == 1
     assert agent.keys.pressed.count("a") == 1
     assert agent.keys.released == ["d"]
+
+
+def test_spin_no_target(monkeypatch):
+    monkeypatch.setattr(hd, "ObjectDetector", _EmptyDetector)
+    monkeypatch.setattr(hd, "CollisionAvoid", lambda: _DummyAvoid())
+    monkeypatch.setattr(hd, "KeyHold", _StubKeyHold)
+    monkeypatch.setattr(hd, "SearchManager", _StubSearch)
+    monkeypatch.setattr(hd, "pick_target", lambda *a, **k: None)
+    cfg = {
+        "paths": {"model": "", "templates_dir": ""},
+        "detector": {"classes": [], "conf_thr": 0.5, "iou_thr": 0.5},
+        "policy": {"desired_box_w": 0.2, "deadzone_x": 0.1},
+        "dry_run": True,
+    }
+    agent = hd.HuntDestroy(cfg, _DummyWin())
+    times = iter([0, 3, 4.1])
+    monkeypatch.setattr(hd.time, "time", lambda: next(times))
+
+    agent.step()
+    assert agent.keys.down == {"a"}
+    assert agent.search.calls == 0
+
+    agent.step()
+    assert agent.keys.down == {"a"}
+    assert agent.search.calls == 0
+
+    agent.step()
+    assert agent.keys.down == set()
+    assert agent.search.calls == 1
+    assert agent._spin_dir == "d"

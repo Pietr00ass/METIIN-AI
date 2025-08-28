@@ -37,8 +37,17 @@ class SearchManager:
     def update_last_target(self) -> None:
         self.last_target_time = time.time()
 
-    def handle_no_target(self) -> None:
-        """Teleport and optionally change channel when no target for a while."""
+    def handle_no_target(self, spin_done: bool) -> None:
+        """Teleport and optionally change channel when no target for a while.
+
+        Parameters
+        ----------
+        spin_done: bool
+            Whether a full rotation search was completed. If ``False`` the
+            method returns immediately without performing any action.
+        """
+        if not spin_done:
+            return
         now = time.time()
         if now - self.last_target_time <= self.no_target_sec:
             return
