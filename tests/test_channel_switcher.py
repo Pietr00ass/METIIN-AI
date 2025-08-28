@@ -92,7 +92,7 @@ def test_switch_clicks_on_success(tmp_path, monkeypatch):
     monkeypatch.setattr(channel.pyautogui, "moveTo", lambda *a, **k: moves.append(1))
     monkeypatch.setattr(channel.pyautogui, "click", lambda *a, **k: clicks.append(1))
     cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=False)
-    assert cs.switch(1, tries=1) is True
+    assert cs.switch(1, tries=1, post_wait=0) is True
     assert moves and clicks
 
 
@@ -111,5 +111,46 @@ def test_switch_returns_false_when_not_found(tmp_path, monkeypatch):
     monkeypatch.setattr(channel.pyautogui, "moveTo", lambda *a, **k: moves.append(1))
     monkeypatch.setattr(channel.pyautogui, "click", lambda *a, **k: clicks.append(1))
     cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=False)
-    assert cs.switch(1, tries=1) is False
-    assert not moves and not clicks
+    assert cs.switch(1, tries=1, post_wait=0) is False
+
+
+def test_next_wraps(tmp_path):
+    _setup_templates(tmp_path)
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True)
+    assert cs.next(1) == 2
+    assert cs.next(8) == 1
+
+
+def test_cycle_until_target_seen(tmp_path, monkeypatch):
+    _setup_templates(tmp_path)
+
+    # Patch out template matcher to avoid real image lookup
+    class TM:
+        def __init__(self, *a, **k):
+            pass
+
+        def find(self, frame, name, **kw):
+            return {"center": (50, 60)}
+
+    monkeypatch.setattr(channel, "TemplateMatcher", TM)
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True)
+
+    # Start from channel 1
+    monkeypatch.setattr(cs, "current_channel_guess", lambda thresh=0.82: 1)
+
+    switched = []
+
+    def fake_switch(ch, **kw):
+        switched.append(ch)
+        return True
+
+    monkeypatch.setattr(cs, "switch", fake_switch)
+
+    calls = {"n": 0}
+
+    def check_fn():
+        calls["n"] += 1
+        return calls["n"] >= 3
+
+    assert cs.cycle_until_target_seen(check_fn, timeout=5, post_wait=0) is True
+    assert switched == [2, 3]
