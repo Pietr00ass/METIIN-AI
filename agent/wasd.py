@@ -6,6 +6,11 @@ import threading
 import time
 from ctypes import wintypes
 
+try:  # pragma: no cover - optional dependency
+    import pydirectinput
+except Exception:  # pragma: no cover - gracefully handle missing module
+    pydirectinput = None
+
 # ---------------------------------------------------------------------------
 # ``SendInput`` helpers working with scan codes
 # ---------------------------------------------------------------------------
@@ -47,6 +52,14 @@ else:
 
 def _send_scan(scan: int, keyup: bool = False, extended: bool = False) -> None:
     """Send a single keyboard event using the provided scan code."""
+
+    key = REVERSE_SCANCODES.get(scan)
+    if pydirectinput is not None and key:
+        if keyup:
+            pydirectinput.keyUp(key)
+        else:
+            pydirectinput.keyDown(key)
+        return
 
     if _user32 is None:
         return
