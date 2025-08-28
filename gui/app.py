@@ -284,13 +284,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # action buttons
         self.btn_preview = QtWidgets.QPushButton("Start podglądu")
+        self.btn_preview.setCheckable(True)
         self.btn_record = QtWidgets.QPushButton("Nagrywaj dane (5 min)")
+        self.btn_record.setCheckable(True)
         self.btn_agent = QtWidgets.QPushButton("Start agenta (YOLO + WASD)")
+        self.btn_agent.setCheckable(True)
         self.btn_tp_hunt = QtWidgets.QPushButton("Teleportuj i poluj")
+        self.btn_tp_hunt.setCheckable(True)
         self.btn_cycle = QtWidgets.QPushButton("Cykl 8×8 (sloty×kanały)")
+        self.btn_cycle.setCheckable(True)
         self.btn_ch = QtWidgets.QPushButton("Zmień kanał")
+        self.btn_ch.setCheckable(True)
         self.btn_stop = QtWidgets.QPushButton("STOP (F12)")
         self.btn_train = QtWidgets.QPushButton("Trenuj YOLO")
+        self.btn_train.setCheckable(True)
         for b in [
             self.btn_preview,
             self.btn_record,
@@ -342,14 +349,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self._hotkey_listener = None
 
         # connections
-        self.btn_preview.clicked.connect(self.toggle_preview)
-        self.btn_record.clicked.connect(self.record_data)
-        self.btn_agent.clicked.connect(self.start_agent)
-        self.btn_tp_hunt.clicked.connect(self.start_tp_and_hunt)
-        self.btn_cycle.clicked.connect(self.start_cycle)
-        self.btn_ch.clicked.connect(self.change_channel)
+        self.btn_preview.toggled.connect(self.toggle_preview)
+        self.btn_record.toggled.connect(self.record_data)
+        self.btn_agent.toggled.connect(self.start_agent)
+        self.btn_tp_hunt.toggled.connect(self.start_tp_and_hunt)
+        self.btn_cycle.toggled.connect(self.start_cycle)
+        self.btn_ch.toggled.connect(self.change_channel)
         self.btn_stop.clicked.connect(self.stop_all)
-        self.btn_train.clicked.connect(self.train_yolo_api)
+        self.btn_train.toggled.connect(self.train_yolo_api)
         self.btn_save_cfg.clicked.connect(self.save_config)
         self.btn_load_cfg.clicked.connect(self.load_config)
         self.scale_spin.valueChanged.connect(self.apply_scale)
@@ -412,17 +419,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.video.setPixmap(pix)
 
     # ---------- preview ----------
-    def toggle_preview(self) -> None:
-        if self.preview_thread and self.preview_thread.isRunning():
-            self.preview_thread.stop()
-            self.preview_thread.wait()
-            self.preview_thread = None
+    def toggle_preview(self, checked: bool) -> None:
+        if not checked:
+            if self.preview_thread and self.preview_thread.isRunning():
+                self.preview_thread.stop()
+                self.preview_thread.wait()
+                self.preview_thread = None
             self.btn_preview.setText("Start podglądu")
             self.set_status("Podgląd zatrzymany.")
             return
         title = self.title_edit.text().strip()
         if not title:
             self.set_status("Podaj fragment tytułu okna.")
+            self.btn_preview.setChecked(False)
             return
         # start preview
         self.preview_thread = PreviewWorker(title)
@@ -436,16 +445,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_preview.setText("Stop podglądu")
 
     # ---------- recording ----------
-    def record_data(self) -> None:
+    def record_data(self, checked: bool) -> None:
+        if not checked:
+            self.btn_record.setText("Nagrywaj dane (5 min)")
+            return
         from recorder.capture import record_session
 
         title = self.title_edit.text().strip()
         if not title:
             self.set_status("Podaj fragment tytułu okna.")
+            self.btn_record.setChecked(False)
             return
         wc = WindowCapture(title)
         if not wc.locate(timeout=5):
             self.set_status("Nie znaleziono okna.")
+            self.btn_record.setChecked(False)
             return
         wc.update_region()
         l, t, w, h = wc.region
@@ -461,8 +475,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
             except Exception as exc:
                 self.set_status(f"Błąd nagrywania: {exc}")
+            finally:
+                self.btn_record.setChecked(False)
 
         threading.Thread(target=job, daemon=True).start()
+        self.btn_record.setText("Nagrywam dane (5 min)")
 
     # ---------- configuration ----------
     def build_cfg(self) -> dict:
@@ -574,7 +591,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.set_status("Wczytano konfigurację.")
 
     # ---------- agent actions ----------
-    def start_agent(self) -> None:
+    def start_agent(self, checked: bool) -> None:
+        if not checked:
+            self._panic = True
+            if self.agent_thread:
+                self.agent_thread.join(timeout=1)
+                self.agent_thread = None
+            self.btn_agent.setText("Start agenta (YOLO + WASD)")
+            self.set_status("Agent zatrzymany.")
+            return
         cfg = self.build_cfg()
 
         def run():
@@ -589,18 +614,32 @@ class MainWindow(QtWidgets.QMainWindow):
                     time.sleep(period)
             except Exception as exc:
                 self.set_status(f"Błąd agenta: {exc}")
+            finally:
+                self.agent_thread = None
+                self.btn_agent.setChecked(False)
+                self.btn_agent.setText("Start agenta (YOLO + WASD)")
 
         self._panic = False
         self.agent_thread = threading.Thread(target=run, daemon=True)
         self.agent_thread.start()
+        self.btn_agent.setText("Stop agenta")
         self.set_status("Agent YOLO+WASD uruchomiony.")
 
-    def start_tp_and_hunt(self) -> None:
+    def start_tp_and_hunt(self, checked: bool) -> None:
+        if not checked:
+            self._panic = True
+            if self.agent_thread:
+                self.agent_thread.join(timeout=1)
+                self.agent_thread = None
+            self.btn_tp_hunt.setText("Teleportuj i poluj")
+            self.set_status("Przerwano 'Teleportuj i poluj'.")
+            return
         point = self.tp_point.text().strip()
         side = self.tp_side.text().strip()
         minutes = int(self.tp_minutes.value())
         if not point or not side:
             self.set_status("Uzupełnij punkt i stronę teleportacji.")
+            self.btn_tp_hunt.setChecked(False)
             return
         cfg = self.build_cfg()
 
@@ -625,13 +664,32 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.set_status("Zakończono 'Teleportuj i poluj'.")
             except Exception as exc:
                 self.set_status(f"Błąd teleport+poluj: {exc}")
+            finally:
+                self.agent_thread = None
+                self.btn_tp_hunt.setChecked(False)
+                self.btn_tp_hunt.setText("Teleportuj i poluj")
 
         self._panic = False
         self.agent_thread = threading.Thread(target=run, daemon=True)
         self.agent_thread.start()
+        self.btn_tp_hunt.setText("Stop 'Teleportuj i poluj'")
         self.set_status("Teleportuję i poluję…")
 
-    def start_cycle(self) -> None:
+    def start_cycle(self, checked: bool) -> None:
+        if not checked:
+            self._panic = True
+            if self.agent_thread:
+                self.agent_thread.join(timeout=1)
+                self.agent_thread = None
+            if self.cycle_agent:
+                try:
+                    self.cycle_agent.stop()
+                except Exception:
+                    pass
+                self.cycle_agent = None
+            self.btn_cycle.setText("Cykl 8×8 (sloty×kanały)")
+            self.set_status("Cykl zatrzymany.")
+            return
         page = self.tp_side.text().strip() or None
         cfg = self.build_cfg()
         cycle_cfg = cfg.get("cycle", {})
@@ -653,13 +711,21 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.set_status(f"Błąd cyklu: {exc}")
             finally:
                 self.cycle_agent = None
+                self.agent_thread = None
+                self.btn_cycle.setChecked(False)
+                self.btn_cycle.setText("Cykl 8×8 (sloty×kanały)")
 
         self._panic = False
         self.agent_thread = threading.Thread(target=run, daemon=True)
         self.agent_thread.start()
+        self.btn_cycle.setText("Stop cyklu 8×8")
         self.set_status("Start cyklu 8×8…")
 
-    def change_channel(self) -> None:
+    def change_channel(self, checked: bool) -> None:
+        if not checked:
+            self.btn_ch.setText("Zmień kanał")
+            return
+
         def job():
             try:
                 cfg = self.build_cfg()
@@ -677,8 +743,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.set_status(msg)
             except Exception as exc:
                 self.set_status(f"Błąd zmiany kanału: {exc}")
+            finally:
+                self.btn_ch.setChecked(False)
+                self.btn_ch.setText("Zmień kanał")
 
         threading.Thread(target=job, daemon=True).start()
+        self.btn_ch.setText("Zmiana kanału…")
         self.set_status("Zmiana kanału…")
 
     def stop_all(self) -> None:
@@ -697,11 +767,23 @@ class MainWindow(QtWidgets.QMainWindow):
             self.preview_thread.stop()
             self.preview_thread.wait()
             self.preview_thread = None
-            self.btn_preview.setText("Start podglądu")
+        for b in [
+            self.btn_preview,
+            self.btn_record,
+            self.btn_agent,
+            self.btn_tp_hunt,
+            self.btn_cycle,
+            self.btn_ch,
+            self.btn_train,
+        ]:
+            b.setChecked(False)
         self.set_status("STOP – wszystkie klawisze zwolnione.")
 
-    def train_yolo_api(self) -> None:
+    def train_yolo_api(self, checked: bool) -> None:
         """Train YOLO using ultralytics API (runs asynchronously)."""
+        if not checked:
+            self.btn_train.setText("Trenuj YOLO")
+            return
 
         def job():
             try:
@@ -721,8 +803,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
             except Exception as exc:
                 self.set_status(f"Błąd treningu: {exc}")
+            finally:
+                self.btn_train.setChecked(False)
+                self.btn_train.setText("Trenuj YOLO")
 
         threading.Thread(target=job, daemon=True).start()
+        self.btn_train.setText("Trwa trening…")
 
     # ---------- hotkey ----------
     def start_hotkey_listener(self) -> None:
