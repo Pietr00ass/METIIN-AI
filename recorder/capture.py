@@ -23,6 +23,13 @@ try:  # ``keyboard`` provides low level scan‑code events
 except Exception:  # pragma: no cover - library may be missing on CI
     _keyboard = None
 
+try:  # resolve_key helper for normalising ``pynput`` keys
+    from agent.wasd import resolve_key as _resolve_key
+except Exception:  # pragma: no cover - avoid heavy dependency on tests
+    def _resolve_key(key):
+        sval = str(key)
+        return sval.split(".", 1)[1] if sval.startswith("Key.") else sval
+
 
 class InputLogger:
     """Collects mouse clicks and raw keyboard scan‑code events."""
@@ -30,7 +37,10 @@ class InputLogger:
     def __init__(self) -> None:
         self.buffer = []  # (ts, kind, payload)
         self._lock = threading.Lock()
+        # ``keyboard`` library hook handle
         self._kb_hook = None
+        # ``pynput`` listener instance used when ``keyboard`` is unavailable
+        self._listener = None
 
     # --- mouse -----------------------------------------------------------------
     def on_click(self, x, y, button, pressed):
@@ -54,9 +64,7 @@ class InputLogger:
 
     # ``pynput`` compatibility helpers used in tests
     def on_press(self, key):  # pragma: no cover - simple passthrough
-        from agent.wasd import resolve_key
-
-        payload = {"key": resolve_key(key), "down": True}
+        payload = {"key": _resolve_key(key), "down": True}
 
         if isinstance(key, dict):
             scan = key.get("scan")
@@ -73,9 +81,7 @@ class InputLogger:
             self.buffer.append((time.time(), "key", payload))
 
     def on_release(self, key):  # pragma: no cover - simple passthrough
-        from agent.wasd import resolve_key
-
-        payload = {"key": resolve_key(key), "down": False}
+        payload = {"key": _resolve_key(key), "down": False}
 
         if isinstance(key, dict):
             scan = key.get("scan")
@@ -93,14 +99,25 @@ class InputLogger:
 
     def start(self):
         """Begin capturing keyboard events using a low‑level hook."""
-        if _keyboard is None:
+        if _keyboard is not None:
+            # Preferred: ``keyboard`` library gives us raw scan codes
+            self._kb_hook = _keyboard.hook(self._on_key_event)
+        elif hasattr(keyboard, "Listener"):
+            # Fallback: ``pynput`` keyboard listener
+            self._listener = keyboard.Listener(
+                on_press=self.on_press, on_release=self.on_release
+            )
+            self._listener.start()
+        else:  # pragma: no cover - no input backend available
             raise RuntimeError("keyboard library not available")
-        self._kb_hook = _keyboard.hook(self._on_key_event)
 
     def stop(self):
         if _keyboard is not None and self._kb_hook is not None:
             _keyboard.unhook(self._kb_hook)
             self._kb_hook = None
+        if self._listener is not None:
+            self._listener.stop()
+            self._listener = None
 
     def flush(self):
         with self._lock:
