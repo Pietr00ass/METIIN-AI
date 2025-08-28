@@ -35,7 +35,9 @@ class HuntDestroy:
         self.keys = KeyHold(dry=dry, active_fn=getattr(self.win, "is_foreground", None))
         tdir = cfg["paths"]["templates_dir"]
         self.teleporter = Teleporter(self.win, tdir, use_ocr=True, dry=dry, cfg=cfg)
-        self.channel_switcher = ChannelSwitcher(self.win, tdir, dry=dry)
+        self.channel_switcher = ChannelSwitcher(
+            self.win, tdir, dry=dry, keys=self.keys
+        )
         self.desired_w = cfg["policy"].get("desired_box_w", 0.12)
         self.deadzone = cfg["policy"].get("deadzone_x", 0.05)
         self.priority = cfg.get("priority", ["boss", "metin", "potwory"])
