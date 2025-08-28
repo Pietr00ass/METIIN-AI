@@ -27,7 +27,9 @@ class ChannelSwitcher:
         win: WindowCapture,
         templates_dir: str,
         dry: bool = False,
+        *,
         keys: KeyHold | None = None,
+        hotkeys: dict[int, str] | None = None,
     ):
         self.win = win
         if not os.path.isdir(templates_dir):
@@ -45,6 +47,7 @@ class ChannelSwitcher:
         self.tm = TemplateMatcher(templates_dir)
         self.dry = dry
         self.keys = keys
+        self.hotkeys = hotkeys or {i: str(i) for i in range(1, 9)}
 
     # ------------------------------------------------------------------
     # Frame helpers
@@ -144,23 +147,16 @@ class ChannelSwitcher:
                 return True
             time.sleep(0.2)
         if self.keys:
-            if hasattr(self.win, "focus"):
-                self.win.focus()
-            if hasattr(self.win, "is_foreground") and not self.win.is_foreground():
-                time.sleep(0.1)
-                if hasattr(self.win, "focus"):
-                    self.win.focus()
-                if hasattr(self.win, "is_foreground") and not self.win.is_foreground():
-                    return False
-            self.keys.press("ctrl")
-            self.keys.press(str(ch))
-            self.keys.release(str(ch))
-            self.keys.release("ctrl")
-            if post_wait:
-                time.sleep(post_wait)
-            return True
+            key = self.hotkeys.get(ch)
+            if key:
+                self.keys.press("ctrl")
+                self.keys.press(key)
+                self.keys.release(key)
+                self.keys.release("ctrl")
+                if post_wait:
+                    time.sleep(post_wait)
+                return True
         return False
-
     def current_channel_guess(self, thresh: float = 0.82) -> Optional[int]:
         """Guess currently selected channel by looking for gold buttons."""
 

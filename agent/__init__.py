@@ -36,6 +36,7 @@ DEFAULT_CFG: Dict[str, Any] = {
             "right": "d",
             "rotate": "e",
         },
+        "movement": True,
         "key_repeat_ms": 60,
         "mouse_pause": 0.02,
     },
@@ -47,6 +48,7 @@ DEFAULT_CFG: Dict[str, Any] = {
     "policy": {"deadzone_x": 0.05, "desired_box_w": 0.12},
     "stuck": {"flow_window": 0.8, "min_flow_mag": 0.7, "rotate_ms_on_stuck": 250},
     "scan": {
+        "enabled": True,
         "period": 0.066,
         "key": "e",
         "sweeps": 8,
@@ -56,7 +58,11 @@ DEFAULT_CFG: Dict[str, Any] = {
     },
     "cooldowns": {"slot_min": 10},
     "priority": ["boss", "metin", "potwory"],
-    "channel": {"settle_sec": 5.0, "timeout_per_ch": 5.0},
+    "channel": {
+        "settle_sec": 5.0,
+        "timeout_per_ch": 5.0,
+        "hotkeys": {i: str(i) for i in range(1, 9)},
+    },
     "teleport": {
         "slots": [],
         "no_target_sec": 10,

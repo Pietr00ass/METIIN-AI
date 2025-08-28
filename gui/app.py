@@ -226,6 +226,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dry_run_chk = QtWidgets.QCheckBox("Dry run (bez klików/klawiszy)")
         self.dry_run_chk.setChecked(False)
         left.addWidget(self.dry_run_chk)
+        self.movement_chk = QtWidgets.QCheckBox("Movement włączony")
+        self.movement_chk.setChecked(True)
+        left.addWidget(self.movement_chk)
+        self.rotate_chk = QtWidgets.QCheckBox("Obrót (E) włączony")
+        self.rotate_chk.setChecked(True)
+        left.addWidget(self.rotate_chk)
 
         # scan configuration
         scan_form = QtWidgets.QFormLayout()
@@ -259,6 +265,17 @@ class MainWindow(QtWidgets.QMainWindow):
         form2.addRow("Strona:", self.tp_side)
         form2.addRow("Czas (min):", self.tp_minutes)
         left.addLayout(form2)
+
+        # channel hotkeys
+        left.addWidget(QtWidgets.QLabel("Skróty kanałów (Ctrl + klawisz):"))
+        self.ch_key_edits = {}
+        ch_form = QtWidgets.QFormLayout()
+        for i in range(1, 9):
+            edit = QtWidgets.QLineEdit(str(i))
+            edit.setMaximumWidth(40)
+            self.ch_key_edits[i] = edit
+            ch_form.addRow(f"CH{i}:", edit)
+        left.addLayout(ch_form)
 
         # channel selector
         left.addWidget(QtWidgets.QLabel("Kanał (minimapa):"))
@@ -505,6 +522,9 @@ class MainWindow(QtWidgets.QMainWindow):
         title = self.title_edit.text().strip()
         classes = [c.strip() for c in self.classes_edit.text().split(",") if c.strip()]
         prio = self.current_priority()
+        hotkeys = {
+            i: self.ch_key_edits[i].text().strip() or str(i) for i in range(1, 9)
+        }
         cfg = {
             "window": {"title_substr": title},
             "paths": {
@@ -519,6 +539,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     "right": "d",
                     "rotate": "e",
                 },
+                "movement": self.movement_chk.isChecked(),
                 "key_repeat_ms": 60,
                 "mouse_pause": 0.02,
             },
@@ -539,6 +560,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "priority": prio,
             "dry_run": self.dry_run_chk.isChecked(),
             "scan": {
+                "enabled": self.rotate_chk.isChecked(),
                 "key": "e",
                 "sweeps": int(self.sweeps.value()),
                 "sweep_ms": int(self.sweep_ms.value()),
@@ -547,7 +569,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 "pause": 0.12,
             },
             "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
-            "channel": {"settle_sec": 5.0, "timeout_per_ch": 2.5},
+            "channel": {
+                "settle_sec": 5.0,
+                "timeout_per_ch": 2.5,
+                "hotkeys": hotkeys,
+            },
             "ui": {"scale": float(self.scale_spin.value())},
         }
         return cfg
@@ -590,7 +616,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.deadzone.setValue(float(cfg.get("policy", {}).get("deadzone_x", 0.05)))
         self.desired_w.setValue(float(cfg.get("policy", {}).get("desired_box_w", 0.12)))
         self.dry_run_chk.setChecked(bool(cfg.get("dry_run", False)))
+        self.movement_chk.setChecked(
+            bool(cfg.get("controls", {}).get("movement", True))
+        )
         scan = cfg.get("scan", {})
+        self.rotate_chk.setChecked(bool(scan.get("enabled", True)))
         self.sweeps.setValue(int(scan.get("sweeps", 8)))
         self.sweep_ms.setValue(int(scan.get("sweep_ms", 250)))
         self.idle_sec.setValue(float(scan.get("idle_sec", 1.5)))
@@ -607,6 +637,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tp_point.setText(tp.get("point", ""))
         self.tp_side.setText(tp.get("side", ""))
         self.tp_minutes.setValue(int(tp.get("minutes", 10)))
+        ch_hot = cfg.get("channel", {}).get("hotkeys", {})
+        for i in range(1, 9):
+            key = ch_hot.get(str(i)) or ch_hot.get(i) or str(i)
+            self.ch_key_edits[i].setText(key)
         self.set_status("Wczytano konfigurację.")
 
     # ---------- agent actions ----------
@@ -756,7 +790,21 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.set_status("Nie znaleziono okna.")
                     return
                 ch = int(self.channel_combo.currentText().replace("CH", ""))
-                ok = ChannelSwitcher(win, cfg["paths"]["templates_dir"]).switch(ch)
+                keys = KeyHold(
+                    dry=cfg.get("dry_run", False),
+                    active_fn=getattr(win, "is_foreground", None),
+                )
+                cs = ChannelSwitcher(
+                    win,
+                    cfg["paths"]["templates_dir"],
+                    dry=cfg.get("dry_run", False),
+                    keys=keys,
+                    hotkeys=cfg.get("channel", {}).get("hotkeys"),
+                )
+                try:
+                    ok = cs.switch(ch)
+                finally:
+                    keys.stop()
                 msg = (
                     f"Zmieniono kanał na CH{ch}"
                     if ok

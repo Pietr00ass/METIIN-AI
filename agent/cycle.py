@@ -35,12 +35,18 @@ class CycleFarm:
         self.dry = cfg.get("dry_run", False)
         tdir = cfg["paths"]["templates_dir"]
         self.tp = Teleporter(self.win, tdir, use_ocr=True, dry=self.dry, cfg=cfg)
-        self.ch = ChannelSwitcher(self.win, tdir, dry=self.dry)
-        self.agent = HuntDestroy(cfg, self.win)
-        self.det = ObjectDetector(cfg["paths"]["model"], cfg["detector"]["classes"])
         self.keys = KeyHold(
             dry=self.dry, active_fn=getattr(self.win, "is_foreground", None)
         )
+        self.ch = ChannelSwitcher(
+            self.win,
+            tdir,
+            dry=self.dry,
+            keys=self.keys,
+            hotkeys=cfg.get("channel", {}).get("hotkeys"),
+        )
+        self.agent = HuntDestroy(cfg, self.win)
+        self.det = ObjectDetector(cfg["paths"]["model"], cfg["detector"]["classes"])
         self._stop = False
 
         ch_cfg = cfg.get("channel", {})
@@ -58,17 +64,21 @@ class CycleFarm:
         self.sweeps = int(scan.get("sweeps", 8))
         self.idle_before_scan = float(scan.get("idle_sec", 1.5))
         self.pause_between_sweeps = float(scan.get("pause", 0.12))
-        # AreaScanner emulates a human turning in place by repeatedly holding the
-        # camera‑rotate key.  This reveals monsters that might spawn behind the
-        # player after teleportation.
-        self.scanner = AreaScanner(
-            self.keys,
-            self.spin_key,
-            self.sweep_ms,
-            self.sweeps,
-            self.idle_before_scan,
-            self.pause_between_sweeps,
-        )
+        self.scan_enabled = scan.get("enabled", True)
+        if self.scan_enabled:
+            # AreaScanner emulates a human turning in place by repeatedly holding the
+            # camera‑rotate key.  This reveals monsters that might spawn behind the
+            # player after teleportation.
+            self.scanner = AreaScanner(
+                self.keys,
+                self.spin_key,
+                self.sweep_ms,
+                self.sweeps,
+                self.idle_before_scan,
+                self.pause_between_sweeps,
+            )
+        else:
+            self.scanner = None
 
         # cooldown slotów
         self.cooldown = {}
@@ -148,7 +158,7 @@ class CycleFarm:
                     continue
 
                 # ewentualne skanowanie po teleportacji
-                if not self._any_target_seen():
+                if self.scanner and not self._any_target_seen():
                     logger.debug("Brak celu po teleportacji – skanuję otoczenie")
                     self.scanner.scan()
 
@@ -168,7 +178,8 @@ class CycleFarm:
                         last_seen = time.time()
                     elif time.time() - last_seen > float(clear_sec):
                         # spróbuj przeskanować otoczenie
-                        self.scanner.scan()
+                        if self.scanner:
+                            self.scanner.scan()
                         if not self._any_target_seen():
                             self.ch.cycle_until_target_seen(
                                 check_fn=self._any_target_seen,
