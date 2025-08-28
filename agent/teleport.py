@@ -104,18 +104,61 @@ class Teleporter:
         pyautogui.moveTo(x, y, duration=self.click_duration)
         pyautogui.click()
 
-    def open_panel(self) -> None:
+    def open_panel(self, max_attempts: int = 3, ref_name: str = "strona_I") -> bool:
+        """Open teleport panel and verify it appears.
+
+        Sends the ``Ctrl+X`` hotkey, takes a screenshot and checks whether a
+        reference template is visible.  The check is performed first with
+        :class:`TemplateMatcher` and then, if needed, with
+        :func:`pyautogui.locateOnScreen`.  When the panel is not detected the
+        hotkey is retried ``max_attempts`` times before raising
+        :class:`RuntimeError`.
+        """
+
         if not self.win.is_foreground():
             self.win.focus()
             if not self.win.is_foreground():
-                return
-        if not self.dry:
-            self.keys.press("ctrl")
-            self.keys.press("x")
-            time.sleep(self.click_duration)
-            self.keys.release("x")
-            self.keys.release("ctrl")
+                return False
+
+        L, T, w, h = self.win.region
+        roi = (
+            L + int(w * 0.05),
+            T + int(h * 0.82),
+            int(w * 0.9),
+            int(h * 0.16),
+        )
+        template_path = self.tm.dir / f"{ref_name}.png"
+
+        for attempt in range(max_attempts):
+            if not self.dry:
+                pyautogui.hotkey("ctrl", "x")
             time.sleep(self.open_panel_delay)
+
+            screenshot = pyautogui.screenshot()
+            frame = np.array(screenshot)[:, :, ::-1]
+
+            found = self.tm.find(
+                frame,
+                ref_name,
+                thresh=self.page_thresh,
+                roi=roi,
+                multi_scale=True,
+            )
+
+            if not found:
+                try:
+                    found = pyautogui.locateOnScreen(
+                        str(template_path),
+                        region=roi,
+                        confidence=self.page_thresh,
+                    )
+                except Exception:
+                    found = None
+
+            if found:
+                return True
+
+        raise RuntimeError("Teleport panel not detected")
 
     def go_page(self, page_label: str, thresh: float | None = None) -> bool:
         token = page_label.split()[-1].upper().replace(" ", "_")
