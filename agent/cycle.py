@@ -43,6 +43,10 @@ class CycleFarm:
         )
         self._stop = False
 
+        ch_cfg = cfg.get("channel", {})
+        self.ch_settle = float(ch_cfg.get("settle_sec", 5.0))
+        self.ch_check = float(ch_cfg.get("timeout_per_ch", 5.0))
+
         # progi i priorytety
         self.conf_thr = float(cfg.get("detector", {}).get("conf_thr", 0.5))
         self.priority = list(cfg.get("priority", []))
@@ -110,7 +114,7 @@ class CycleFarm:
             # zmiana kanału
             logger.info("Przechodzę na kanał %s", ch)
             try:
-                self.ch.switch(ch)
+                self.ch.switch(ch, post_wait=self.ch_settle)
             except Exception:
                 logger.warning("Nie udało się zmienić kanału na %s", ch)
 
@@ -165,6 +169,13 @@ class CycleFarm:
                     elif time.time() - last_seen > float(clear_sec):
                         # spróbuj przeskanować otoczenie
                         self.scanner.scan()
+                        if not self._any_target_seen():
+                            self.ch.cycle_until_target_seen(
+                                check_fn=self._any_target_seen,
+                                settle=self.ch_settle,
+                                timeout_per_ch=self.ch_check,
+                                max_rounds=1,
+                            )
                         if not self._any_target_seen():
                             logger.debug("Pole czyste – przechodzę dalej")
                             break

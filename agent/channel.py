@@ -162,26 +162,43 @@ class ChannelSwitcher:
     def cycle_until_target_seen(
         self,
         check_fn: Callable[[], bool],
-        timeout: float = 30.0,
-        post_wait: float = 5.0,
+        *,
+        settle: float = 5.0,
+        timeout_per_ch: float = 5.0,
+        max_rounds: int = 1,
     ) -> bool:
-        """Cycle through channels until ``check_fn`` returns ``True`` or timeout.
+        """Cycle through channels until ``check_fn`` returns ``True``.
 
-        ``check_fn`` should perform whatever check is required to detect the
-        desired target (for example, running an object detector).  Channels are
-        switched in order CH1→CH8 and wrap back to CH1.
+        Parameters
+        ----------
+        check_fn:
+            Callable returning ``True`` when the desired target is detected.
+        settle:
+            Seconds to wait after each channel switch before checking.
+        timeout_per_ch:
+            How long to keep checking each channel for the target.
+        max_rounds:
+            Maximum number of full CH1..CH8 cycles to perform.
         """
 
-        start = time.time()
         current = self.current_channel_guess() or 1
+        start_ch = current
+        rounds = 0
 
         if check_fn():
             return True
 
-        while time.time() - start < timeout:
+        while rounds < max_rounds:
             current = self.next(current)
-            self.switch(current, post_wait=post_wait)
-            if check_fn():
-                return True
+            self.switch(current, post_wait=settle)
+            t_end = time.time() + timeout_per_ch
+            while True:
+                if check_fn():
+                    return True
+                if time.time() >= t_end:
+                    break
+                time.sleep(0.1)
+            if current == start_ch:
+                rounds += 1
         return False
 

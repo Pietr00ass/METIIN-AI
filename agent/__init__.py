@@ -52,6 +52,7 @@ DEFAULT_CFG: Dict[str, Any] = {
     },
     "cooldowns": {"slot_min": 10},
     "priority": ["boss", "metin", "potwory"],
+    "channel": {"settle_sec": 5.0, "timeout_per_ch": 5.0},
     "teleport": {
         "slots": [],
         "no_target_sec": 10,
