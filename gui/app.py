@@ -169,9 +169,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(central)
         layout = QtWidgets.QHBoxLayout(central)
 
-        # left pane with controls
-        left = QtWidgets.QVBoxLayout()
-        layout.addLayout(left, 1)
+        # left pane with controls inside a scroll area so all sections remain accessible
+        left_widget = QtWidgets.QWidget()
+        left = QtWidgets.QVBoxLayout(left_widget)
+        left_scroll = QtWidgets.QScrollArea()
+        left_scroll.setWidget(left_widget)
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        layout.addWidget(left_scroll, 1)
 
         # settings group
         settings_box = QtWidgets.QGroupBox("Ustawienia")
