@@ -342,6 +342,8 @@ class MainWindow(QtWidgets.QMainWindow):
         left.addLayout(log_lvl_layout)
         self.log_view = QtWidgets.QPlainTextEdit()
         self.log_view.setReadOnly(True)
+        self.log_view.setMaximumBlockCount(3)
+        self.log_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         left.addWidget(self.log_view)
 
         left.addStretch(1)
@@ -428,6 +430,9 @@ class MainWindow(QtWidgets.QMainWindow):
         font = QtGui.QFont()
         font.setPointSizeF(self.base_font_pt * effective_scale)
         QtWidgets.QApplication.setFont(font)
+        # Ensure log view shows exactly three lines at the current scale
+        metrics = QtGui.QFontMetrics(font)
+        self.log_view.setFixedHeight(int(metrics.lineSpacing() * 4))
 
         if effective_scale < scale:
             self.set_status("Skala dopasowana do dostępnej rozdzielczości ekranu.")
