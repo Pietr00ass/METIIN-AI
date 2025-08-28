@@ -10,6 +10,7 @@ import pyautogui
 from recorder.window_capture import WindowCapture
 
 from .template_matcher import TemplateMatcher
+from .wasd import KeyHold
 
 
 class ChannelSwitcher:
@@ -21,7 +22,13 @@ class ChannelSwitcher:
     enabled which skips the actual mouse interaction for testing purposes.
     """
 
-    def __init__(self, win: WindowCapture, templates_dir: str, dry: bool = False):
+    def __init__(
+        self,
+        win: WindowCapture,
+        templates_dir: str,
+        dry: bool = False,
+        keys: KeyHold | None = None,
+    ):
         self.win = win
         if not os.path.isdir(templates_dir):
             raise FileNotFoundError(
@@ -37,6 +44,7 @@ class ChannelSwitcher:
             )
         self.tm = TemplateMatcher(templates_dir)
         self.dry = dry
+        self.keys = keys
 
     # ------------------------------------------------------------------
     # Frame helpers
@@ -135,6 +143,22 @@ class ChannelSwitcher:
                     time.sleep(post_wait)
                 return True
             time.sleep(0.2)
+        if self.keys:
+            if hasattr(self.win, "focus"):
+                self.win.focus()
+            if hasattr(self.win, "is_foreground") and not self.win.is_foreground():
+                time.sleep(0.1)
+                if hasattr(self.win, "focus"):
+                    self.win.focus()
+                if hasattr(self.win, "is_foreground") and not self.win.is_foreground():
+                    return False
+            self.keys.press("ctrl")
+            self.keys.press(str(ch))
+            self.keys.release(str(ch))
+            self.keys.release("ctrl")
+            if post_wait:
+                time.sleep(post_wait)
+            return True
         return False
 
     def current_channel_guess(self, thresh: float = 0.82) -> Optional[int]:
