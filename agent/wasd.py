@@ -57,7 +57,10 @@ def _send_scan(scan: int, keyup: bool = False, extended: bool = False) -> None:
     if pydirectinput is not None and key:
         func = pydirectinput.keyUp if keyup else pydirectinput.keyDown
         try:
-            result = func(key)
+            # ``pydirectinput`` adds a small pause between calls by default
+            # which would slow down rapid key sequences.  Pass ``_pause=False``
+            # to disable this behavior and send the event immediately.
+            result = func(key, _pause=False)
             if result is not False:
                 return
             logger.warning(
