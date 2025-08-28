@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import os
 import time
+from enum import Enum, auto
 
 import easyocr
 import numpy as np
 import pyautogui
+from PIL import Image
 
 from recorder.window_capture import WindowCapture
 
@@ -15,6 +18,15 @@ from .wasd import KeyHold
 
 CFG = get_config()
 pyautogui.PAUSE = CFG.get("controls", {}).get("mouse_pause", 0.02)
+
+logger = logging.getLogger(__name__)
+
+
+class TeleportResult(Enum):
+    OK = "ok"
+    TEMPLATE_NOT_FOUND = "template_not_found"
+    OCR_MISS = "ocr_miss"
+    WINDOW_NOT_FOREGROUND = "window_not_foreground"
 
 
 class Teleporter:
@@ -68,6 +80,19 @@ class Teleporter:
     def _frame(self) -> np.ndarray:
         fr = self.win.grab()
         return np.array(fr)[:, :, :3].copy()
+
+    def _save_panel(self, frame: np.ndarray, reason: TeleportResult) -> None:
+        """Save current panel frame for debugging failures."""
+        try:
+            log_dir = self.cfg.get("paths", {}).get("log_dir", "runs")
+            os.makedirs(log_dir, exist_ok=True)
+            fname = os.path.join(
+                log_dir, f"tp_fail_{reason.value}_{int(time.time())}.png"
+            )
+            Image.fromarray(frame).save(fname)
+            logger.debug("Teleport failure screenshot saved to %s", fname)
+        except Exception:
+            logger.debug("Could not save teleport failure screenshot", exc_info=True)
 
     def _safe_click(self, x: int, y: int) -> None:
         if self.dry:
@@ -124,23 +149,30 @@ class Teleporter:
         return None
 
     # ---- teleportacja ----
-    def teleport_slot(self, slot: int, page_label: str) -> bool:
+    def teleport_slot(self, slot: int, page_label: str) -> TeleportResult:
         """Teleportuj do danego numeru slotu na podanej stronie.
 
-        Zwraca ``True`` gdy udało się kliknąć w przycisk ``Wczytaj`` dla
-        wskazanego slotu. Metoda korzysta z prostego OCR do odszukania
-        wiersza z numerem slotu.
+        Zwraca :class:`TeleportResult` opisujący rezultat próby
+        teleportacji.  Przy niepowodzeniu zrzut panelu jest zapisywany w
+        ``runs/`` (lub w katalogu wskazanym przez ``paths.log_dir`` w
+        konfiguracji).
         """
 
         # otwórz panel i przejdź do strony
         self.open_panel()
+        if not self.win.is_foreground():
+            return TeleportResult.WINDOW_NOT_FOREGROUND
         if not self.go_page(page_label):
-            return False
+            frame = self._frame()
+            self._save_panel(frame, TeleportResult.TEMPLATE_NOT_FOUND)
+            return TeleportResult.TEMPLATE_NOT_FOUND
 
         # wyszukaj wiersz slotu (OCR)
         pos = self._find_row_by_text(str(slot))
         if pos is None:
-            return False
+            frame = self._frame()
+            self._save_panel(frame, TeleportResult.OCR_MISS)
+            return TeleportResult.OCR_MISS
 
         # przekształć współrzędne z ROI na współrzędne ekranu
         L, T, w, h = self.win.region
@@ -157,12 +189,13 @@ class Teleporter:
             frame, "wczytaj", thresh=self.load_btn_thresh, multi_scale=True
         )
         if not m:
-            return False
+            self._save_panel(frame, TeleportResult.TEMPLATE_NOT_FOUND)
+            return TeleportResult.TEMPLATE_NOT_FOUND
         cx, cy = m["center"]
         self._safe_click(L + cx, T + cy)
         time.sleep(self.after_load_delay)
-        return True
+        return TeleportResult.OK
 
-    def teleport(self, slot: int, page_label: str) -> bool:
+    def teleport(self, slot: int, page_label: str) -> TeleportResult:
         """Zachowana dla kompatybilności nazwa ``teleport``."""
         return self.teleport_slot(slot, page_label)

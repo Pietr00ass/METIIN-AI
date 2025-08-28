@@ -47,7 +47,7 @@ from agent.channel import ChannelSwitcher
 from agent.cycle import CycleFarm
 from agent.detector import ObjectDetector
 from agent.hunt_destroy import HuntDestroy
-from agent.teleport import Teleporter
+from agent.teleport import Teleporter, TeleportResult
 from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
 
@@ -669,11 +669,14 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.set_status("Nie znaleziono okna.")
                     return
                 tp = Teleporter(win, cfg["paths"]["templates_dir"], use_ocr=True)
-                ok = tp.teleport(point, side)
-                if not ok:
-                    self.set_status(
-                        "Nie udało się kliknąć elementów w panelu teleportu (sprawdź OCR/templates)"
-                    )
+                res = tp.teleport(point, side)
+                if res is not TeleportResult.OK:
+                    msg_map = {
+                        TeleportResult.TEMPLATE_NOT_FOUND: "Nie znaleziono szablonu w panelu teleportu.",
+                        TeleportResult.OCR_MISS: "Nie rozpoznano wskazanego slotu (OCR).",
+                        TeleportResult.WINDOW_NOT_FOREGROUND: "Okno gry nie jest aktywne.",
+                    }
+                    self.set_status(msg_map.get(res, "Teleportacja nie powiodła się."))
                 hd = HuntDestroy(cfg, win)
                 t_end = time.time() + minutes * 60
                 period = cfg.get("scan", {}).get("period", 1 / 15)
