@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import time
 
 import numpy as np
 
@@ -11,6 +10,7 @@ from .channel import ChannelSwitcher
 from .detector import ObjectDetector
 from .interaction import click_bbox_center
 from .movement import MovementController
+from .scanner import AreaScanner
 from .search import SearchManager
 from .targets import pick_target
 from .teleport import Teleporter
@@ -42,7 +42,19 @@ class HuntDestroy:
         self.desired_w = cfg["policy"].get("desired_box_w", 0.12)
         self.deadzone = cfg["policy"].get("deadzone_x", 0.05)
         self.priority = cfg.get("priority", ["boss", "metin", "potwory"])
-        self.period = cfg.get("scan", {}).get("period", 1 / 15)
+        scan_cfg = cfg.get("scan", {})
+        self.period = scan_cfg.get("period", 1 / 15)
+        self.scanner: AreaScanner | None = None
+        if scan_cfg.get("enabled"):
+            rot_key = cfg.get("controls", {}).get("keys", {}).get("rotate", "e")
+            self.scanner = AreaScanner(
+                self.keys,
+                spin_key=rot_key,
+                sweep_ms=scan_cfg.get("sweep_ms", 250),
+                sweeps=scan_cfg.get("sweeps", 8),
+                idle_sec=scan_cfg.get("idle_sec", 1.5),
+                pause=scan_cfg.get("pause", 0.12),
+            )
 
         tp_cfg = cfg.get("teleport", {})
         self.search = SearchManager(
@@ -60,8 +72,6 @@ class HuntDestroy:
         )
         self._last_tgt = None
         self._prev_names: set[str] = set()
-        self._spin_start: float | None = None
-        self._spin_dir = "a"
 
     def step(self):
         fr = self.win.grab()
@@ -81,28 +91,12 @@ class HuntDestroy:
             logger.debug("Cel %s zniknął", self._last_tgt.get("name", "?"))
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
-            now = time.time()
-            spin_done = False
-            if self.movement.enabled:
-                if self._spin_start is None:
-                    self._spin_start = now
-                    self.keys.press(self._spin_dir)
-                elif now - self._spin_start >= 4:
-                    self.keys.release(self._spin_dir)
-                    self._spin_start = None
-                    self._spin_dir = "d" if self._spin_dir == "a" else "a"
-                    spin_done = True
-            else:
-                self._spin_start = None
-            if spin_done or not self.movement.enabled:
-                self.search.handle_no_target(spin_done)
+            if self.scanner:
+                self.scanner.scan()
+                self.search.handle_no_target(True)
             self._last_tgt = None
             return
 
-        if self._spin_start is not None:
-            if self.movement.enabled:
-                self.keys.release(self._spin_dir)
-            self._spin_start = None
         self.search.update_last_target()
 
         bw = None
