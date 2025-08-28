@@ -83,21 +83,25 @@ class HuntDestroy:
             logger.debug("Brak celu w zasięgu")
             now = time.time()
             spin_done = False
-            if self._spin_start is None:
-                self._spin_start = now
-                self.keys.press(self._spin_dir)
-            elif now - self._spin_start >= 4:
-                self.keys.release(self._spin_dir)
+            if self.movement.enabled:
+                if self._spin_start is None:
+                    self._spin_start = now
+                    self.keys.press(self._spin_dir)
+                elif now - self._spin_start >= 4:
+                    self.keys.release(self._spin_dir)
+                    self._spin_start = None
+                    self._spin_dir = "d" if self._spin_dir == "a" else "a"
+                    spin_done = True
+            else:
                 self._spin_start = None
-                self._spin_dir = "d" if self._spin_dir == "a" else "a"
-                spin_done = True
-            if spin_done:
+            if spin_done or not self.movement.enabled:
                 self.search.handle_no_target(spin_done)
             self._last_tgt = None
             return
 
         if self._spin_start is not None:
-            self.keys.release(self._spin_dir)
+            if self.movement.enabled:
+                self.keys.release(self._spin_dir)
             self._spin_start = None
         self.search.update_last_target()
 
