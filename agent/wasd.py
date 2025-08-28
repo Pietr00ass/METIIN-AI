@@ -55,11 +55,24 @@ def _send_scan(scan: int, keyup: bool = False, extended: bool = False) -> None:
 
     key = REVERSE_SCANCODES.get(scan)
     if pydirectinput is not None and key:
-        if keyup:
-            pydirectinput.keyUp(key)
-        else:
-            pydirectinput.keyDown(key)
-        return
+        func = pydirectinput.keyUp if keyup else pydirectinput.keyDown
+        try:
+            result = func(key)
+            if result is not False:
+                return
+            logger.warning(
+                "pydirectinput.%s returned False for %r; falling back to SendInput",
+                func.__name__,
+                key,
+            )
+        except Exception:  # pragma: no cover - log and fall back
+            logger.warning(
+                "pydirectinput.%s failed for %r; falling back to SendInput",
+                func.__name__,
+                key,
+                exc_info=True,
+            )
+        # Fall through to the Windows ``SendInput`` path
 
     if _user32 is None:
         return
