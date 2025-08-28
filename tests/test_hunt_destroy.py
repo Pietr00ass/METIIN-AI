@@ -129,7 +129,7 @@ class _StubSearch:
     def __init__(self, *a, **k):
         self.calls = 0
 
-    def handle_no_target(self):
+    def handle_no_target(self, spin_done):
         self.calls += 1
 
     def update_last_target(self):
