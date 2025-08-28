@@ -40,6 +40,9 @@ teleport:
   no_target_sec: 10
   channel_every: 8
 channels: [1,2,3,4,5,6,7,8]
+channel:
+  settle_sec: 5.0
+  timeout_per_ch: 5.0
 cycle:
   ch_from: 1
   ch_to: 8

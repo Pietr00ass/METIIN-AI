@@ -152,5 +152,10 @@ def test_cycle_until_target_seen(tmp_path, monkeypatch):
         calls["n"] += 1
         return calls["n"] >= 3
 
-    assert cs.cycle_until_target_seen(check_fn, timeout=5, post_wait=0) is True
+    assert (
+        cs.cycle_until_target_seen(
+            check_fn, settle=0, timeout_per_ch=0, max_rounds=1
+        )
+        is True
+    )
     assert switched == [2, 3]
