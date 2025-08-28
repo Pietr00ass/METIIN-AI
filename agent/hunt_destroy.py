@@ -35,7 +35,10 @@ class HuntDestroy:
         self.keys = KeyHold(dry=dry, active_fn=getattr(self.win, "is_foreground", None))
         tdir = cfg["paths"]["templates_dir"]
         self.teleporter = Teleporter(self.win, tdir, use_ocr=True, dry=dry, cfg=cfg)
-        self.channel_switcher = ChannelSwitcher(self.win, tdir, dry=dry)
+        ch_hotkeys = cfg.get("channel", {}).get("hotkeys")
+        self.channel_switcher = ChannelSwitcher(
+            self.win, tdir, dry=dry, keys=self.keys, hotkeys=ch_hotkeys
+        )
         self.desired_w = cfg["policy"].get("desired_box_w", 0.12)
         self.deadzone = cfg["policy"].get("deadzone_x", 0.05)
         self.priority = cfg.get("priority", ["boss", "metin", "potwory"])
@@ -51,7 +54,10 @@ class HuntDestroy:
             tp_cfg.get("no_target_sec", 10),
             tp_cfg.get("channel_every", 8),
         )
-        self.movement = MovementController(self.keys, self.desired_w, self.deadzone)
+        move_enabled = cfg.get("controls", {}).get("movement", True)
+        self.movement = MovementController(
+            self.keys, self.desired_w, self.deadzone, enabled=move_enabled
+        )
         self._last_tgt = None
         self._prev_names: set[str] = set()
 

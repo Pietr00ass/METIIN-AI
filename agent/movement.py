@@ -10,12 +10,17 @@ logger = logging.getLogger(__name__)
 class MovementController:
     """Handle movement keys based on target position and obstacle steering."""
 
-    def __init__(self, keys: KeyHold, desired_w: float, deadzone: float):
+    def __init__(
+        self, keys: KeyHold, desired_w: float, deadzone: float, enabled: bool = True
+    ):
         self.keys = keys
         self.desired_w = desired_w
         self.deadzone = deadzone
+        self.enabled = enabled
 
-    def move(self, tgt: dict | None, steer: str | None, frame_size: tuple[int, int]):
+    def move(
+        self, tgt: dict | None, steer: str | None, frame_size: tuple[int, int]
+    ):
         """Update pressed keys to move towards the target and avoid obstacles.
 
         Parameters
@@ -36,6 +41,14 @@ class MovementController:
         """
         W, H = frame_size
         desired: set[str] = set()
+
+        bw = None
+        if not self.enabled:
+            if tgt:
+                x1, _, x2, _ = tgt["bbox"]
+                bw = (x2 - x1) / W
+            self.keys.release_all()
+            return bw
 
         if steer == "left":
             logger.debug("Omijanie przeszkody: skręt w lewo")
