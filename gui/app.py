@@ -383,18 +383,37 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def apply_scale(self, scale: float) -> None:
         """Apply scaling to window size, video widget and global font."""
-        self.scale = scale
-        self.resize(
-            int(self.base_window_size.width() * scale),
-            int(self.base_window_size.height() * scale),
-        )
+        # Determine maximum geometry available on the primary screen
+        screen = QtWidgets.QApplication.primaryScreen()
+        avail = screen.availableGeometry() if screen else QtCore.QRect()
+
+        base_w = self.base_window_size.width()
+        base_h = self.base_window_size.height()
+
+        # Desired size based purely on the requested scale
+        desired_w = int(base_w * scale)
+        desired_h = int(base_h * scale)
+
+        # Clamp to available screen geometry
+        clamped_w = min(desired_w, avail.width()) if avail.width() else desired_w
+        clamped_h = min(desired_h, avail.height()) if avail.height() else desired_h
+
+        # Effective scale actually applied
+        effective_scale = min(clamped_w / base_w, clamped_h / base_h)
+        self.scale = effective_scale
+
+        # Resize window using clamped dimensions
+        self.resize(clamped_w, clamped_h)
         self.video.setMinimumSize(
-            int(self.base_video_size.width() * scale),
-            int(self.base_video_size.height() * scale),
+            int(self.base_video_size.width() * effective_scale),
+            int(self.base_video_size.height() * effective_scale),
         )
         font = QtGui.QFont()
-        font.setPointSizeF(self.base_font_pt * scale)
+        font.setPointSizeF(self.base_font_pt * effective_scale)
         QtWidgets.QApplication.setFont(font)
+
+        if effective_scale < scale:
+            self.set_status("Skala dopasowana do dostępnej rozdzielczości ekranu.")
 
     def browse_templates_dir(self) -> None:
         path = QtWidgets.QFileDialog.getExistingDirectory(
