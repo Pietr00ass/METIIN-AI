@@ -41,4 +41,3 @@ def test_send_scan_falls_back_on_exception(caplog):
     fake_pd.keyUp.assert_called_once_with("w", _pause=False)
     user32.SendInput.assert_called_once()
     assert any("pydirectinput.keyUp" in r.message for r in caplog.records)
-

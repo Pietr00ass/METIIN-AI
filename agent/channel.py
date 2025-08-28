@@ -157,6 +157,7 @@ class ChannelSwitcher:
                     time.sleep(post_wait)
                 return True
         return False
+
     def current_channel_guess(self, thresh: float = 0.82) -> Optional[int]:
         """Guess currently selected channel by looking for gold buttons."""
 
@@ -221,4 +222,3 @@ class ChannelSwitcher:
             if current == start_ch:
                 rounds += 1
         return False
-
