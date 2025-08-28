@@ -221,8 +221,9 @@ class FailSafeException(Exception):
 def failSafeCheck():
     if FAILSAFE and tuple(position()) in FAILSAFE_POINTS:
         raise FailSafeException(
-            "PyDirectInput fail-safe triggered from mouse moving to a corner of the screen. To disable this " \
-            "fail-safe, set pydirectinput.FAILSAFE to False. DISABLING FAIL-SAFE IS NOT RECOMMENDED."
+            "PyDirectInput fail-safe triggered from mouse moving to a corner of the screen. "
+            "To disable this fail-safe, set pydirectinput.FAILSAFE to False. "
+            "DISABLING FAIL-SAFE IS NOT RECOMMENDED."
         )
 
 
@@ -266,7 +267,7 @@ def position(x=None, y=None):
     return (x if x else cursor.x, y if y else cursor.y)
 
 
-# size() works exactly the same as PyAutoGUI. I've duplicated it here so that _to_windows_coordinates() can use it 
+# size() works exactly the same as PyAutoGUI. I've duplicated it here so that _to_windows_coordinates() can use it
 # to calculate the window size.
 def size():
     return (ctypes.windll.user32.GetSystemMetrics(0), ctypes.windll.user32.GetSystemMetrics(1))
@@ -277,7 +278,7 @@ def size():
 # Ignored parameters: duration, tween, logScreenshot
 @_genericPyDirectInputChecks
 def mouseDown(x=None, y=None, button=PRIMARY, duration=None, tween=None, logScreenshot=None, _pause=True):
-    if not x is None or not y is None:
+    if x is not None or y is not None:
         moveTo(x, y)
 
     ev = None
@@ -301,7 +302,7 @@ def mouseDown(x=None, y=None, button=PRIMARY, duration=None, tween=None, logScre
 # Ignored parameters: duration, tween, logScreenshot
 @_genericPyDirectInputChecks
 def mouseUp(x=None, y=None, button=PRIMARY, duration=None, tween=None, logScreenshot=None, _pause=True):
-    if not x is None or not y is None:
+    if x is not None or y is not None:
         moveTo(x, y)
 
     ev = None
@@ -326,7 +327,7 @@ def mouseUp(x=None, y=None, button=PRIMARY, duration=None, tween=None, logScreen
 @_genericPyDirectInputChecks
 def click(x=None, y=None, clicks=1, interval=0.0, button=PRIMARY, duration=None, tween=None, logScreenshot=None,
           _pause=True):
-    if not x is None or not y is None:
+    if x is not None or y is not None:
         moveTo(x, y)
 
     ev = None
@@ -376,9 +377,9 @@ def tripleClick(x=None, y=None, interval=0.0, button=LEFT, duration=0.0, tween=N
 
 
 # Ignored parameters: duration, tween, logScreenshot
-# PyAutoGUI uses ctypes.windll.user32.SetCursorPos(x, y) for this, which might still work fine in DirectInput 
+# PyAutoGUI uses ctypes.windll.user32.SetCursorPos(x, y) for this, which might still work fine in DirectInput
 # environments.
-# Use the relative flag to do a raw win32 api relative movement call (no MOUSEEVENTF_ABSOLUTE flag), which may be more 
+# Use the relative flag to do a raw win32 api relative movement call (no MOUSEEVENTF_ABSOLUTE flag), which may be more
 # appropriate for some applications. Note that this may produce inexact results depending on mouse movement speed.
 @_genericPyDirectInputChecks
 def moveTo(x=None, y=None, duration=None, tween=None, logScreenshot=False, _pause=True, relative=False):
@@ -397,7 +398,7 @@ def moveTo(x=None, y=None, duration=None, tween=None, logScreenshot=False, _paus
 
 # Ignored parameters: duration, tween, logScreenshot
 # move() and moveRel() are equivalent.
-# Use the relative flag to do a raw win32 api relative movement call (no MOUSEEVENTF_ABSOLUTE flag), which may be more 
+# Use the relative flag to do a raw win32 api relative movement call (no MOUSEEVENTF_ABSOLUTE flag), which may be more
 # appropriate for some applications.
 @_genericPyDirectInputChecks
 def moveRel(xOffset=None, yOffset=None, duration=None, tween=None, logScreenshot=False, _pause=True, relative=False):
@@ -411,8 +412,8 @@ def moveRel(xOffset=None, yOffset=None, duration=None, tween=None, logScreenshot
     else:
         # When using MOUSEEVENTF_MOVE for relative movement the results may be inconsistent.
         # "Relative mouse motion is subject to the effects of the mouse speed and the two-mouse threshold values. A user
-        # sets these three values with the Pointer Speed slider of the Control Panel's Mouse Properties sheet. You can 
-        # obtain and set these values using the SystemParametersInfo function." 
+        # sets these three values with the Pointer Speed slider of the Control Panel's Mouse Properties sheet. You can
+        # obtain and set these values using the SystemParametersInfo function."
         # https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput
         # https://stackoverflow.com/questions/50601200/pyhon-directinput-mouse-relative-moving-act-not-as-expected
         extra = ctypes.c_ulong(0)
@@ -435,7 +436,7 @@ move = moveRel
 # Missing feature: auto shift for special characters (ie. '!', '@', '#'...)
 @_genericPyDirectInputChecks
 def keyDown(key, logScreenshot=None, _pause=True):
-    if not key in KEYBOARD_MAPPING or KEYBOARD_MAPPING[key] is None:
+    if key not in KEYBOARD_MAPPING or KEYBOARD_MAPPING[key] is None:
         return
 
     keybdFlags = KEYEVENTF_SCANCODE
@@ -477,7 +478,7 @@ def keyDown(key, logScreenshot=None, _pause=True):
 # Missing feature: auto shift for special characters (ie. '!', '@', '#'...)
 @_genericPyDirectInputChecks
 def keyUp(key, logScreenshot=None, _pause=True):
-    if not key in KEYBOARD_MAPPING or KEYBOARD_MAPPING[key] is None:
+    if key not in KEYBOARD_MAPPING or KEYBOARD_MAPPING[key] is None:
         return
 
     keybdFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP
@@ -520,7 +521,7 @@ def keyUp(key, logScreenshot=None, _pause=True):
 # nearly identical to PyAutoGUI's implementation
 @_genericPyDirectInputChecks
 def press(keys, presses=1, interval=0.0, logScreenshot=None, _pause=True):
-    if type(keys) == str:
+    if isinstance(keys, str):
         if len(keys) > 1:
             keys = keys.lower()
         keys = [keys]  # If keys is 'enter', convert it to ['enter'].
