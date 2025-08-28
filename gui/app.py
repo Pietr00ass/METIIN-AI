@@ -511,6 +511,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 "pause": 0.12,
             },
             "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
+            "channel": {"settle_sec": 5.0, "timeout_per_ch": 2.5},
             "ui": {"scale": float(self.scale_spin.value())},
         }
         return cfg
