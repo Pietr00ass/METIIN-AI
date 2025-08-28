@@ -35,9 +35,7 @@ class HuntDestroy:
         self.keys = KeyHold(dry=dry, active_fn=getattr(self.win, "is_foreground", None))
         tdir = cfg["paths"]["templates_dir"]
         self.teleporter = Teleporter(self.win, tdir, use_ocr=True, dry=dry, cfg=cfg)
-        self.channel_switcher = ChannelSwitcher(
-            self.win, tdir, dry=dry, keys=self.keys
-        )
+        self.channel_switcher = ChannelSwitcher(self.win, tdir, dry=dry, keys=self.keys)
         self.desired_w = cfg["policy"].get("desired_box_w", 0.12)
         self.deadzone = cfg["policy"].get("deadzone_x", 0.05)
         self.priority = cfg.get("priority", ["boss", "metin", "potwory"])
@@ -56,6 +54,8 @@ class HuntDestroy:
         self.movement = MovementController(self.keys, self.desired_w, self.deadzone)
         self._last_tgt = None
         self._prev_names: set[str] = set()
+        self._spin_start: float | None = None
+        self._spin_dir = "a"
 
     def step(self):
         fr = self.win.grab()
@@ -75,9 +75,22 @@ class HuntDestroy:
             logger.debug("Cel %s zniknął", self._last_tgt.get("name", "?"))
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
-            self.search.handle_no_target()
-        else:
-            self.search.update_last_target()
+            now = time.time()
+            if self._spin_start is None:
+                self._spin_start = now
+                self.keys.press(self._spin_dir)
+            elif now - self._spin_start >= 4:
+                self.keys.release(self._spin_dir)
+                self._spin_start = None
+                self._spin_dir = "d" if self._spin_dir == "a" else "a"
+                self.search.handle_no_target()
+            self._last_tgt = None
+            return
+
+        if self._spin_start is not None:
+            self.keys.release(self._spin_dir)
+            self._spin_start = None
+        self.search.update_last_target()
 
         bw = None
         if tgt:
