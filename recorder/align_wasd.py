@@ -1,42 +1,75 @@
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
 import cv2
 import numpy as np
 
-# Mapping of raw scan codes to WASD keys
-SCANCODE_TO_KEY = {17: "w", 30: "a", 31: "s", 32: "d"}
+from agent.wasd import REVERSE_SCANCODES
 
 
-def align(video_path, events_path, out_dir, image_size=224, region=None):
-    Path(out_dir).mkdir(parents=True, exist_ok=True)
-    keys = []
-    with open(events_path, "r") as f:
-        for line in f:
-            e = json.loads(line)
-            if e["kind"] == "key":
-                sc = e["payload"].get("scancode")
-                k = SCANCODE_TO_KEY.get(sc)
-                if k:
-                    down = e["payload"].get("down", False)
-                    keys.append((e["ts"], "down" if down else "up", k))
-    held = {"w": False, "a": False, "s": False, "d": False}
+WASD_KEYS = ("w", "a", "s", "d")
+
+
+def _extract_key(payload: dict) -> str | None:
+    """Return canonical key name from an event payload or ``None``."""
+    key = payload.get("key")
+    if key:
+        return key if key in WASD_KEYS else None
+    sc = payload.get("scancode")
+    if sc is not None:
+        key = REVERSE_SCANCODES.get(sc)
+        if key in WASD_KEYS:
+            return key
+    return None
+
+
+def align(video_path: str, events_path: str, out_dir: str) -> None:
+    """Align recorded video frames with WASD key states.
+
+    For each frame of ``video_path`` a corresponding ``*.npz`` file is written
+    to ``out_dir`` containing the image (resized to 224x224) and a four-element
+    array indicating the pressed state of ``[w, a, s, d]`` keys.
+    """
+
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    # Load and preprocess key events
+    with open(events_path, "r", encoding="utf-8") as f:
+        raw_events = [json.loads(line) for line in f]
+
     cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    idx = 0
-    ok = True
-    while ok:
-        ok, frame = cap.read()
-        idx += 1
-        if not ok:
+    fps = cap.get(cv2.CAP_PROP_FPS) or 1.0
+
+    events = []
+    for e in raw_events:
+        if e.get("kind") != "key":
+            continue
+        key = _extract_key(e["payload"])
+        if key is None:
+            continue
+        frame_idx = int(e["ts"] * fps) - 1
+        events.append((frame_idx, key, e["payload"].get("down", False)))
+    events.sort()
+
+    pressed = {k: 0.0 for k in WASD_KEYS}
+    ev_i = 0
+    frame_idx = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
             break
-        ts = idx / max(fps, 1.0)
-        for t, typ, k in list(keys):
-            if abs(t - ts) <= 0.05 and k in ("w", "a", "s", "d"):
-                held[k] = typ == "down"
-        img = cv2.resize(frame, (image_size, image_size))
-        y = np.array([held["w"], held["a"], held["s"], held["d"]], dtype=np.float32)
-        np.savez_compressed(
-            Path(out_dir) / f"kbd_{idx:07d}.npz", img=img[:, :, ::-1], y=y
-        )
+        # apply all events up to current frame index
+        while ev_i < len(events) and events[ev_i][0] <= frame_idx:
+            _, key, down = events[ev_i]
+            pressed[key] = 1.0 if down else 0.0
+            ev_i += 1
+        img = cv2.resize(frame, (224, 224))
+        y = np.array([pressed[k] for k in WASD_KEYS], dtype=float)
+        np.savez_compressed(out / f"{frame_idx:04d}.npz", img=img, y=y)
+        frame_idx += 1
+
     cap.release()

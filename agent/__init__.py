@@ -12,8 +12,12 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 from typing import Any, Dict
+import types
 
-import yaml
+try:  # yaml is optional for tests
+    import yaml
+except Exception:  # pragma: no cover - provide dummy fallback
+    yaml = types.SimpleNamespace(safe_load=lambda f: {})
 
 # ---------------------------------------------------------------------------
 # Default configuration used when keys are missing from the YAML file.
