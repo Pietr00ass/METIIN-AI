@@ -33,6 +33,11 @@ def load_teleport_config(path: str | Path = "config/teleport.yaml") -> Dict[str,
 
 _cfg = load_teleport_config()
 
+# Delays configurable via ``config/teleport.yaml`` with sane defaults
+DELAY_AFTER_PANEL: float = float(_cfg.get("delay_after_panel", 0.5))
+DELAY_AFTER_TELEPORT: float = float(_cfg.get("delay_after_teleport", 1.0))
+DELAY_AFTER_CHANNEL: float = float(_cfg.get("delay_after_channel", 5.0))
+
 # Public mappings with fallback to empty structures
 positions_by_channel: Dict[int, List[Tuple[int, int]]] = _cfg.get(
     "positions_by_channel", {}
@@ -50,7 +55,7 @@ def open_panel() -> None:  # pragma: no cover - provided by the game
 def run_positions(
     channel: int,
     *,
-    delay: float = 1.0,
+    delay: float = DELAY_AFTER_TELEPORT,
     close_panel: Callable[[], None] | None = None,
 ) -> None:
     """Run all configured positions for ``channel``.
@@ -67,6 +72,7 @@ def run_positions(
         return
 
     open_panel()
+    time.sleep(DELAY_AFTER_PANEL)
     for x, y in positions:
         pyautogui.click(x, y)
         pyautogui.press("e")
@@ -75,7 +81,7 @@ def run_positions(
             close_panel()
 
 
-def change_channel(target_ch: int, *, delay: float = 5.0) -> None:
+def change_channel(target_ch: int, *, delay: float = DELAY_AFTER_CHANNEL) -> None:
     """Click the button for ``target_ch`` and wait for a channel switch."""
 
     coords = channel_buttons.get(target_ch)
@@ -96,6 +102,9 @@ def main() -> None:  # pragma: no cover - helper script
 __all__ = [
     "positions_by_channel",
     "channel_buttons",
+    "DELAY_AFTER_PANEL",
+    "DELAY_AFTER_TELEPORT",
+    "DELAY_AFTER_CHANNEL",
     "load_teleport_config",
     "open_panel",
     "run_positions",

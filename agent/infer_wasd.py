@@ -53,6 +53,17 @@ class WasdVisionAgent:
         if not self.win.locate(timeout=5):
             raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
         self.hd = HuntDestroy(self.cfg, self.win)
-        while True:
-            self.hd.step()
-            time.sleep(self.period)
+        try:
+            while True:
+                self.hd.step()
+                time.sleep(self.period)
+        except KeyboardInterrupt:
+            if self.hd:
+                try:
+                    self.hd.teleporter.close_panel()
+                except Exception:
+                    pass
+                try:
+                    self.hd.keys.release_all()
+                except Exception:
+                    pass
