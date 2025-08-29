@@ -90,6 +90,10 @@ class CycleFarm:
             self.keys.stop()
         except Exception:
             pass
+        try:
+            self.win.close()
+        except Exception:
+            pass
 
     # ---- detekcje ----
     def _any_target_seen(self) -> bool:
@@ -196,4 +200,5 @@ class CycleFarm:
                 self.cooldown[key] = time.time()
 
         # zakończ po przejściu całego cyklu
+        self.win.close()
         return

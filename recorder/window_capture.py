@@ -18,6 +18,21 @@ class WindowCapture:
         self.region = None  # (left, top, width, height)
         self.sct = mss.mss()
 
+    def close(self) -> None:
+        """Release underlying screenshot resources."""
+        try:
+            self.sct.close()
+        except Exception:
+            pass
+
+    # -----------------------------------------------------
+    # Context manager API
+    def __enter__(self) -> "WindowCapture":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
     def locate(self, timeout: float | None = None) -> bool:
         """Znajdź okno po fragmencie tytułu i ustaw region.
 

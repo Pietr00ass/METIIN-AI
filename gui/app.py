@@ -112,41 +112,41 @@ class PreviewWorker(QtCore.QThread):
     def run(self) -> None:
         """Main loop capturing frames from the window and emitting them."""
         try:
-            cap = WindowCapture(self.title)
-            self.status.emit("Szukam okna…")
-            if not cap.locate(timeout=5):
-                self.status.emit("Nie znaleziono okna.")
-                return
-            self.status.emit("Znaleziono okno. Podgląd działa.")
-            while not self._stop:
-                fr = cap.grab()
-                frame = np.array(fr)[
-                    :, :, :3
-                ].copy()  # convert BGRA to BGR and ensure contiguous
-                if self._overlay and self._det:
-                    try:
-                        dets = self._det.infer(frame)
-                        for d in dets:
-                            x1, y1, x2, y2 = map(int, d["bbox"])
-                            color = (0, 0, 255)
-                            if d["name"] == "boss":
-                                color = (0, 215, 255)
-                            elif d["name"] == "potwory":
-                                color = (255, 128, 0)
-                            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                            cv2.putText(
-                                frame,
-                                f"{d['name']} {d['conf']:.2f}",
-                                (x1, max(12, y1 - 6)),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                0.5,
-                                color,
-                                1,
-                            )
-                    except Exception as exc:
-                        self.status.emit(f"Overlay YOLO błąd: {exc}")
-                self.frame_ready.emit(frame)
-                self.msleep(33)
+            with WindowCapture(self.title) as cap:
+                self.status.emit("Szukam okna…")
+                if not cap.locate(timeout=5):
+                    self.status.emit("Nie znaleziono okna.")
+                    return
+                self.status.emit("Znaleziono okno. Podgląd działa.")
+                while not self._stop:
+                    fr = cap.grab()
+                    frame = np.array(fr)[
+                        :, :, :3
+                    ].copy()  # convert BGRA to BGR and ensure contiguous
+                    if self._overlay and self._det:
+                        try:
+                            dets = self._det.infer(frame)
+                            for d in dets:
+                                x1, y1, x2, y2 = map(int, d["bbox"])
+                                color = (0, 0, 255)
+                                if d["name"] == "boss":
+                                    color = (0, 215, 255)
+                                elif d["name"] == "potwory":
+                                    color = (255, 128, 0)
+                                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                                cv2.putText(
+                                    frame,
+                                    f"{d['name']} {d['conf']:.2f}",
+                                    (x1, max(12, y1 - 6)),
+                                    cv2.FONT_HERSHEY_SIMPLEX,
+                                    0.5,
+                                    color,
+                                    1,
+                                )
+                        except Exception as exc:
+                            self.status.emit(f"Overlay YOLO błąd: {exc}")
+                    self.frame_ready.emit(frame)
+                    self.msleep(33)
         except Exception as exc:
             self.status.emit(f"Błąd podglądu: {exc}")
 
@@ -645,13 +645,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_status("Podaj fragment tytułu okna.")
             self.btn_record.setChecked(False)
             return
-        wc = WindowCapture(title)
-        if not wc.locate(timeout=5):
-            self.set_status("Nie znaleziono okna.")
-            self.btn_record.setChecked(False)
-            return
-        wc.update_region()
-        l, t, w, h = wc.region
+        with WindowCapture(title) as wc:
+            if not wc.locate(timeout=5):
+                self.set_status("Nie znaleziono okna.")
+                self.btn_record.setChecked(False)
+                return
+            wc.update_region()
+            l, t, w, h = wc.region
 
         def job():
             try:
@@ -809,8 +809,9 @@ class MainWindow(QtWidgets.QMainWindow):
         cfg = self.build_cfg()
 
         def run():
+            cap = WindowCapture(cfg["window"]["title_substr"])
             try:
-                agent = HuntDestroy(cfg, WindowCapture(cfg["window"]["title_substr"]))
+                agent = HuntDestroy(cfg, cap)
                 if not agent.win.locate(timeout=5):
                     self.set_status("Nie znaleziono okna.")
                     return
@@ -821,6 +822,7 @@ class MainWindow(QtWidgets.QMainWindow):
             except Exception as exc:
                 self.set_status(f"Błąd agenta: {exc}")
             finally:
+                cap.close()
                 self.agent_thread = None
                 self.btn_agent.setChecked(False)
                 self.btn_agent.setText("Start agenta (YOLO + WASD)")
@@ -850,8 +852,8 @@ class MainWindow(QtWidgets.QMainWindow):
         cfg = self.build_cfg()
 
         def run():
+            win = WindowCapture(cfg["window"]["title_substr"])
             try:
-                win = WindowCapture(cfg["window"]["title_substr"])
                 if not win.locate(timeout=5):
                     self.set_status("Nie znaleziono okna.")
                     return
@@ -879,6 +881,7 @@ class MainWindow(QtWidgets.QMainWindow):
             except Exception as exc:
                 self.set_status(f"Błąd teleport+poluj: {exc}")
             finally:
+                win.close()
                 self.agent_thread = None
                 self.btn_tp_hunt.setChecked(False)
                 self.btn_tp_hunt.setText("Teleportuj i poluj")
@@ -944,31 +947,34 @@ class MainWindow(QtWidgets.QMainWindow):
             try:
                 cfg = self.build_cfg()
                 win = WindowCapture(cfg["window"]["title_substr"])
-                if not win.locate(timeout=5):
-                    self.set_status("Nie znaleziono okna.")
-                    return
-                ch = int(self.channel_combo.currentText().replace("CH", ""))
-                keys = KeyHold(
-                    dry=cfg.get("dry_run", False),
-                    active_fn=getattr(win, "is_foreground", None),
-                )
-                cs = ChannelSwitcher(
-                    win,
-                    cfg["paths"]["templates_dir"],
-                    dry=cfg.get("dry_run", False),
-                    keys=keys,
-                    hotkeys=cfg.get("channel", {}).get("hotkeys"),
-                )
                 try:
-                    ok = cs.switch(ch)
+                    if not win.locate(timeout=5):
+                        self.set_status("Nie znaleziono okna.")
+                        return
+                    ch = int(self.channel_combo.currentText().replace("CH", ""))
+                    keys = KeyHold(
+                        dry=cfg.get("dry_run", False),
+                        active_fn=getattr(win, "is_foreground", None),
+                    )
+                    cs = ChannelSwitcher(
+                        win,
+                        cfg["paths"]["templates_dir"],
+                        dry=cfg.get("dry_run", False),
+                        keys=keys,
+                        hotkeys=cfg.get("channel", {}).get("hotkeys"),
+                    )
+                    try:
+                        ok = cs.switch(ch)
+                    finally:
+                        keys.stop()
+                    msg = (
+                        f"Zmieniono kanał na CH{ch}"
+                        if ok
+                        else "Nie znaleziono przycisku CH – sprawdź szablony."
+                    )
+                    self.set_status(msg)
                 finally:
-                    keys.stop()
-                msg = (
-                    f"Zmieniono kanał na CH{ch}"
-                    if ok
-                    else "Nie znaleziono przycisku CH – sprawdź szablony."
-                )
-                self.set_status(msg)
+                    win.close()
             except Exception as exc:
                 self.set_status(f"Błąd zmiany kanału: {exc}")
             finally:
