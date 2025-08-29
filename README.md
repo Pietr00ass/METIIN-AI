@@ -65,6 +65,7 @@ The file ships with sensible defaults; copy it and adjust values for your setup.
 
 ### Templates
 UI templates for channel buttons, teleport pages and other elements are stored in [`assets/templates/`](assets/templates/). Use `tools/capture_template.py` to capture additional templates.
+Template matching logic that uses these assets lives in [`agent/template_matcher.py`](agent/template_matcher.py).
 
 ## Recording Input
 
