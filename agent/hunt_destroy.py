@@ -39,8 +39,8 @@ class HuntDestroy:
         self.channel_switcher = ChannelSwitcher(
             self.win, tdir, dry=dry, keys=self.keys, hotkeys=ch_hotkeys
         )
-        self.desired_w = cfg["policy"].get("desired_box_w", 0.12)
-        self.deadzone = cfg["policy"].get("deadzone_x", 0.05)
+        self.desired_w = float(cfg.get("policy", {}).get("desired_box_w", 0.12))
+        self.deadzone = float(cfg.get("policy", {}).get("deadzone_x", 0.05))
         self.priority = cfg.get("priority", ["boss", "metin", "potwory"])
         scan_cfg = cfg.get("scan", {})
         self.period = scan_cfg.get("period", 1 / 15)
