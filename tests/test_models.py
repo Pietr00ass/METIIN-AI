@@ -1,5 +1,5 @@
-import torch
-import torchvision.models as models
+import _torch_stub as torch
+import torchvision_stub.models as models
 import pytest
 
 from agent.model import ClickPolicy
