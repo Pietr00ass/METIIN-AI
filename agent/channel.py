@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+from dataclasses import dataclass
 from typing import Callable, Optional, Tuple
 
 import numpy as np
@@ -11,6 +12,25 @@ from recorder.window_capture import WindowCapture
 
 from .template_matcher import TemplateMatcher
 from .wasd import KeyHold
+
+
+@dataclass
+class TemplateMatch:
+    """Data returned when a template is successfully matched.
+
+    Attributes
+    ----------
+    rect:
+        Bounding box of the match in ``(x, y, w, h)`` format.
+    center:
+        Coordinates of the match centre ``(x, y)``.
+    score:
+        Matching score between ``0`` and ``1``.
+    """
+
+    rect: Tuple[int, int, int, int]
+    center: Tuple[int, int]
+    score: float
 
 
 class ChannelSwitcher:
@@ -33,9 +53,7 @@ class ChannelSwitcher:
     ):
         self.win = win
         if not os.path.isdir(templates_dir):
-            raise FileNotFoundError(
-                f"Brak katalogu z szablonami: {templates_dir}"
-            )
+            raise FileNotFoundError(f"Brak katalogu z szablonami: {templates_dir}")
         required = [f"ch{i}.png" for i in range(1, 9)]
         missing = [
             p for p in required if not os.path.isfile(os.path.join(templates_dir, p))
@@ -89,16 +107,29 @@ class ChannelSwitcher:
         ch: int,
         thresh: float = 0.82,
         roi: Optional[Tuple[int, int, int, int]] = None,
-    ):
+    ) -> TemplateMatch | None:
         """Find channel button ``ch`` within ``frame``.
 
-        Returns matcher result or ``None`` if not found.
+        Returns
+        -------
+        TemplateMatch | None
+            ``TemplateMatch`` containing ``rect``, ``center`` and ``score`` when
+            the button is found; ``None`` otherwise.
         """
 
         if roi is None:
             roi = self._minimap_roi()
         name = f"ch{ch}"
-        return self.tm.find(frame, name, thresh=thresh, roi=roi, multi_scale=True)
+        res = self.tm.find(frame, name, thresh=thresh, roi=roi, multi_scale=True)
+        if not res:
+            return None
+        if isinstance(res, TemplateMatch):
+            return res
+        return TemplateMatch(
+            rect=tuple(res["rect"]),
+            center=tuple(res["center"]),
+            score=float(res["score"]),
+        )
 
     def color_at(
         self, x: int, y: int, frame: Optional[np.ndarray] = None
@@ -145,7 +176,7 @@ class ChannelSwitcher:
             m = self.find_button(frame, ch, thresh=thresh, roi=roi)
             if m:
                 L, T, _, _ = self.win.region
-                cx, cy = m["center"]
+                cx, cy = m.center
                 if not self._ensure_active_window():
                     return False
 
@@ -178,7 +209,7 @@ class ChannelSwitcher:
         for ch in range(1, 9):
             m = self.find_button(frame, ch, thresh=thresh, roi=roi)
             if m:
-                cx, cy = m["center"]
+                cx, cy = m.center
                 color = self.color_at(cx, cy, frame)
                 if self.is_gold(color):
                     return ch
