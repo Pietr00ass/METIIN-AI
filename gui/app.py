@@ -53,7 +53,15 @@ from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
 import agent.teleport_config as tc
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("teleport.log", encoding="utf-8"),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 
 # Configure Qt DPI behaviour for Windows to avoid crashes when changing DPI awareness.
@@ -874,6 +882,17 @@ class MainWindow(QtWidgets.QMainWindow):
             try:
                 if not win.locate(timeout=5):
                     self.set_status("Nie znaleziono okna.")
+                    return
+                try:
+                    test_img = pyautogui.screenshot()
+                    logger.info(
+                        "Zrzut ekranu zakończony powodzeniem (%dx%d)",
+                        test_img.width,
+                        test_img.height,
+                    )
+                except Exception as e:
+                    logger.error("Błąd przy robieniu zrzutu ekranu: %s", e)
+                    self.set_status(f"Błąd przechwytywania ekranu: {e}")
                     return
                 tp = Teleporter(win, cfg["paths"]["templates_dir"], use_ocr=True)
                 res = tp.teleport(point, side)

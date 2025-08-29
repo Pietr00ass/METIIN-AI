@@ -130,11 +130,19 @@ class Teleporter:
         template_path = self.tm.dir / f"{ref_name}.png"
 
         for attempt in range(max_attempts):
+            logger.debug("Attempt %d to open teleport panel", attempt + 1)
             if not self.dry:
                 pyautogui.hotkey("ctrl", "x")
             time.sleep(self.open_panel_delay)
 
-            screenshot = pyautogui.screenshot()
+            try:
+                screenshot = pyautogui.screenshot()
+                logger.debug(
+                    "Screenshot captured (%dx%d)", screenshot.width, screenshot.height
+                )
+            except Exception as exc:
+                logger.error("Failed to capture screenshot: %s", exc)
+                raise
             frame = np.array(screenshot)[:, :, ::-1]
 
             found = self.tm.find(
@@ -155,9 +163,12 @@ class Teleporter:
                 except Exception:
                     found = None
 
-        if found:
-            return True
+            if found:
+                logger.debug("Teleport panel detected on attempt %d", attempt + 1)
+                return True
+            logger.debug("Teleport panel not detected on attempt %d", attempt + 1)
 
+        logger.warning("Teleport panel not detected after %d attempts", max_attempts)
         raise RuntimeError("Teleport panel not detected")
 
     def close_panel(self) -> None:
@@ -204,14 +215,15 @@ class Teleporter:
         Zwraca :class:`TeleportResult` opisujący rezultat próby
         teleportacji.  Przy niepowodzeniu zrzut panelu jest zapisywany w
         ``runs/`` (lub w katalogu wskazanym przez ``paths.log_dir`` w
-        konfiguracji).
-        """
+        konfiguracji)."""
 
+        logger.debug("Teleporting to slot %s on page '%s'", slot, page_label)
         # otwórz panel i przejdź do strony
         self.open_panel()
         if not self.win.is_foreground():
             return TeleportResult.WINDOW_NOT_FOREGROUND
         if not self.go_page(page_label):
+            logger.info("Page '%s' not found", page_label)
             frame = self._frame()
             self._save_panel(frame, TeleportResult.TEMPLATE_NOT_FOUND)
             return TeleportResult.TEMPLATE_NOT_FOUND
@@ -219,6 +231,7 @@ class Teleporter:
         # wyszukaj wiersz slotu (OCR)
         pos = self._find_row_by_text(str(slot))
         if pos is None:
+            logger.info("Slot '%s' not found via OCR", slot)
             frame = self._frame()
             self._save_panel(frame, TeleportResult.OCR_MISS)
             return TeleportResult.OCR_MISS
@@ -229,6 +242,7 @@ class Teleporter:
         roi_y = int(h * 0.16)
         abs_x = L + roi_x + pos[0]
         abs_y = T + roi_y + pos[1]
+        logger.debug("Clicking teleport slot at (%d, %d)", abs_x, abs_y)
         self._safe_click(abs_x, abs_y)
         time.sleep(self.row_click_delay)
 
@@ -238,11 +252,14 @@ class Teleporter:
             frame, "wczytaj", thresh=self.load_btn_thresh, multi_scale=True
         )
         if not m:
+            logger.info("Load button not found for slot %s", slot)
             self._save_panel(frame, TeleportResult.TEMPLATE_NOT_FOUND)
             return TeleportResult.TEMPLATE_NOT_FOUND
         cx, cy = m["center"]
+        logger.debug("Clicking load button at (%d, %d)", L + cx, T + cy)
         self._safe_click(L + cx, T + cy)
         time.sleep(self.after_load_delay)
+        logger.info("Teleportation to slot %s successful", slot)
         return TeleportResult.OK
 
     def teleport(self, slot: int, page_label: str) -> TeleportResult:
