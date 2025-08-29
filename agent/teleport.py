@@ -122,28 +122,23 @@ class Teleporter:
 
         L, T, w, h = self.win.region
         roi = (
-            L + int(w * 0.05),
-            T + int(h * 0.82),
+            int(w * 0.05),
+            int(h * 0.82),
             int(w * 0.9),
             int(h * 0.16),
         )
+        screen_roi = (L + roi[0], T + roi[1], roi[2], roi[3])
         template_path = self.tm.dir / f"{ref_name}.png"
 
         for attempt in range(max_attempts):
             logger.debug("Attempt %d to open teleport panel", attempt + 1)
             if not self.dry:
                 pyautogui.hotkey("ctrl", "x")
+            else:
+                return True
             time.sleep(self.open_panel_delay)
 
-            try:
-                screenshot = pyautogui.screenshot()
-                logger.debug(
-                    "Screenshot captured (%dx%d)", screenshot.width, screenshot.height
-                )
-            except Exception as exc:
-                logger.error("Failed to capture screenshot: %s", exc)
-                raise
-            frame = np.array(screenshot)[:, :, ::-1]
+            frame = self._frame()
 
             found = self.tm.find(
                 frame,
@@ -157,7 +152,7 @@ class Teleporter:
                 try:
                     found = pyautogui.locateOnScreen(
                         str(template_path),
-                        region=roi,
+                        region=screen_roi,
                         confidence=self.page_thresh,
                     )
                 except Exception:
