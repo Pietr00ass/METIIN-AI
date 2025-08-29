@@ -222,7 +222,7 @@ class TeleportConfigDialog(QtWidgets.QDialog):
 
         self._populate()
 
-        self._f2_shortcut = QtWidgets.QShortcut(
+        self._f2_shortcut = QtGui.QShortcut(
             QtGui.QKeySequence(QtCore.Qt.Key_F2), self
         )
         self._f2_shortcut.setContext(QtCore.Qt.ApplicationShortcut)
