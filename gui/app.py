@@ -276,6 +276,7 @@ class TeleportConfigDialog(QtWidgets.QDialog):
         super().accept()
 
 
+
 class MainWindow(QtWidgets.QMainWindow):
     """Main GUI window with controls for vision agent automation."""
 
