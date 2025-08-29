@@ -9,6 +9,7 @@ sys.modules.setdefault("pyautogui", pyautogui_stub)
 
 yaml_stub = types.ModuleType("yaml")
 yaml_stub.safe_load = lambda f: {}
+yaml_stub.safe_dump = lambda data, f, **k: f.write("dump")
 sys.modules["yaml"] = yaml_stub
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -33,3 +34,18 @@ def test_main(monkeypatch):
     tc.main()
     assert run_calls == [1, 2, 3, 4]
     assert change_calls == [2, 3, 4]
+
+
+def test_save_teleport_config(tmp_path, monkeypatch):
+    captured = {}
+
+    def fake_dump(data, fh, **kw):
+        captured["data"] = data
+        fh.write("written")
+
+    monkeypatch.setattr(tc.yaml, "safe_dump", fake_dump)
+    path = tmp_path / "tp.yaml"
+    data = {"positions_by_channel": {1: [[1, 2]]}, "channel_buttons": {1: [3, 4]}}
+    tc.save_teleport_config(data, path)
+    assert path.read_text() == "written"
+    assert captured["data"] == data

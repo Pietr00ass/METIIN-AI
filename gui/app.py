@@ -50,6 +50,7 @@ from agent.hunt_destroy import HuntDestroy
 from agent.teleport import Teleporter, TeleportResult
 from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
+import agent.teleport_config as tc
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -151,6 +152,120 @@ class PreviewWorker(QtCore.QThread):
 
     def stop(self) -> None:
         self._stop = True
+
+
+class TeleportConfigDialog(QtWidgets.QDialog):
+    """Dialog for editing teleport positions and channel buttons."""
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Konfiguracja teleportu")
+        self._cfg = tc.load_teleport_config()
+
+        layout = QtWidgets.QVBoxLayout(self)
+        self.pos_edits: dict[int, list[tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]]] = {}
+        tabs = QtWidgets.QTabWidget()
+        layout.addWidget(tabs)
+
+        for ch in range(1, 5):
+            tab = QtWidgets.QWidget()
+            form = QtWidgets.QFormLayout(tab)
+            slots: list[tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]] = []
+            for idx in range(8):
+                x_edit = QtWidgets.QLineEdit()
+                x_edit.setMaximumWidth(60)
+                y_edit = QtWidgets.QLineEdit()
+                y_edit.setMaximumWidth(60)
+                btn = QtWidgets.QPushButton("Przechwyć")
+                btn.clicked.connect(lambda _, xe=x_edit, ye=y_edit: self._capture(xe, ye))
+                row = QtWidgets.QHBoxLayout()
+                row.addWidget(QtWidgets.QLabel("X:"))
+                row.addWidget(x_edit)
+                row.addWidget(QtWidgets.QLabel("Y:"))
+                row.addWidget(y_edit)
+                row.addWidget(btn)
+                w = QtWidgets.QWidget()
+                w.setLayout(row)
+                form.addRow(f"Slot {idx + 1}:", w)
+                slots.append((x_edit, y_edit))
+            self.pos_edits[ch] = slots
+            tabs.addTab(tab, f"CH{ch}")
+
+        btn_group = QtWidgets.QGroupBox("Przyciski kanałów")
+        btn_form = QtWidgets.QFormLayout(btn_group)
+        self.btn_edits: dict[int, tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]] = {}
+        for ch in range(1, 5):
+            x_edit = QtWidgets.QLineEdit()
+            x_edit.setMaximumWidth(60)
+            y_edit = QtWidgets.QLineEdit()
+            y_edit.setMaximumWidth(60)
+            btn = QtWidgets.QPushButton("Przechwyć")
+            btn.clicked.connect(lambda _, xe=x_edit, ye=y_edit: self._capture(xe, ye))
+            row = QtWidgets.QHBoxLayout()
+            row.addWidget(QtWidgets.QLabel("X:"))
+            row.addWidget(x_edit)
+            row.addWidget(QtWidgets.QLabel("Y:"))
+            row.addWidget(y_edit)
+            row.addWidget(btn)
+            w = QtWidgets.QWidget()
+            w.setLayout(row)
+            btn_form.addRow(f"CH{ch}:", w)
+            self.btn_edits[ch] = (x_edit, y_edit)
+        layout.addWidget(btn_group)
+
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self._populate()
+
+    def _capture(
+        self, x_edit: QtWidgets.QLineEdit, y_edit: QtWidgets.QLineEdit
+    ) -> None:
+        pos = QtGui.QCursor.pos()
+        x_edit.setText(str(pos.x()))
+        y_edit.setText(str(pos.y()))
+
+    def _populate(self) -> None:
+        pos_cfg = self._cfg.get("positions_by_channel", {})
+        for ch, slots in self.pos_edits.items():
+            vals = pos_cfg.get(ch, [])
+            for idx, (x_edit, y_edit) in enumerate(slots):
+                if idx < len(vals):
+                    x, y = vals[idx]
+                    x_edit.setText(str(x))
+                    y_edit.setText(str(y))
+
+        btn_cfg = self._cfg.get("channel_buttons", {})
+        for ch, (x_edit, y_edit) in self.btn_edits.items():
+            if ch in btn_cfg:
+                x, y = btn_cfg[ch]
+                x_edit.setText(str(x))
+                y_edit.setText(str(y))
+
+    def accept(self) -> None:  # type: ignore[override]
+        data = dict(self._cfg)
+        pos_out: dict[int, list[list[int]]] = {}
+        for ch, slots in self.pos_edits.items():
+            pos_out[ch] = []
+            for x_edit, y_edit in slots:
+                x = int(x_edit.text() or 0)
+                y = int(y_edit.text() or 0)
+                pos_out[ch].append([x, y])
+        btn_out: dict[int, list[int]] = {}
+        for ch, (x_edit, y_edit) in self.btn_edits.items():
+            x = int(x_edit.text() or 0)
+            y = int(y_edit.text() or 0)
+            btn_out[ch] = [x, y]
+        data["positions_by_channel"] = pos_out
+        data["channel_buttons"] = btn_out
+        tc.save_teleport_config(data)
+        tc.positions_by_channel = pos_out
+        tc.channel_buttons = btn_out
+        super().accept()
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -332,6 +447,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_train,
         ]:
             actions_layout.addWidget(b)
+        self.btn_tp_cfg = QtWidgets.QPushButton("Konfiguracja teleportu")
+        actions_layout.addWidget(self.btn_tp_cfg)
+        self.btn_tp_cfg.clicked.connect(self.open_teleport_config)
         self.btn_save_cfg = QtWidgets.QPushButton("Zapisz konfigurację")
         self.btn_load_cfg = QtWidgets.QPushButton("Wczytaj konfigurację")
         actions_layout.addWidget(self.btn_save_cfg)
@@ -451,6 +569,10 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         if path:
             self.templates_dir_edit.setText(path)
+
+    def open_teleport_config(self) -> None:
+        dlg = TeleportConfigDialog(self)
+        dlg.exec()
 
     def show_frame(self, frame: np.ndarray) -> None:
         """Display a frame in the video QLabel."""

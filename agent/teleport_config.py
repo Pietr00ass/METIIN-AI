@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover - provide a tiny stub
 try:
     import yaml
 except Exception:  # pragma: no cover - yaml is optional
-    yaml = types.SimpleNamespace(safe_load=lambda f: {})
+    yaml = types.SimpleNamespace(safe_load=lambda f: {}, safe_dump=lambda data, f, **k: None)
 
 
 def load_teleport_config(path: str | Path = "config/teleport.yaml") -> Dict[str, Any]:
@@ -29,6 +29,15 @@ def load_teleport_config(path: str | Path = "config/teleport.yaml") -> Dict[str,
     except FileNotFoundError:
         data = {}
     return data
+
+
+def save_teleport_config(data: Dict[str, Any], path: str | Path = "config/teleport.yaml") -> None:
+    """Save teleport configuration to ``path`` in YAML format."""
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, allow_unicode=True)
 
 
 _cfg = load_teleport_config()
@@ -106,6 +115,7 @@ __all__ = [
     "DELAY_AFTER_TELEPORT",
     "DELAY_AFTER_CHANNEL",
     "load_teleport_config",
+    "save_teleport_config",
     "open_panel",
     "run_positions",
     "change_channel",
