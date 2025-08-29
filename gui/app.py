@@ -155,7 +155,7 @@ class PreviewWorker(QtCore.QThread):
 
 
 class TeleportConfigDialog(QtWidgets.QDialog):
-    """Dialog for editing teleport positions and channel buttons."""
+    """Dialog for editing teleport positions and channel buttons with F2 capture."""
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -164,10 +164,12 @@ class TeleportConfigDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         self.pos_edits: dict[int, list[tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]]] = {}
+        self.btn_edits: dict[int, tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]] = {}
+        self._edit_map: dict[QtWidgets.QWidget, tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]] = {}
         tabs = QtWidgets.QTabWidget()
         layout.addWidget(tabs)
 
-        for ch in range(1, 5):
+        for ch in range(1, 9):
             tab = QtWidgets.QWidget()
             form = QtWidgets.QFormLayout(tab)
             slots: list[tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]] = []
@@ -176,41 +178,38 @@ class TeleportConfigDialog(QtWidgets.QDialog):
                 x_edit.setMaximumWidth(60)
                 y_edit = QtWidgets.QLineEdit()
                 y_edit.setMaximumWidth(60)
-                btn = QtWidgets.QPushButton("Przechwyć")
-                btn.clicked.connect(lambda _, xe=x_edit, ye=y_edit: self._capture(xe, ye))
                 row = QtWidgets.QHBoxLayout()
                 row.addWidget(QtWidgets.QLabel("X:"))
                 row.addWidget(x_edit)
                 row.addWidget(QtWidgets.QLabel("Y:"))
                 row.addWidget(y_edit)
-                row.addWidget(btn)
                 w = QtWidgets.QWidget()
                 w.setLayout(row)
                 form.addRow(f"Slot {idx + 1}:", w)
                 slots.append((x_edit, y_edit))
+                self._edit_map[x_edit] = (x_edit, y_edit)
+                self._edit_map[y_edit] = (x_edit, y_edit)
             self.pos_edits[ch] = slots
             tabs.addTab(tab, f"CH{ch}")
 
         btn_group = QtWidgets.QGroupBox("Przyciski kanałów")
         btn_form = QtWidgets.QFormLayout(btn_group)
-        self.btn_edits: dict[int, tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]] = {}
-        for ch in range(1, 5):
+        for ch in range(1, 9):
             x_edit = QtWidgets.QLineEdit()
             x_edit.setMaximumWidth(60)
             y_edit = QtWidgets.QLineEdit()
             y_edit.setMaximumWidth(60)
-            btn = QtWidgets.QPushButton("Przechwyć")
-            btn.clicked.connect(lambda _, xe=x_edit, ye=y_edit: self._capture(xe, ye))
             row = QtWidgets.QHBoxLayout()
             row.addWidget(QtWidgets.QLabel("X:"))
             row.addWidget(x_edit)
             row.addWidget(QtWidgets.QLabel("Y:"))
             row.addWidget(y_edit)
-            row.addWidget(btn)
             w = QtWidgets.QWidget()
             w.setLayout(row)
             btn_form.addRow(f"CH{ch}:", w)
             self.btn_edits[ch] = (x_edit, y_edit)
+            self._edit_map[x_edit] = (x_edit, y_edit)
+            self._edit_map[y_edit] = (x_edit, y_edit)
         layout.addWidget(btn_group)
 
         buttons = QtWidgets.QDialogButtonBox(
@@ -220,6 +219,9 @@ class TeleportConfigDialog(QtWidgets.QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
+        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_F2), self).activated.connect(
+            self._capture_current
+        )
         self._populate()
 
     def _capture(
@@ -228,6 +230,12 @@ class TeleportConfigDialog(QtWidgets.QDialog):
         pos = QtGui.QCursor.pos()
         x_edit.setText(str(pos.x()))
         y_edit.setText(str(pos.y()))
+
+    def _capture_current(self) -> None:
+        w = self.focusWidget()
+        pair = self._edit_map.get(w)
+        if pair:
+            self._capture(*pair)
 
     def _populate(self) -> None:
         pos_cfg = self._cfg.get("positions_by_channel", {})
@@ -266,6 +274,7 @@ class TeleportConfigDialog(QtWidgets.QDialog):
         tc.positions_by_channel = pos_out
         tc.channel_buttons = btn_out
         super().accept()
+
 
 
 class MainWindow(QtWidgets.QMainWindow):

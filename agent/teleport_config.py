@@ -102,9 +102,9 @@ def change_channel(target_ch: int, *, delay: float = DELAY_AFTER_CHANNEL) -> Non
 
 
 def main() -> None:  # pragma: no cover - helper script
-    for ch in [1, 2, 3, 4]:
+    for ch in range(1, 9):
         run_positions(ch)
-        if ch < 4:
+        if ch < 8:
             change_channel(ch + 1)
 
 

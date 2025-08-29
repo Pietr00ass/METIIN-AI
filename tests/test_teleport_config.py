@@ -32,9 +32,9 @@ def test_main(monkeypatch):
     monkeypatch.setattr(tc, "run_positions", lambda ch: run_calls.append(ch))
     monkeypatch.setattr(tc, "change_channel", lambda ch: change_calls.append(ch))
     tc.main()
-    assert run_calls == [1, 2, 3, 4]
-    assert change_calls == [2, 3, 4]
-
+    
+    assert run_calls == list(range(1, 9))
+    assert change_calls == list(range(2, 9))
 
 def test_save_teleport_config(tmp_path, monkeypatch):
     captured = {}
