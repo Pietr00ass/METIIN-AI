@@ -222,12 +222,30 @@ class TeleportConfigDialog(QtWidgets.QDialog):
 
         self._populate()
 
+        self._f2_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence(QtCore.Qt.Key_F2), self
+        )
+        self._f2_shortcut.setContext(QtCore.Qt.ApplicationShortcut)
+        self._f2_shortcut.activated.connect(self._capture_current)
+
     def _capture(
         self, x_edit: QtWidgets.QLineEdit, y_edit: QtWidgets.QLineEdit
     ) -> None:
         pos = QtGui.QCursor.pos()
         x_edit.setText(str(pos.x()))
         y_edit.setText(str(pos.y()))
+
+    def _capture_current(self) -> None:
+        fw = self.focusWidget()
+        for slots in self.pos_edits.values():
+            for x_edit, y_edit in slots:
+                if fw in (x_edit, y_edit):
+                    self._capture(x_edit, y_edit)
+                    return
+        for x_edit, y_edit in self.btn_edits.values():
+            if fw in (x_edit, y_edit):
+                self._capture(x_edit, y_edit)
+                return
 
     def _populate(self) -> None:
         pos_cfg = self._cfg.get("positions_by_channel", {})
