@@ -8,15 +8,32 @@ class CollisionAvoid:
     """Ekranowe unikanie kolizji: krawędzie + przepływ w centralnym pasku."""
 
     def __init__(
-        self, edge_thr=120, flow_mag_thr=0.9, band=(0.45, 0.55), near_ratio=0.25
-    ):
-        self.prev = None
+        self,
+        edge_thr: int = 120,
+        flow_mag_thr: float = 0.9,
+        band: tuple[float, float] = (0.45, 0.55),
+        near_ratio: float = 0.25,
+    ) -> None:
+        self.prev: np.ndarray | None = None
         self.edge_thr = edge_thr
         self.flow_mag_thr = flow_mag_thr
         self.band = band
         self.near_ratio = near_ratio
 
-    def steer(self, frame_bgr):
+    def steer(self, frame_bgr: np.ndarray) -> str | None:
+        """Decide turning direction based on the current frame.
+
+        Parameters
+        ----------
+        frame_bgr : np.ndarray
+            Image in BGR color format with shape ``(H, W, 3)``.
+
+        Returns
+        -------
+        str | None
+            ``"left"`` or ``"right"`` when steering is required, ``None`` otherwise.
+        """
+
         if frame_bgr is None or frame_bgr.size == 0:
             return None
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
