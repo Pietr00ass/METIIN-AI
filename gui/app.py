@@ -40,7 +40,8 @@ import time
 import cv2
 import numpy as np
 import pyautogui
-from pynput import keyboard
+import keyboard
+from pynput import keyboard as pynput_keyboard
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from agent.channel import ChannelSwitcher
@@ -161,6 +162,10 @@ class TeleportConfigDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Konfiguracja teleportu")
         self._cfg = tc.load_teleport_config()
+        self._current_edit: tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit] | None = None
+        self._edit_map: dict[
+            QtWidgets.QLineEdit, tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]
+        ] = {}
 
         layout = QtWidgets.QVBoxLayout(self)
         self.pos_edits: dict[int, list[tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]]] = {}
@@ -176,6 +181,9 @@ class TeleportConfigDialog(QtWidgets.QDialog):
                 x_edit.setMaximumWidth(60)
                 y_edit = QtWidgets.QLineEdit()
                 y_edit.setMaximumWidth(60)
+                for edit in (x_edit, y_edit):
+                    edit.installEventFilter(self)
+                    self._edit_map[edit] = (x_edit, y_edit)
                 btn = QtWidgets.QPushButton("Przechwyć")
                 btn.clicked.connect(lambda _, xe=x_edit, ye=y_edit: self._capture(xe, ye))
                 row = QtWidgets.QHBoxLayout()
@@ -199,6 +207,9 @@ class TeleportConfigDialog(QtWidgets.QDialog):
             x_edit.setMaximumWidth(60)
             y_edit = QtWidgets.QLineEdit()
             y_edit.setMaximumWidth(60)
+            for edit in (x_edit, y_edit):
+                edit.installEventFilter(self)
+                self._edit_map[edit] = (x_edit, y_edit)
             btn = QtWidgets.QPushButton("Przechwyć")
             btn.clicked.connect(lambda _, xe=x_edit, ye=y_edit: self._capture(xe, ye))
             row = QtWidgets.QHBoxLayout()
@@ -222,11 +233,9 @@ class TeleportConfigDialog(QtWidgets.QDialog):
 
         self._populate()
 
-        self._f2_shortcut = QtGui.QShortcut(
-            QtGui.QKeySequence(QtCore.Qt.Key_F2), self
+        self._hotkey = keyboard.add_hotkey(
+            "f2", lambda: self._current_edit and self._capture(*self._current_edit)
         )
-        self._f2_shortcut.setContext(QtCore.Qt.ApplicationShortcut)
-        self._f2_shortcut.activated.connect(self._capture_current)
 
     def _capture(
         self, x_edit: QtWidgets.QLineEdit, y_edit: QtWidgets.QLineEdit
@@ -235,17 +244,26 @@ class TeleportConfigDialog(QtWidgets.QDialog):
         x_edit.setText(str(pos.x()))
         y_edit.setText(str(pos.y()))
 
-    def _capture_current(self) -> None:
-        fw = self.focusWidget()
-        for slots in self.pos_edits.values():
-            for x_edit, y_edit in slots:
-                if fw in (x_edit, y_edit):
-                    self._capture(x_edit, y_edit)
-                    return
-        for x_edit, y_edit in self.btn_edits.values():
-            if fw in (x_edit, y_edit):
-                self._capture(x_edit, y_edit)
-                return
+    def _set_current_edit(
+        self, pair: tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]
+    ) -> None:
+        if self._current_edit:
+            for e in self._current_edit:
+                e.setStyleSheet("")
+        self._current_edit = pair
+        for e in pair:
+            e.setStyleSheet("background-color: #e0f7fa;")
+
+    def eventFilter(
+        self, obj: QtCore.QObject, event: QtCore.QEvent
+    ) -> bool:  # type: ignore[override]
+        if event.type() == QtCore.QEvent.FocusIn and obj in self._edit_map:
+            self._set_current_edit(self._edit_map[obj])
+        return super().eventFilter(obj, event)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # type: ignore[override]
+        keyboard.remove_hotkey(self._hotkey)
+        super().closeEvent(event)
 
     def _populate(self) -> None:
         pos_cfg = self._cfg.get("positions_by_channel", {})
@@ -1048,12 +1066,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def start_hotkey_listener(self) -> None:
         def on_press(key):
             try:
-                if key == keyboard.Key.f12:
+                if key == pynput_keyboard.Key.f12:
                     self.stop_all()
             except Exception:
                 pass
 
-        self._hotkey_listener = keyboard.Listener(on_press=on_press)
+        self._hotkey_listener = pynput_keyboard.Listener(on_press=on_press)
         self._hotkey_listener.daemon = True
         self._hotkey_listener.start()
 
