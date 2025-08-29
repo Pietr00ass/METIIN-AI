@@ -179,12 +179,26 @@ def test_hunt_destroy_continuous_movement(monkeypatch):
     assert agent.keys.released == ["d"]
 
 
-def test_spin_no_target(monkeypatch):
+def test_scan_no_target(monkeypatch):
     monkeypatch.setattr(hd, "ObjectDetector", _EmptyDetector)
     monkeypatch.setattr(hd, "CollisionAvoid", lambda: _DummyAvoid())
     monkeypatch.setattr(hd, "KeyHold", _StubKeyHold)
     monkeypatch.setattr(hd, "SearchManager", _StubSearch)
     monkeypatch.setattr(hd, "pick_target", lambda *a, **k: None)
+
+    class _StubScanner:
+        def __init__(self, keys, spin_key="e", **kwargs):
+            self.keys = keys
+            self.spin_key = spin_key
+            self.calls = 0
+
+        def scan(self):
+            self.calls += 1
+            self.keys.press(self.spin_key)
+            self.keys.release(self.spin_key)
+
+    monkeypatch.setattr(hd, "AreaScanner", _StubScanner)
+
     cfg = {
         "paths": {"model": "", "templates_dir": ""},
         "detector": {"classes": [], "conf_thr": 0.5, "iou_thr": 0.5},
@@ -192,18 +206,10 @@ def test_spin_no_target(monkeypatch):
         "dry_run": True,
     }
     agent = hd.HuntDestroy(cfg, _DummyWin())
-    times = iter([0, 3, 4.1])
-    monkeypatch.setattr(hd.time, "time", lambda: next(times))
 
     agent.step()
-    assert agent.keys.down == {"a"}
-    assert agent.search.calls == 0
-
-    agent.step()
-    assert agent.keys.down == {"a"}
-    assert agent.search.calls == 0
-
-    agent.step()
-    assert agent.keys.down == set()
+    assert agent.scanner.calls == 1
     assert agent.search.calls == 1
-    assert agent._spin_dir == "d"
+    assert agent.keys.down == set()
+    assert agent.keys.pressed == [agent.scanner.spin_key]
+    assert agent.keys.released == [agent.scanner.spin_key]
