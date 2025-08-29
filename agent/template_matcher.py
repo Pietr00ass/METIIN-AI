@@ -32,10 +32,14 @@ class TemplateMatcher:
         if roi is not None:
             x, y, w, h = roi
             crop = frame_bgr[y : y + h, x : x + w]
+            if crop.size == 0:
+                raise ValueError(f"Invalid ROI {roi}: empty crop")
         else:
             x = y = 0
             h, w = frame_bgr.shape[:2]
             crop = frame_bgr
+            if crop.size == 0:
+                raise ValueError("Empty frame for template matching")
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
         return gray, x, y
 
