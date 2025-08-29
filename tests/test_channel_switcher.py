@@ -77,6 +77,24 @@ def _setup_templates(tmp_path):
         (tmp_path / f"ch{i}.png").touch()
 
 
+def test_find_button_returns_template_match(tmp_path, monkeypatch):
+    _setup_templates(tmp_path)
+
+    class TM:
+        def __init__(self, *a, **k):
+            pass
+
+        def find(self, frame, name, **kw):
+            return channel.TemplateMatch(rect=(0, 0, 10, 10), center=(5, 5), score=0.95)
+
+    monkeypatch.setattr(channel, "TemplateMatcher", TM)
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True)
+    frame = np.zeros((300, 300, 3), dtype=np.uint8)
+    match = cs.find_button(frame, 1)
+    assert isinstance(match, channel.TemplateMatch)
+    assert match.center == (5, 5)
+
+
 def test_switch_clicks_on_success(tmp_path, monkeypatch):
     _setup_templates(tmp_path)
 
@@ -85,7 +103,9 @@ def test_switch_clicks_on_success(tmp_path, monkeypatch):
             pass
 
         def find(self, frame, name, **kw):
-            return {"center": (50, 60)}
+            return channel.TemplateMatch(
+                rect=(0, 0, 10, 10), center=(50, 60), score=0.9
+            )
 
     monkeypatch.setattr(channel, "TemplateMatcher", TM)
     moves, clicks = [], []
@@ -162,7 +182,9 @@ def test_cycle_until_target_seen(tmp_path, monkeypatch):
             pass
 
         def find(self, frame, name, **kw):
-            return {"center": (50, 60)}
+            return channel.TemplateMatch(
+                rect=(0, 0, 10, 10), center=(50, 60), score=0.9
+            )
 
     monkeypatch.setattr(channel, "TemplateMatcher", TM)
     cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True)
@@ -185,9 +207,7 @@ def test_cycle_until_target_seen(tmp_path, monkeypatch):
         return calls["n"] >= 3
 
     assert (
-        cs.cycle_until_target_seen(
-            check_fn, settle=0, timeout_per_ch=0, max_rounds=1
-        )
+        cs.cycle_until_target_seen(check_fn, settle=0, timeout_per_ch=0, max_rounds=1)
         is True
     )
     assert switched == [2, 3]
