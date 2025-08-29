@@ -5,6 +5,7 @@ import time
 import cv2
 import numpy as np
 import torch
+import torchvision.models as models
 
 from recorder.window_capture import WindowCapture
 
@@ -23,7 +24,7 @@ class KbdVisionAgent:
             fps=15,
             min_mag=cfg.get("stuck", {}).get("min_flow_mag", 0.7),
         )
-        self.net = KbdPolicy()
+        self.net = KbdPolicy(weights=models.ResNet18_Weights.IMAGENET1K_V1)
         self.net.load_state_dict(
             torch.load("checkpoints/kbd_policy.pt", map_location="cpu")
         )
