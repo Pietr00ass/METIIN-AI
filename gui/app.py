@@ -374,12 +374,27 @@ class MainWindow(QtWidgets.QMainWindow):
         self.deadzone.setRange(0.0, 0.5)
         self.deadzone.setSingleStep(0.01)
         self.deadzone.setValue(0.05)
+
         self.desired_w = QtWidgets.QDoubleSpinBox()
-        self.desired_w.setRange(0.02, 0.5)
+        self.desired_w.setRange(0.02, 1.0)
         self.desired_w.setSingleStep(0.01)
         self.desired_w.setValue(0.12)
+
+        self.desired_w_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.desired_w_slider.setRange(2, 100)
+        self.desired_w_slider.setValue(int(self.desired_w.value() * 100))
+        self.desired_w_slider.valueChanged.connect(
+            lambda val: self.desired_w.setValue(val / 100)
+        )
+        self.desired_w.valueChanged.connect(
+            lambda val: self.desired_w_slider.setValue(int(val * 100))
+        )
+        desired_w_layout = QtWidgets.QHBoxLayout()
+        desired_w_layout.addWidget(self.desired_w_slider)
+        desired_w_layout.addWidget(self.desired_w)
+
         policy_form.addRow("Deadzone X:", self.deadzone)
-        policy_form.addRow("Desired box W:", self.desired_w)
+        policy_form.addRow("Desired box W:", desired_w_layout)
         agent_layout.addLayout(policy_form)
         self.overlay_chk = QtWidgets.QCheckBox("Overlay YOLO na podglądzie")
         self.overlay_chk.setChecked(True)
@@ -729,7 +744,7 @@ class MainWindow(QtWidgets.QMainWindow):
             },
             "policy": {
                 "deadzone_x": float(self.deadzone.value()),
-                "desired_box_w": float(self.desired_w.value()),
+                "desired_box_w": float(self.desired_w_slider.value() / 100),
             },
             "stuck": {
                 "flow_window": 0.8,
@@ -794,6 +809,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.classes_edit.setText(",".join(det.get("classes", [])))
         self.deadzone.setValue(float(cfg.get("policy", {}).get("deadzone_x", 0.05)))
         self.desired_w.setValue(float(cfg.get("policy", {}).get("desired_box_w", 0.12)))
+        self.desired_w_slider.setValue(int(self.desired_w.value() * 100))
         self.dry_run_chk.setChecked(bool(cfg.get("dry_run", False)))
         self.movement_chk.setChecked(
             bool(cfg.get("controls", {}).get("movement", True))

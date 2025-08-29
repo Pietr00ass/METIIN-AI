@@ -16,9 +16,9 @@ detector:
   classes: ["metin","boss","potwory"]
   conf_thr: 0.5
   iou_thr: 0.45
-policy:
-  deadzone_x: 0.05
-  desired_box_w: 0.12
+  policy:
+    deadzone_x: 0.05
+    desired_box_w: 0.12 # desired target width fraction (0.02-1.0)
 stuck:
   flow_window: 0.8
   min_flow_mag: 0.7
