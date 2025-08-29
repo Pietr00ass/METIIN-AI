@@ -93,7 +93,16 @@ class WindowCapture:
         """Zwraca mss.base.ScreenShot (BGRA)."""
         if self.region is None:
             self.update_region()
-        left, top, width, height = self.region
-        return self.sct.grab(
-            {"left": left, "top": top, "width": width, "height": height}
-        )
+        def _grab():
+            left, top, width, height = self.region
+            return self.sct.grab(
+                {"left": left, "top": top, "width": width, "height": height}
+            )
+
+        img = _grab()
+        if getattr(img, "width", 0) == 0 or getattr(img, "height", 0) == 0:
+            self.update_region()
+            img = _grab()
+            if getattr(img, "width", 0) == 0 or getattr(img, "height", 0) == 0:
+                raise RuntimeError("WindowCapture.grab captured empty image (zero width/height)")
+        return img

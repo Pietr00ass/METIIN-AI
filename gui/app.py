@@ -853,6 +853,11 @@ class MainWindow(QtWidgets.QMainWindow):
                     hd.step()
                     time.sleep(period)
                 self.set_status("Zakończono 'Teleportuj i poluj'.")
+            except RuntimeError as exc:
+                self.set_status(
+                    f"Błąd przechwytywania ekranu: {exc}. "
+                    "Czy okno gry jest poza ekranem lub zminimalizowane?"
+                )
             except Exception as exc:
                 self.set_status(f"Błąd teleport+poluj: {exc}")
             finally:

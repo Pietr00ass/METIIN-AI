@@ -17,6 +17,8 @@ class CollisionAvoid:
         self.near_ratio = near_ratio
 
     def steer(self, frame_bgr):
+        if frame_bgr is None or frame_bgr.size == 0:
+            return None
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         H, W = gray.shape
         x0 = int(W * self.band[0])
