@@ -1,3 +1,6 @@
+delay_after_panel: 0.5
+delay_after_teleport: 1.0
+delay_after_channel: 5.0
 positions_by_channel:
   1:
     - [0, 0]

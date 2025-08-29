@@ -155,10 +155,16 @@ class Teleporter:
                 except Exception:
                     found = None
 
-            if found:
-                return True
+        if found:
+            return True
 
         raise RuntimeError("Teleport panel not detected")
+
+    def close_panel(self) -> None:
+        """Close the teleport panel if it is open."""
+        if self.dry:
+            return
+        pyautogui.press("esc")
 
     def go_page(self, page_label: str, thresh: float | None = None) -> bool:
         token = page_label.split()[-1].upper().replace(" ", "_")
