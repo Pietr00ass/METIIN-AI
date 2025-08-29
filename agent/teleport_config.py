@@ -75,10 +75,30 @@ def run_positions(
             close_panel()
 
 
+def change_channel(target_ch: int, *, delay: float = 5.0) -> None:
+    """Click the button for ``target_ch`` and wait for a channel switch."""
+
+    coords = channel_buttons.get(target_ch)
+    if not coords:
+        return
+    x, y = coords
+    pyautogui.click(x, y)
+    time.sleep(delay)
+
+
+def main() -> None:  # pragma: no cover - helper script
+    for ch in [1, 2, 3, 4]:
+        run_positions(ch)
+        if ch < 4:
+            change_channel(ch + 1)
+
+
 __all__ = [
     "positions_by_channel",
     "channel_buttons",
     "load_teleport_config",
     "open_panel",
     "run_positions",
+    "change_channel",
+    "main",
 ]
