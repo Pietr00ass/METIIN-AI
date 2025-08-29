@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import time
 
 import numpy as np
 
@@ -59,8 +58,6 @@ class HuntDestroy:
                 idle_sec=scan_cfg.get("idle_sec", 1.5),
                 pause=scan_cfg.get("pause", 0.12),
             )
-        self._spin_dir = "a"
-        self._spin_end = 0.0
 
         tp_cfg = cfg.get("teleport", {})
         self.search = SearchManager(
@@ -98,20 +95,8 @@ class HuntDestroy:
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
             if self.scanner:
-                now = time.time()
-                if self._spin_end == 0.0:
-                    self._spin_end = now + 4.0
-                    self.keys.press(self._spin_dir)
-                    self._last_tgt = None
-                    return
-                if now < self._spin_end:
-                    self.keys.press(self._spin_dir)
-                    self._last_tgt = None
-                    return
-                self.keys.release(self._spin_dir)
+                self.scanner.scan()
                 self.search.handle_no_target(True)
-                self._spin_dir = "d" if self._spin_dir == "a" else "a"
-                self._spin_end = 0.0
                 self._last_tgt = None
                 return
             self._last_tgt = None
