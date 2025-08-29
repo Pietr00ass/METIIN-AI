@@ -30,28 +30,31 @@ class KbdVisionAgent:
         self.net.eval()
 
     def run(self):
-        if not self.win.locate(timeout=5):
-            raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
-        while True:
-            t0 = time.time()
-            fr = self.win.grab()
-            frame = np.array(fr)[:, :, :3]
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            stuck = self.flow.update(gray)
-            img = cv2.resize(frame, (224, 224))[:, :, ::-1]
-            x = torch.tensor(img).permute(2, 0, 1).unsqueeze(0).float() / 255.0
-            with torch.no_grad():
-                y = self.net(x).squeeze(0).numpy()
-            self.keys.release_all()
-            keys = ["w", "a", "s", "d"]
-            for i, k in enumerate(keys):
-                if y[i] > 0.5:
-                    self.keys.press(k)
-            if stuck:
+        try:
+            if not self.win.locate(timeout=5):
+                raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
+            while True:
+                t0 = time.time()
+                fr = self.win.grab()
+                frame = np.array(fr)[:, :, :3]
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                stuck = self.flow.update(gray)
+                img = cv2.resize(frame, (224, 224))[:, :, ::-1]
+                x = torch.tensor(img).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+                with torch.no_grad():
+                    y = self.net(x).squeeze(0).numpy()
                 self.keys.release_all()
-                self.keys.press("a")
-                time.sleep(0.2)
-                self.keys.release_all()
-            dt = time.time() - t0
-            if dt < self.period:
-                time.sleep(self.period - dt)
+                keys = ["w", "a", "s", "d"]
+                for i, k in enumerate(keys):
+                    if y[i] > 0.5:
+                        self.keys.press(k)
+                if stuck:
+                    self.keys.release_all()
+                    self.keys.press("a")
+                    time.sleep(0.2)
+                    self.keys.release_all()
+                dt = time.time() - t0
+                if dt < self.period:
+                    time.sleep(self.period - dt)
+        finally:
+            self.win.close()

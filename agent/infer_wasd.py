@@ -50,10 +50,10 @@ class WasdVisionAgent:
         self.cfg.setdefault("teleport", {})["slots"] = [s.__dict__ for s in slots]
 
     def run(self):
-        if not self.win.locate(timeout=5):
-            raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
-        self.hd = HuntDestroy(self.cfg, self.win)
         try:
+            if not self.win.locate(timeout=5):
+                raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
+            self.hd = HuntDestroy(self.cfg, self.win)
             while True:
                 self.hd.step()
                 time.sleep(self.period)
@@ -67,3 +67,5 @@ class WasdVisionAgent:
                     self.hd.keys.release_all()
                 except Exception:
                     pass
+        finally:
+            self.win.close()

@@ -23,10 +23,10 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     try:
-        wc = WindowCapture("Metin2")  # fragment tytułu
-        if not wc.locate(timeout=5):
-            raise RuntimeError("Nie znaleziono okna")
-        frame = np.array(wc.grab())[:, :, :3]
+        with WindowCapture("Metin2") as wc:  # fragment tytułu
+            if not wc.locate(timeout=5):
+                raise RuntimeError("Nie znaleziono okna")
+            frame = np.array(wc.grab())[:, :, :3]
 
         # ustaw ROI ręcznie na start
         x, y, w, h = 1000, 80, 90, 30
