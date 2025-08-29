@@ -80,3 +80,16 @@ def test_press_skipped_when_window_inactive():
         kh.stop()
 
     mock_down.assert_not_called()
+
+
+def test_press_release_e_calls_sendinput_when_active():
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up:
+        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+        kh.press("e")
+        kh.release("e")
+        kh.stop()
+
+    mock_down.assert_called_once_with(wasd.SCANCODES["e"])
+    mock_up.assert_called_once_with(wasd.SCANCODES["e"])

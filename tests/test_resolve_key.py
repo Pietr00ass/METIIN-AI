@@ -26,6 +26,13 @@ def test_resolve_key_i_scan_and_vk():
     assert wasd.resolve_key({"vk": vk}) == "i"
 
 
+def test_resolve_key_e_scan_and_vk():
+    sc = wasd.SCANCODES["e"]
+    vk = wasd.VK_CODES["e"]
+    assert wasd.resolve_key({"scan": sc}) == "e"
+    assert wasd.resolve_key({"vk": vk}) == "e"
+
+
 def test_resolve_key_key_prefix():
     assert wasd.resolve_key("Key.space") == "space"
 
