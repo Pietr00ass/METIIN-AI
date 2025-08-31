@@ -506,6 +506,37 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_train,
         ]:
             actions_layout.addWidget(b)
+
+        # optional custom cycle sequence table
+        self.seq_table = QtWidgets.QTableWidget(0, 2)
+        self.seq_table.setHorizontalHeaderLabels(["CH", "Slot"])
+        self.seq_table.horizontalHeader().setSectionResizeMode(
+            QtWidgets.QHeaderView.Stretch
+        )
+        self.seq_add_btn = QtWidgets.QPushButton("Dodaj krok")
+        self.seq_remove_btn = QtWidgets.QPushButton("Usuń krok")
+        seq_btns = QtWidgets.QHBoxLayout()
+        seq_btns.addWidget(self.seq_add_btn)
+        seq_btns.addWidget(self.seq_remove_btn)
+        self.seq_box = QtWidgets.QGroupBox("Sekwencja cyklu")
+        seq_layout = QtWidgets.QVBoxLayout(self.seq_box)
+        seq_help = QtWidgets.QLabel(
+            "Opcjonalna lista kanałów i slotów; puste = domyślny cykl 8×8."
+        )
+        seq_help.setWordWrap(True)
+        seq_help.setToolTip(
+            "Każdy wiersz określa kanał (1-8) i slot (1-8) odwiedzany kolejno."
+        )
+        self.seq_box.setToolTip(
+            "Ustal kolejność kanałów i slotów. Pozostaw puste dla domyślnego 8×8."
+        )
+        seq_layout.addWidget(seq_help)
+        seq_layout.addWidget(self.seq_table)
+        seq_layout.addLayout(seq_btns)
+        actions_layout.insertWidget(actions_layout.indexOf(self.btn_ch), self.seq_box)
+        self.seq_add_btn.clicked.connect(self.add_seq_row)
+        self.seq_remove_btn.clicked.connect(self.remove_seq_row)
+
         self.btn_tp_cfg = QtWidgets.QPushButton("Konfiguracja teleportu")
         actions_layout.addWidget(self.btn_tp_cfg)
         self.btn_tp_cfg.clicked.connect(self.open_teleport_config)
@@ -621,6 +652,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if effective_scale < scale:
             self.set_status("Skala dopasowana do dostępnej rozdzielczości ekranu.")
+
+    def add_seq_row(self) -> None:
+        """Append an empty step to the cycle sequence table."""
+        self.seq_table.insertRow(self.seq_table.rowCount())
+
+    def remove_seq_row(self) -> None:
+        """Remove the currently selected step from the sequence table."""
+        row = self.seq_table.currentRow()
+        if row >= 0:
+            self.seq_table.removeRow(row)
 
     def browse_templates_dir(self) -> None:
         path = QtWidgets.QFileDialog.getExistingDirectory(
@@ -770,6 +811,23 @@ class MainWindow(QtWidgets.QMainWindow):
             },
             "ui": {"scale": float(self.scale_spin.value())},
         }
+
+        sequence: list[dict[str, int]] = []
+        for row in range(self.seq_table.rowCount()):
+            ch_item = self.seq_table.item(row, 0)
+            slot_item = self.seq_table.item(row, 1)
+            if not ch_item or not slot_item:
+                continue
+            try:
+                ch = int(ch_item.text())
+                slot = int(slot_item.text())
+            except ValueError:
+                continue
+            if 1 <= ch <= 8 and 1 <= slot <= 8:
+                sequence.append({"ch": ch, "slot": slot})
+
+        if sequence:
+            cfg["cycle"] = {"sequence": sequence}
         return cfg
 
     def save_config(self) -> None:
@@ -836,6 +894,16 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(1, 9):
             key = ch_hot.get(str(i)) or ch_hot.get(i) or str(i)
             self.ch_key_edits[i].setText(key)
+
+        seq = cfg.get("cycle", {}).get("sequence", [])
+        self.seq_table.setRowCount(0)
+        for step in seq:
+            row = self.seq_table.rowCount()
+            self.seq_table.insertRow(row)
+            ch = step.get("ch")
+            slot = step.get("slot")
+            self.seq_table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(ch)))
+            self.seq_table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(slot)))
         self.set_status("Wczytano konfigurację.")
 
     # ---------- agent actions ----------
