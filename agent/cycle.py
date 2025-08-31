@@ -102,9 +102,81 @@ class CycleFarm:
         dets = self.det.infer(frame)
         return bool(dets)
 
+    # ---- logika pojedynczego slotu ----
+    def _process_slot(self, ch, slot, page_label, per_spot_sec, clear_sec):
+        """Obsłuż teleportację i polowanie na pojedynczym slocie."""
+
+        now = time.time()
+        key = (ch, slot)
+        last = self.cooldown.get(key, 0)
+        if now - last < self.cooldown_min * 60:
+            logger.debug("Pomijam slot %s na kanale %s - cooldown", slot, ch)
+            return
+
+        logger.info("Teleportuję na slot %s (ch%s)", slot, ch)
+        try:
+            if hasattr(self.tp, "teleport_slot"):
+                self.tp.teleport_slot(slot, page_label)
+            else:
+                self.tp.teleport(slot, page_label)
+        except Exception:
+            logger.warning(
+                "Teleportacja na slot %s kanału %s nie powiodła się", slot, ch
+            )
+            self.cooldown[key] = now
+            return
+
+        if self.scanner and not self._any_target_seen():
+            logger.debug("Brak celu po teleportacji – skanuję otoczenie")
+            self.scanner.scan()
+
+        if not self._any_target_seen() or self._stop:
+            logger.info("Brak celu na slocie %s kanału %s", slot, ch)
+            self.cooldown[key] = time.time()
+            return
+
+        logger.debug("Rozpoczynam polowanie na slocie %s kanału %s", slot, ch)
+        t_end = time.time() + float(per_spot_sec)
+        last_seen = time.time()
+        while time.time() < t_end and not self._stop:
+            self.agent.step()
+            if self._any_target_seen():
+                last_seen = time.time()
+            elif time.time() - last_seen > float(clear_sec):
+                if self.scanner:
+                    self.scanner.scan()
+                if not self._any_target_seen():
+                    self.ch.cycle_until_target_seen(
+                        check_fn=self._any_target_seen,
+                        settle=self.ch_settle,
+                        timeout_per_ch=self.ch_check,
+                        max_rounds=1,
+                    )
+                if not self._any_target_seen():
+                    logger.debug("Pole czyste – przechodzę dalej")
+                    break
+                last_seen = time.time()
+
+        self.cooldown[key] = time.time()
+
     # ---- główna pętla cyklu ----
-    def run(self, page_label, ch_from, ch_to, slots, per_spot_sec, clear_sec):
+    def run(
+        self,
+        page_label,
+        ch_from,
+        ch_to,
+        slots,
+        per_spot_sec,
+        clear_sec,
+        sequence=None,
+    ):
         """Główna pętla cyklu farmienia.
+
+        "sequence" pozwala określić pełną kolejność odwiedzania kanałów i
+        slotów.  Każdy element listy powinien być dwuelementowym iterowalnym
+        (ch, slot) lub słownikiem z kluczami ``ch`` i ``slot``.  Gdy sekwencja
+        jest podana, parametry ``ch_from``, ``ch_to`` oraz ``slots`` są
+        ignorowane.
 
         Parameters
         ----------
@@ -118,87 +190,37 @@ class CycleFarm:
             Maksymalny czas polowania na jednym spocie.
         clear_sec: float
             Czas bez celu po którym uznajemy spot za czysty.
+        sequence: Iterable
+            Opcjonalna pełna sekwencja (kanał, slot).
         """
 
-        # Przejście przez kanały oraz sloty
-        for ch in range(ch_from, ch_to + 1):
+        if sequence:
+            steps = []
+            for item in sequence:
+                if isinstance(item, dict):
+                    steps.append((item["ch"], item["slot"]))
+                else:
+                    ch, slot = item
+                    steps.append((ch, slot))
+        else:
+            steps = [
+                (ch, slot) for ch in range(ch_from, ch_to + 1) for slot in slots
+            ]
+
+        current_ch = None
+        for ch, slot in steps:
             if self._stop:
                 break
-
-            # zmiana kanału
-            logger.info("Przechodzę na kanał %s", ch)
-            try:
-                self.ch.switch(ch, post_wait=self.ch_settle)
-            except Exception:
-                logger.warning("Nie udało się zmienić kanału na %s", ch)
-
-            for slot in slots:
-                if self._stop:
-                    break
-
-                # sprawdzenie cooldownu dla (ch, slot)
-                now = time.time()
-                key = (ch, slot)
-                last = self.cooldown.get(key, 0)
-                if now - last < self.cooldown_min * 60:
-                    logger.debug("Pomijam slot %s na kanale %s - cooldown", slot, ch)
-                    continue
-
-                # teleportacja do slotu
-                logger.info("Teleportuję na slot %s (ch%s)", slot, ch)
+            if ch != current_ch:
+                logger.info("Przechodzę na kanał %s", ch)
                 try:
-                    # większość logiki teleportu (otwarcie panelu itp.)
-                    # znajduje się w klasie Teleporter
-                    if hasattr(self.tp, "teleport_slot"):
-                        self.tp.teleport_slot(slot, page_label)
-                    else:
-                        self.tp.teleport(slot, page_label)
+                    self.ch.switch(ch, post_wait=self.ch_settle)
                 except Exception:
-                    logger.warning(
-                        "Teleportacja na slot %s kanału %s nie powiodła się", slot, ch
-                    )
-                    # jeśli teleportacja się nie udała, pomijamy slot
-                    self.cooldown[key] = now
-                    continue
+                    logger.warning("Nie udało się zmienić kanału na %s", ch)
+                current_ch = ch
+            if self._stop:
+                break
+            self._process_slot(ch, slot, page_label, per_spot_sec, clear_sec)
 
-                # ewentualne skanowanie po teleportacji
-                if self.scanner and not self._any_target_seen():
-                    logger.debug("Brak celu po teleportacji – skanuję otoczenie")
-                    self.scanner.scan()
-
-                # jeżeli nadal brak celu, od razu kolejny slot
-                if not self._any_target_seen() or self._stop:
-                    logger.info("Brak celu na slocie %s kanału %s", slot, ch)
-                    self.cooldown[key] = time.time()
-                    continue
-
-                # główna pętla polowania na spocie
-                logger.debug("Rozpoczynam polowanie na slocie %s kanału %s", slot, ch)
-                t_end = time.time() + float(per_spot_sec)
-                last_seen = time.time()
-                while time.time() < t_end and not self._stop:
-                    self.agent.step()
-                    if self._any_target_seen():
-                        last_seen = time.time()
-                    elif time.time() - last_seen > float(clear_sec):
-                        # spróbuj przeskanować otoczenie
-                        if self.scanner:
-                            self.scanner.scan()
-                        if not self._any_target_seen():
-                            self.ch.cycle_until_target_seen(
-                                check_fn=self._any_target_seen,
-                                settle=self.ch_settle,
-                                timeout_per_ch=self.ch_check,
-                                max_rounds=1,
-                            )
-                        if not self._any_target_seen():
-                            logger.debug("Pole czyste – przechodzę dalej")
-                            break
-                        last_seen = time.time()
-
-                # zapisz cooldown na odwiedzony slot
-                self.cooldown[key] = time.time()
-
-        # zakończ po przejściu całego cyklu
         self.win.close()
         return

@@ -49,3 +49,8 @@ cycle:
   slots: [1,2,3,4,5,6,7,8]
   per_spot_sec: 90
   clear_sec: 6
+  # opcjonalna pełna sekwencja (kanał i slot) zastępująca powyższe
+  # zakresy.  Kolejne kroki mogą być podane dowolnej długości.
+  # sequence:
+  #   - {ch: 1, slot: 1}
+  #   - {ch: 2, slot: 3}

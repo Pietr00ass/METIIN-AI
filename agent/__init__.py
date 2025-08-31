@@ -75,6 +75,7 @@ DEFAULT_CFG: Dict[str, Any] = {
         "slots": [1, 2, 3, 4, 5, 6, 7, 8],
         "per_spot_sec": 90,
         "clear_sec": 6,
+        "sequence": [],
     },
 }
 
