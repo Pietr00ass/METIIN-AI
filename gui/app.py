@@ -975,6 +975,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     slots=cycle_cfg.get("slots", list(range(1, 9))),
                     per_spot_sec=cycle_cfg.get("per_spot_sec", 90),
                     clear_sec=cycle_cfg.get("clear_sec", 6),
+                    sequence=cycle_cfg.get("sequence"),
                 )
                 self.set_status("Cykl 8×8 zakończony.")
             except Exception as exc:
