@@ -2,6 +2,8 @@ import importlib
 import os
 import sys
 import types
+from dataclasses import dataclass
+from typing import Tuple
 
 import pytest
 
@@ -52,7 +54,15 @@ class _TM:
         return None
 
 
+@dataclass
+class _Match:
+    rect: Tuple[int, int, int, int]
+    center: Tuple[int, int]
+    score: float
+
+
 tm_stub.TemplateMatcher = _TM
+tm_stub.TemplateMatch = _Match
 sys.modules.setdefault("agent.template_matcher", tm_stub)
 
 import agent.channel as channel

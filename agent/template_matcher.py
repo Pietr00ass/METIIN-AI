@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from math import hypot
 from pathlib import Path
+from typing import Tuple
 
 import cv2
 import numpy as np
+
+
+@dataclass
+class TemplateMatch:
+    """Result of a successful template match."""
+
+    rect: Tuple[int, int, int, int]
+    center: Tuple[int, int]
+    score: float
 
 
 class TemplateMatcher:
@@ -54,7 +65,7 @@ class TemplateMatcher:
     ):
         gray, offx, offy = self._prep(frame_bgr, roi)
         tpl0 = self.load(name)
-        best = None
+        best: TemplateMatch | None = None
         for s in [1.0] if not multi_scale else scales:
             tpl = cv2.resize(
                 tpl0,
@@ -68,12 +79,12 @@ class TemplateMatcher:
             if max_val >= thresh:
                 x, y = max_loc
                 bw, bh = tpl.shape[1], tpl.shape[0]
-                cand = {
-                    "rect": (offx + x, offy + y, bw, bh),
-                    "center": (offx + x + bw // 2, offy + y + bh // 2),
-                    "score": float(max_val),
-                }
-                if best is None or cand["score"] > best["score"]:
+                cand = TemplateMatch(
+                    rect=(offx + x, offy + y, bw, bh),
+                    center=(offx + x + bw // 2, offy + y + bh // 2),
+                    score=float(max_val),
+                )
+                if best is None or cand.score > best.score:
                     best = cand
         return best
 
@@ -87,10 +98,10 @@ class TemplateMatcher:
         scales=(1.0, 0.9, 1.1, 0.8),
         dedup_px=12,
     ):
-        """Zwraca listę dopasowań (słowniki) posortowanych po Y (od góry)."""
+        """Zwraca listę dopasowań (:class:`TemplateMatch`) posortowanych po Y (od góry)."""
         gray, offx, offy = self._prep(frame_bgr, roi)
         tpl0 = self.load(name)
-        found = []
+        found: list[TemplateMatch] = []
         for s in [1.0] if not multi_scale else scales:
             tpl = cv2.resize(
                 tpl0,
@@ -107,24 +118,20 @@ class TemplateMatcher:
                 score = float(res[y, x])
                 dup = False
                 for f in found:
-                    if hypot(f["center"][0] - cx, f["center"][1] - cy) < dedup_px:
-                        if score > f["score"]:
-                            f.update(
-                                {
-                                    "rect": (offx + x, offy + y, bw, bh),
-                                    "center": (cx, cy),
-                                    "score": score,
-                                }
-                            )
+                    if hypot(f.center[0] - cx, f.center[1] - cy) < dedup_px:
+                        if score > f.score:
+                            f.rect = (offx + x, offy + y, bw, bh)
+                            f.center = (cx, cy)
+                            f.score = score
                         dup = True
                         break
                 if not dup:
                     found.append(
-                        {
-                            "rect": (offx + x, offy + y, bw, bh),
-                            "center": (cx, cy),
-                            "score": score,
-                        }
+                        TemplateMatch(
+                            rect=(offx + x, offy + y, bw, bh),
+                            center=(cx, cy),
+                            score=score,
+                        )
                     )
-        found.sort(key=lambda d: d["center"][1])
+        found.sort(key=lambda d: d.center[1])
         return found

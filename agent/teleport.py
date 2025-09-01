@@ -191,7 +191,7 @@ class Teleporter:
         if not m:
             return False
         L, T, _, _ = self.win.region
-        cx, cy = m["center"]
+        cx, cy = m.center
         self._safe_click(L + cx, T + cy)
         time.sleep(self.after_page_delay)
         return True
@@ -257,7 +257,7 @@ class Teleporter:
             logger.info("Load button not found for slot %s", slot)
             self._save_panel(frame, TeleportResult.TEMPLATE_NOT_FOUND)
             return TeleportResult.TEMPLATE_NOT_FOUND
-        cx, cy = m["center"]
+        cx, cy = m.center
         logger.debug("Clicking load button at (%d, %d)", L + cx, T + cy)
         self._safe_click(L + cx, T + cy)
         time.sleep(self.after_load_delay)

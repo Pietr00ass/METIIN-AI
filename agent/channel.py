@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import time
-from dataclasses import dataclass
 from typing import Callable, Optional, Tuple
 
 import numpy as np
@@ -10,27 +9,8 @@ import pyautogui
 
 from recorder.window_capture import WindowCapture
 
-from .template_matcher import TemplateMatcher
+from .template_matcher import TemplateMatch, TemplateMatcher
 from .wasd import KeyHold, pydirectinput
-
-
-@dataclass
-class TemplateMatch:
-    """Data returned when a template is successfully matched.
-
-    Attributes
-    ----------
-    rect:
-        Bounding box of the match in ``(x, y, w, h)`` format.
-    center:
-        Coordinates of the match centre ``(x, y)``.
-    score:
-        Matching score between ``0`` and ``1``.
-    """
-
-    rect: Tuple[int, int, int, int]
-    center: Tuple[int, int]
-    score: float
 
 
 class ChannelSwitcher:
@@ -134,15 +114,7 @@ class ChannelSwitcher:
             roi = self._minimap_roi()
         name = f"ch{ch}"
         res = self.tm.find(frame, name, thresh=thresh, roi=roi, multi_scale=True)
-        if not res:
-            return None
-        if isinstance(res, TemplateMatch):
-            return res
-        return TemplateMatch(
-            rect=tuple(res["rect"]),
-            center=tuple(res["center"]),
-            score=float(res["score"]),
-        )
+        return res
 
     def color_at(
         self, x: int, y: int, frame: Optional[np.ndarray] = None
