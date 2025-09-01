@@ -72,6 +72,14 @@ class DummyWin:
         return True
 
 
+class KH:
+    def press(self, key):
+        pass
+
+    def release(self, key):
+        pass
+
+
 def _setup_templates(tmp_path):
     for i in range(1, 9):
         (tmp_path / f"ch{i}.png").touch()
@@ -88,7 +96,7 @@ def test_find_button_returns_template_match(tmp_path, monkeypatch):
             return channel.TemplateMatch(rect=(0, 0, 10, 10), center=(5, 5), score=0.95)
 
     monkeypatch.setattr(channel, "TemplateMatcher", TM)
-    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True)
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True, keys=KH())
     frame = np.zeros((300, 300, 3), dtype=np.uint8)
     match = cs.find_button(frame, 1)
     assert isinstance(match, channel.TemplateMatch)
@@ -111,12 +119,12 @@ def test_switch_clicks_on_success(tmp_path, monkeypatch):
     moves, clicks = [], []
     monkeypatch.setattr(channel.pyautogui, "moveTo", lambda *a, **k: moves.append(1))
     monkeypatch.setattr(channel.pyautogui, "click", lambda *a, **k: clicks.append(1))
-    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=False)
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=False, keys=KH())
     assert cs.switch(1, tries=1, post_wait=0) is True
     assert moves and clicks
 
 
-def test_switch_returns_false_when_not_found(tmp_path, monkeypatch):
+def test_switch_uses_keys_without_mouse_when_not_found(tmp_path, monkeypatch):
     _setup_templates(tmp_path)
 
     class TM:
@@ -130,8 +138,17 @@ def test_switch_returns_false_when_not_found(tmp_path, monkeypatch):
     moves, clicks = [], []
     monkeypatch.setattr(channel.pyautogui, "moveTo", lambda *a, **k: moves.append(1))
     monkeypatch.setattr(channel.pyautogui, "click", lambda *a, **k: clicks.append(1))
-    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=False)
-    assert cs.switch(1, tries=1, post_wait=0) is False
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=False, keys=KH())
+    assert cs.switch(1, tries=1, post_wait=0) is True
+    assert not moves and not clicks, "mouse should not be used when keys are available"
+
+
+def test_error_when_no_keyhold(tmp_path):
+    _setup_templates(tmp_path)
+    # With ``dry=False`` and without providing ``keys`` the switcher should
+    # refuse to initialise because ``pydirectinput`` is missing in tests.
+    with pytest.raises(RuntimeError):
+        channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=False)
 
 
 def test_switch_uses_keys_when_not_found(tmp_path, monkeypatch):
@@ -168,7 +185,7 @@ def test_switch_uses_keys_when_not_found(tmp_path, monkeypatch):
 
 def test_next_wraps(tmp_path):
     _setup_templates(tmp_path)
-    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True)
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True, keys=KH())
     assert cs.next(1) == 2
     assert cs.next(8) == 1
 
@@ -187,7 +204,7 @@ def test_cycle_until_target_seen(tmp_path, monkeypatch):
             )
 
     monkeypatch.setattr(channel, "TemplateMatcher", TM)
-    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True)
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True, keys=KH())
 
     # Start from channel 1
     monkeypatch.setattr(cs, "current_channel_guess", lambda thresh=0.82: 1)
