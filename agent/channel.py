@@ -11,7 +11,7 @@ import pyautogui
 from recorder.window_capture import WindowCapture
 
 from .template_matcher import TemplateMatcher
-from .wasd import KeyHold
+from .wasd import KeyHold, pydirectinput
 
 
 @dataclass
@@ -64,6 +64,19 @@ class ChannelSwitcher:
             )
         self.tm = TemplateMatcher(templates_dir)
         self.dry = dry
+
+        # ``KeyHold`` relies on ``pydirectinput`` for reliable keyboard events.
+        # When it is not available we refuse to construct a switcher in order
+        # to avoid sending incomplete input sequences which could leave the
+        # game in an inconsistent state.
+        if keys is None:
+            if pydirectinput is None and not dry:
+                raise RuntimeError(
+                    "pydirectinput is required to switch channels; install the "
+                    "dependency or use dry mode"
+                )
+            keys = KeyHold(dry=dry, active_fn=getattr(win, "is_foreground", None))
+
         self.keys = keys
         self.hotkeys = hotkeys or {i: str(i) for i in range(1, 9)}
 
