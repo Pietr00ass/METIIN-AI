@@ -5,10 +5,9 @@ import logging
 
 from ultralytics import YOLO
 
-logging.basicConfig(level=logging.INFO)
-
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO)
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True, help="Ścieżka do data.yaml")
     ap.add_argument("--model", default="yolov8n.pt", help="Waga startowa (lokalna)")
