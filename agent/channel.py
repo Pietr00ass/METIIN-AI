@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+from pathlib import Path
 import time
 from typing import Callable, Optional, Tuple
 
@@ -25,24 +25,25 @@ class ChannelSwitcher:
     def __init__(
         self,
         win: WindowCapture,
-        templates_dir: str,
+        templates_dir: str | Path,
         dry: bool = False,
         *,
         keys: KeyHold | None = None,
         hotkeys: dict[int, str] | None = None,
     ):
         self.win = win
-        if not os.path.isdir(templates_dir):
-            raise FileNotFoundError(f"Brak katalogu z szablonami: {templates_dir}")
+        templates_path = Path(templates_dir)
+        if not templates_path.is_dir():
+            raise FileNotFoundError(
+                f"Brak katalogu z szablonami: {templates_path}"
+            )
         required = [f"ch{i}.png" for i in range(1, 9)]
-        missing = [
-            p for p in required if not os.path.isfile(os.path.join(templates_dir, p))
-        ]
+        missing = [p for p in required if not (templates_path / p).is_file()]
         if missing:
             raise FileNotFoundError(
-                f"Brak plików w {templates_dir}: {', '.join(missing)}"
+                f"Brak plików w {templates_path}: {', '.join(missing)}"
             )
-        self.tm = TemplateMatcher(templates_dir)
+        self.tm = TemplateMatcher(templates_path)
         self.dry = dry
 
         # ``KeyHold`` relies on ``pydirectinput`` for reliable keyboard events.
