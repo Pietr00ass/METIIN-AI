@@ -14,7 +14,11 @@ from recorder.window_capture import WindowCapture
 
 from . import get_config
 from .template_matcher import TemplateMatcher
-from .wasd import KeyHold
+
+try:  # pragma: no cover - prefer pydirectinput if available
+    from pydirectinput import KeyHold  # type: ignore
+except Exception:  # pragma: no cover - fallback to local implementation
+    from .wasd import KeyHold
 
 CFG = get_config()
 pyautogui.PAUSE = CFG.get("controls", {}).get("mouse_pause", 0.02)
@@ -133,7 +137,10 @@ class Teleporter:
         for attempt in range(max_attempts):
             logger.debug("Attempt %d to open teleport panel", attempt + 1)
             if not self.dry:
-                pyautogui.hotkey("ctrl", "x")
+                self.keys.press("ctrl")
+                self.keys.press("x")
+                self.keys.release("x")
+                self.keys.release("ctrl")
             else:
                 return True
             time.sleep(self.open_panel_delay)
