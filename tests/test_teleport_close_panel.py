@@ -72,6 +72,8 @@ class _TM:
 tm_stub.TemplateMatcher = _TM
 sys.modules.setdefault("agent.template_matcher", tm_stub)
 
+# Remove any Teleporter stub installed by other tests and import the real class
+sys.modules.pop("agent.teleport", None)
 from agent.teleport import Teleporter
 
 
