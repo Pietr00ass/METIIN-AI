@@ -13,16 +13,15 @@ import pyautogui
 from pynput import keyboard as pynput_keyboard
 from PySide6 import QtCore, QtGui, QtWidgets
 
+import agent.teleport_config as tc
 from agent.channel import ChannelSwitcher
 from agent.cycle import CycleFarm
 from agent.strategy import load_strategy
 from agent.teleport import Teleporter, TeleportResult
 from agent.wasd import KeyHold
-from recorder.window_capture import WindowCapture
-import agent.teleport_config as tc
-
 from gui.preview import PreviewWorker
 from gui.teleport_config_dialog import TeleportConfigDialog
+from recorder.window_capture import WindowCapture
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -86,7 +85,8 @@ class RecordThread(QtCore.QThread):
         except Exception as exc:  # pragma: no cover - UI feedback
             self.status.emit(
                 QtCore.QCoreApplication.translate(
-                    "MainWindow", "Błąd nagrywania: {exc}").format(exc=exc)
+                    "MainWindow", "Błąd nagrywania: {exc}"
+                ).format(exc=exc)
             )
         finally:
             self.finished.emit()
@@ -109,7 +109,9 @@ class AgentThread(QtCore.QThread):
         try:
             if not win.locate(timeout=5):
                 self.status.emit(
-                    QtCore.QCoreApplication.translate("MainWindow", "Nie znaleziono okna.")
+                    QtCore.QCoreApplication.translate(
+                        "MainWindow", "Nie znaleziono okna."
+                    )
                 )
                 return
             agent = load_strategy(self.cfg, win)
@@ -120,7 +122,8 @@ class AgentThread(QtCore.QThread):
         except Exception as exc:  # pragma: no cover - UI feedback
             self.status.emit(
                 QtCore.QCoreApplication.translate(
-                    "MainWindow", "Błąd agenta: {exc}").format(exc=exc)
+                    "MainWindow", "Błąd agenta: {exc}"
+                ).format(exc=exc)
             )
         finally:
             win.close()
@@ -147,7 +150,9 @@ class TeleportHuntThread(QtCore.QThread):
         try:
             if not win.locate(timeout=5):
                 self.status.emit(
-                    QtCore.QCoreApplication.translate("MainWindow", "Nie znaleziono okna.")
+                    QtCore.QCoreApplication.translate(
+                        "MainWindow", "Nie znaleziono okna."
+                    )
                 )
                 return
             try:
@@ -161,7 +166,8 @@ class TeleportHuntThread(QtCore.QThread):
                 logger.error("Błąd przy robieniu zrzutu ekranu: %s", e)
                 self.status.emit(
                     QtCore.QCoreApplication.translate(
-                        "MainWindow", "Błąd przechwytywania ekranu: {e}").format(e=e)
+                        "MainWindow", "Błąd przechwytywania ekranu: {e}"
+                    ).format(e=e)
                 )
                 return
             tp = Teleporter(win, self.cfg["paths"]["templates_dir"], use_ocr=True)
@@ -207,7 +213,8 @@ class TeleportHuntThread(QtCore.QThread):
         except Exception as exc:  # pragma: no cover - UI feedback
             self.status.emit(
                 QtCore.QCoreApplication.translate(
-                    "MainWindow", "Błąd teleport+poluj: {exc}").format(exc=exc)
+                    "MainWindow", "Błąd teleport+poluj: {exc}"
+                ).format(exc=exc)
             )
         finally:
             win.close()
@@ -253,7 +260,9 @@ class CycleThread(QtCore.QThread):
             )
         except Exception as exc:  # pragma: no cover - UI feedback
             self.status.emit(
-                QtCore.QCoreApplication.translate("MainWindow", "Błąd cyklu: {exc}").format(exc=exc)
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Błąd cyklu: {exc}"
+                ).format(exc=exc)
             )
         finally:
             self.cycle_agent = None
@@ -276,7 +285,9 @@ class ChannelThread(QtCore.QThread):
             try:
                 if not win.locate(timeout=5):
                     self.status.emit(
-                        QtCore.QCoreApplication.translate("MainWindow", "Nie znaleziono okna.")
+                        QtCore.QCoreApplication.translate(
+                            "MainWindow", "Nie znaleziono okna."
+                        )
                     )
                     return
                 keys = KeyHold(
@@ -295,9 +306,9 @@ class ChannelThread(QtCore.QThread):
                 finally:
                     keys.stop()
                 msg = (
-                    QtCore.QCoreApplication.translate("MainWindow", "Zmieniono kanał na CH{ch}").format(
-                        ch=self.channel
-                    )
+                    QtCore.QCoreApplication.translate(
+                        "MainWindow", "Zmieniono kanał na CH{ch}"
+                    ).format(ch=self.channel)
                     if ok
                     else QtCore.QCoreApplication.translate(
                         "MainWindow", "Nie znaleziono przycisku CH – sprawdź szablony."
@@ -308,7 +319,9 @@ class ChannelThread(QtCore.QThread):
                 win.close()
         except Exception as exc:  # pragma: no cover - UI feedback
             self.status.emit(
-                QtCore.QCoreApplication.translate("MainWindow", "Błąd zmiany kanału: {exc}").format(exc=exc)
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Błąd zmiany kanału: {exc}"
+                ).format(exc=exc)
             )
         finally:
             self.finished.emit()
@@ -342,7 +355,8 @@ class TrainThread(QtCore.QThread):
         except Exception as exc:  # pragma: no cover - UI feedback
             self.status.emit(
                 QtCore.QCoreApplication.translate(
-                    "MainWindow", "Błąd treningu: {exc}").format(exc=exc)
+                    "MainWindow", "Błąd treningu: {exc}"
+                ).format(exc=exc)
             )
         finally:
             self.finished.emit()
@@ -355,14 +369,14 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.scale = 1.0
         self.base_font_pt = QtWidgets.QApplication.font().pointSizeF()
-        self.base_window_size = QtCore.QSize(1200, 800)
-        self.base_video_size = QtCore.QSize(860, 480)
         self.setWindowTitle("Metin2 Vision Agent – Panel")
 
         # central layout
         central = QtWidgets.QWidget(self)
         self.setCentralWidget(central)
         layout = QtWidgets.QHBoxLayout(central)
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        layout.addWidget(splitter)
 
         # left pane with controls inside a scroll area so all sections remain accessible
         left_widget = QtWidgets.QWidget()
@@ -371,15 +385,20 @@ class MainWindow(QtWidgets.QMainWindow):
         left_scroll.setWidget(left_widget)
         left_scroll.setWidgetResizable(True)
         left_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        layout.addWidget(left_scroll, 1)
+        left_scroll.setMinimumWidth(360)
+        splitter.addWidget(left_scroll)
 
         # language selector
         self.translator = QtCore.QTranslator(self)
         lang_row = QtWidgets.QHBoxLayout()
         self.lang_label = QtWidgets.QLabel()
         self.lang_combo = QtWidgets.QComboBox()
-        self.lang_combo.addItem(QtCore.QCoreApplication.translate("MainWindow", "Polski"), "pl")
-        self.lang_combo.addItem(QtCore.QCoreApplication.translate("MainWindow", "English"), "en")
+        self.lang_combo.addItem(
+            QtCore.QCoreApplication.translate("MainWindow", "Polski"), "pl"
+        )
+        self.lang_combo.addItem(
+            QtCore.QCoreApplication.translate("MainWindow", "English"), "en"
+        )
         self.lang_combo.currentIndexChanged.connect(self.change_language)
         lang_row.addWidget(self.lang_label)
         lang_row.addWidget(self.lang_combo)
@@ -389,28 +408,50 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings_box = QtWidgets.QGroupBox()
         settings_form = QtWidgets.QFormLayout(self.settings_box)
         self.title_edit = QtWidgets.QLineEdit()
-        self.title_edit.setPlaceholderText(QtCore.QCoreApplication.translate("MainWindow", "Fragment tytułu okna (np. Metin2)"))
-        settings_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Tytuł okna:"), self.title_edit)
+        self.title_edit.setPlaceholderText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Fragment tytułu okna (np. Metin2)"
+            )
+        )
+        settings_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Tytuł okna:"),
+            self.title_edit,
+        )
         self.model_path = QtWidgets.QLineEdit("runs/detect/train/weights/best.pt")
-        settings_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Ścieżka modelu YOLO:"), self.model_path)
+        settings_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Ścieżka modelu YOLO:"),
+            self.model_path,
+        )
         self.classes_edit = QtWidgets.QLineEdit("metin,boss,potwory")
-        settings_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Klasy obiektów:"), self.classes_edit)
+        settings_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Klasy obiektów:"),
+            self.classes_edit,
+        )
         tmpl_widget = QtWidgets.QWidget()
         tmpl_layout = QtWidgets.QHBoxLayout(tmpl_widget)
         tmpl_layout.setContentsMargins(0, 0, 0, 0)
         self.templates_dir_edit = QtWidgets.QLineEdit("assets/templates")
-        self.btn_templates_dir = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Wybierz…"))
+        self.btn_templates_dir = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Wybierz…")
+        )
         tmpl_layout.addWidget(self.templates_dir_edit)
         tmpl_layout.addWidget(self.btn_templates_dir)
         self.templates_widget = tmpl_widget
-        settings_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Katalog szablonów:"), self.templates_widget)
+        settings_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Katalog szablonów:"),
+            self.templates_widget,
+        )
         self.btn_templates_dir.clicked.connect(self.browse_templates_dir)
         left.addWidget(self.settings_box)
 
         # agent parameters group
         self.agent_box = QtWidgets.QGroupBox()
         agent_layout = QtWidgets.QVBoxLayout(self.agent_box)
-        self.prio_label = QtWidgets.QLabel(QtCore.QCoreApplication.translate("MainWindow", "Priorytety (przeciągnij aby zmienić):"))
+        self.prio_label = QtWidgets.QLabel(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Priorytety (przeciągnij aby zmienić):"
+            )
+        )
         agent_layout.addWidget(self.prio_label)
         self.prio_list = QtWidgets.QListWidget()
         self.prio_list.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
@@ -441,19 +482,37 @@ class MainWindow(QtWidgets.QMainWindow):
         desired_w_layout.addWidget(self.desired_w_slider)
         desired_w_layout.addWidget(self.desired_w)
 
-        policy_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:"), self.deadzone)
-        policy_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Desired box W:"), desired_w_layout)
+        policy_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:"),
+            self.deadzone,
+        )
+        policy_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Desired box W:"),
+            desired_w_layout,
+        )
         agent_layout.addLayout(policy_form)
-        self.overlay_chk = QtWidgets.QCheckBox(QtCore.QCoreApplication.translate("MainWindow", "Overlay YOLO na podglądzie"))
+        self.overlay_chk = QtWidgets.QCheckBox(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Overlay YOLO na podglądzie"
+            )
+        )
         self.overlay_chk.setChecked(True)
         agent_layout.addWidget(self.overlay_chk)
-        self.dry_run_chk = QtWidgets.QCheckBox(QtCore.QCoreApplication.translate("MainWindow", "Dry run (bez klików/klawiszy)"))
+        self.dry_run_chk = QtWidgets.QCheckBox(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Dry run (bez klików/klawiszy)"
+            )
+        )
         self.dry_run_chk.setChecked(False)
         agent_layout.addWidget(self.dry_run_chk)
-        self.movement_chk = QtWidgets.QCheckBox(QtCore.QCoreApplication.translate("MainWindow", "Movement włączony"))
+        self.movement_chk = QtWidgets.QCheckBox(
+            QtCore.QCoreApplication.translate("MainWindow", "Movement włączony")
+        )
         self.movement_chk.setChecked(True)
         agent_layout.addWidget(self.movement_chk)
-        self.rotate_chk = QtWidgets.QCheckBox(QtCore.QCoreApplication.translate("MainWindow", "Obrót (E) włączony"))
+        self.rotate_chk = QtWidgets.QCheckBox(
+            QtCore.QCoreApplication.translate("MainWindow", "Obrót (E) włączony")
+        )
         self.rotate_chk.setChecked(True)
         agent_layout.addWidget(self.rotate_chk)
         left.addWidget(self.agent_box)
@@ -471,30 +530,55 @@ class MainWindow(QtWidgets.QMainWindow):
         self.idle_sec.setRange(0.5, 5.0)
         self.idle_sec.setSingleStep(0.1)
         self.idle_sec.setValue(1.5)
-        scan_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Skan sweeps:"), self.sweeps)
-        scan_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Sweep ms:"), self.sweep_ms)
-        scan_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Idle sec:"), self.idle_sec)
+        scan_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Skan sweeps:"), self.sweeps
+        )
+        scan_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Sweep ms:"), self.sweep_ms
+        )
+        scan_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Idle sec:"), self.idle_sec
+        )
         left.addWidget(self.scan_box)
 
         # teleportation controls
         self.tp_box = QtWidgets.QGroupBox()
         tp_form = QtWidgets.QFormLayout(self.tp_box)
         self.tp_point = QtWidgets.QLineEdit()
-        self.tp_point.setPlaceholderText(QtCore.QCoreApplication.translate("MainWindow", "Nazwa punktu (OCR lub template)"))
+        self.tp_point.setPlaceholderText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Nazwa punktu (OCR lub template)"
+            )
+        )
         self.tp_side = QtWidgets.QLineEdit()
-        self.tp_side.setPlaceholderText(QtCore.QCoreApplication.translate("MainWindow", "Strona/mapa (np. Strona I)"))
+        self.tp_side.setPlaceholderText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Strona/mapa (np. Strona I)"
+            )
+        )
         self.tp_minutes = QtWidgets.QSpinBox()
         self.tp_minutes.setRange(1, 180)
         self.tp_minutes.setValue(10)
-        tp_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Punkt:"), self.tp_point)
-        tp_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Strona:"), self.tp_side)
-        tp_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "Czas (min):"), self.tp_minutes)
+        tp_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Punkt:"), self.tp_point
+        )
+        tp_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Strona:"), self.tp_side
+        )
+        tp_form.addRow(
+            QtCore.QCoreApplication.translate("MainWindow", "Czas (min):"),
+            self.tp_minutes,
+        )
         left.addWidget(self.tp_box)
 
         # channels and cooldown
         self.ch_box = QtWidgets.QGroupBox()
         ch_layout = QtWidgets.QVBoxLayout(self.ch_box)
-        self.ch_shortcuts_label = QtWidgets.QLabel(QtCore.QCoreApplication.translate("MainWindow", "Skróty kanałów (Ctrl + klawisz):"))
+        self.ch_shortcuts_label = QtWidgets.QLabel(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Skróty kanałów (Ctrl + klawisz):"
+            )
+        )
         ch_layout.addWidget(self.ch_shortcuts_label)
         self.ch_key_edits = {}
         ch_form = QtWidgets.QFormLayout()
@@ -502,14 +586,23 @@ class MainWindow(QtWidgets.QMainWindow):
             edit = QtWidgets.QLineEdit(str(i))
             edit.setMaximumWidth(40)
             self.ch_key_edits[i] = edit
-            ch_form.addRow(QtCore.QCoreApplication.translate("MainWindow", "CH{num}:").format(num=i), edit)
+            ch_form.addRow(
+                QtCore.QCoreApplication.translate("MainWindow", "CH{num}:").format(
+                    num=i
+                ),
+                edit,
+            )
         ch_layout.addLayout(ch_form)
-        self.channel_label = QtWidgets.QLabel(QtCore.QCoreApplication.translate("MainWindow", "Kanał (minimapa):"))
+        self.channel_label = QtWidgets.QLabel(
+            QtCore.QCoreApplication.translate("MainWindow", "Kanał (minimapa):")
+        )
         ch_layout.addWidget(self.channel_label)
         self.channel_combo = QtWidgets.QComboBox()
         self.channel_combo.addItems([f"CH{i}" for i in range(1, 9)])
         ch_layout.addWidget(self.channel_combo)
-        self.cooldown_label = QtWidgets.QLabel(QtCore.QCoreApplication.translate("MainWindow", "Cooldown slotów (minuty):"))
+        self.cooldown_label = QtWidgets.QLabel(
+            QtCore.QCoreApplication.translate("MainWindow", "Cooldown slotów (minuty):")
+        )
         ch_layout.addWidget(self.cooldown_label)
         self.cooldown_spin = QtWidgets.QSpinBox()
         self.cooldown_spin.setRange(1, 60)
@@ -531,20 +624,38 @@ class MainWindow(QtWidgets.QMainWindow):
         # action buttons
         self.actions_box = QtWidgets.QGroupBox()
         actions_layout = QtWidgets.QVBoxLayout(self.actions_box)
-        self.btn_preview = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Start podglądu"))
+        self.btn_preview = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Start podglądu")
+        )
         self.btn_preview.setCheckable(True)
-        self.btn_record = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Nagrywaj dane (5 min)"))
+        self.btn_record = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Nagrywaj dane (5 min)")
+        )
         self.btn_record.setCheckable(True)
-        self.btn_agent = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Start agenta (YOLO + WASD)"))
+        self.btn_agent = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Start agenta (YOLO + WASD)"
+            )
+        )
         self.btn_agent.setCheckable(True)
-        self.btn_tp_hunt = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Teleportuj i poluj"))
+        self.btn_tp_hunt = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Teleportuj i poluj")
+        )
         self.btn_tp_hunt.setCheckable(True)
-        self.btn_cycle = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)"))
+        self.btn_cycle = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
+        )
         self.btn_cycle.setCheckable(True)
-        self.btn_ch = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Zmień kanał"))
+        self.btn_ch = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Zmień kanał")
+        )
         self.btn_ch.setCheckable(True)
-        self.btn_stop = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "STOP (F12)"))
-        self.btn_train = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO"))
+        self.btn_stop = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "STOP (F12)")
+        )
+        self.btn_train = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO")
+        )
         self.btn_train.setCheckable(True)
         for b in [
             self.btn_preview,
@@ -560,26 +671,44 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # optional custom cycle sequence table
         self.seq_table = QtWidgets.QTableWidget(0, 2)
-        self.seq_table.setHorizontalHeaderLabels([QtCore.QCoreApplication.translate("MainWindow", "CH"), QtCore.QCoreApplication.translate("MainWindow", "Slot")])
+        self.seq_table.setHorizontalHeaderLabels(
+            [
+                QtCore.QCoreApplication.translate("MainWindow", "CH"),
+                QtCore.QCoreApplication.translate("MainWindow", "Slot"),
+            ]
+        )
         self.seq_table.horizontalHeader().setSectionResizeMode(
             QtWidgets.QHeaderView.Stretch
         )
-        self.seq_add_btn = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Dodaj krok"))
-        self.seq_remove_btn = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Usuń krok"))
+        self.seq_add_btn = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Dodaj krok")
+        )
+        self.seq_remove_btn = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Usuń krok")
+        )
         seq_btns = QtWidgets.QHBoxLayout()
         seq_btns.addWidget(self.seq_add_btn)
         seq_btns.addWidget(self.seq_remove_btn)
         self.seq_box = QtWidgets.QGroupBox()
         seq_layout = QtWidgets.QVBoxLayout(self.seq_box)
         self.seq_help = QtWidgets.QLabel(
-            QtCore.QCoreApplication.translate("MainWindow", "Opcjonalna lista kanałów i slotów; puste = domyślny cykl 8×8.")
+            QtCore.QCoreApplication.translate(
+                "MainWindow",
+                "Opcjonalna lista kanałów i slotów; puste = domyślny cykl 8×8.",
+            )
         )
         self.seq_help.setWordWrap(True)
         self.seq_help.setToolTip(
-            QtCore.QCoreApplication.translate("MainWindow", "Każdy wiersz określa kanał (1-8) i slot (1-8) odwiedzany kolejno.")
+            QtCore.QCoreApplication.translate(
+                "MainWindow",
+                "Każdy wiersz określa kanał (1-8) i slot (1-8) odwiedzany kolejno.",
+            )
         )
         self.seq_box.setToolTip(
-            QtCore.QCoreApplication.translate("MainWindow", "Ustal kolejność kanałów i slotów. Pozostaw puste dla domyślnego 8×8.")
+            QtCore.QCoreApplication.translate(
+                "MainWindow",
+                "Ustal kolejność kanałów i slotów. Pozostaw puste dla domyślnego 8×8.",
+            )
         )
         seq_layout.addWidget(self.seq_help)
         seq_layout.addWidget(self.seq_table)
@@ -588,11 +717,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.seq_add_btn.clicked.connect(self.add_seq_row)
         self.seq_remove_btn.clicked.connect(self.remove_seq_row)
 
-        self.btn_tp_cfg = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Konfiguracja teleportu"))
+        self.btn_tp_cfg = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Konfiguracja teleportu")
+        )
         actions_layout.addWidget(self.btn_tp_cfg)
         self.btn_tp_cfg.clicked.connect(self.open_teleport_config)
-        self.btn_save_cfg = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Zapisz konfigurację"))
-        self.btn_load_cfg = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("MainWindow", "Wczytaj konfigurację"))
+        self.btn_save_cfg = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Zapisz konfigurację")
+        )
+        self.btn_load_cfg = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Wczytaj konfigurację")
+        )
         actions_layout.addWidget(self.btn_save_cfg)
         actions_layout.addWidget(self.btn_load_cfg)
         left.addWidget(self.actions_box)
@@ -601,7 +736,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.log_box = QtWidgets.QGroupBox()
         log_layout = QtWidgets.QVBoxLayout(self.log_box)
         log_lvl_layout = QtWidgets.QHBoxLayout()
-        self.log_level_label = QtWidgets.QLabel(QtCore.QCoreApplication.translate("MainWindow", "Poziom:"))
+        self.log_level_label = QtWidgets.QLabel(
+            QtCore.QCoreApplication.translate("MainWindow", "Poziom:")
+        )
         log_lvl_layout.addWidget(self.log_level_label)
         self.log_level_combo = QtWidgets.QComboBox()
         self.log_level_combo.addItems(["DEBUG", "INFO"])
@@ -615,19 +752,25 @@ class MainWindow(QtWidgets.QMainWindow):
         left.addWidget(self.log_box)
 
         left.addStretch(1)
-        self.status_label = QtWidgets.QLabel(QtCore.QCoreApplication.translate("MainWindow", "Gotowy."))
+        self.status_label = QtWidgets.QLabel(
+            QtCore.QCoreApplication.translate("MainWindow", "Gotowy.")
+        )
         self.status_label.setWordWrap(True)
         left.addWidget(self.status_label)
 
-        # right pane with video
-        right = QtWidgets.QVBoxLayout()
-        layout.addLayout(right, 2)
+        # video preview on the right
         self.video = QtWidgets.QLabel()
-        self.video.setMinimumSize(self.base_video_size)
+        self.video.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Expanding,
+        )
+        self.video.setMinimumSize(320, 180)
         self.video.setStyleSheet("background:#222; border:1px solid #444")
         self.video.setAlignment(QtCore.Qt.AlignCenter)
         self.video.setFocusPolicy(QtCore.Qt.NoFocus)
-        right.addWidget(self.video)
+        splitter.addWidget(self.video)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 3)
 
         # thread references
         self.preview_thread: PreviewWorker | None = None
@@ -677,13 +820,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.retranslate_ui()
 
     def retranslate_ui(self) -> None:
-        self.setWindowTitle(QtCore.QCoreApplication.translate("MainWindow", "Metin2 Vision Agent – Panel"))
-        self.lang_label.setText(QtCore.QCoreApplication.translate("MainWindow", "Język:"))
-        self.lang_combo.setItemText(0, QtCore.QCoreApplication.translate("MainWindow", "Polski"))
-        self.lang_combo.setItemText(1, QtCore.QCoreApplication.translate("MainWindow", "English"))
+        self.setWindowTitle(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Metin2 Vision Agent – Panel"
+            )
+        )
+        self.lang_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Język:")
+        )
+        self.lang_combo.setItemText(
+            0, QtCore.QCoreApplication.translate("MainWindow", "Polski")
+        )
+        self.lang_combo.setItemText(
+            1, QtCore.QCoreApplication.translate("MainWindow", "English")
+        )
 
         # settings
-        self.settings_box.setTitle(QtCore.QCoreApplication.translate("MainWindow", "Ustawienia"))
+        self.settings_box.setTitle(
+            QtCore.QCoreApplication.translate("MainWindow", "Ustawienia")
+        )
         settings_form = self.settings_box.layout()
         if isinstance(settings_form, QtWidgets.QFormLayout):
             settings_form.labelForField(self.title_edit).setText(
@@ -699,11 +854,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtCore.QCoreApplication.translate("MainWindow", "Katalog szablonów:")
             )
         self.title_edit.setPlaceholderText(
-            QtCore.QCoreApplication.translate("MainWindow", "Fragment tytułu okna (np. Metin2)")
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Fragment tytułu okna (np. Metin2)"
+            )
         )
 
         # agent box
-        self.agent_box.setTitle(QtCore.QCoreApplication.translate("MainWindow", "Parametry agenta"))
+        self.agent_box.setTitle(
+            QtCore.QCoreApplication.translate("MainWindow", "Parametry agenta")
+        )
         policy_form = self.agent_box.findChild(QtWidgets.QFormLayout)
         if policy_form:
             policy_form.labelForField(self.deadzone).setText(
@@ -713,15 +872,31 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtCore.QCoreApplication.translate("MainWindow", "Desired box W:")
             )
         self.prio_label.setText(
-            QtCore.QCoreApplication.translate("MainWindow", "Priorytety (przeciągnij aby zmienić):")
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Priorytety (przeciągnij aby zmienić):"
+            )
         )
-        self.overlay_chk.setText(QtCore.QCoreApplication.translate("MainWindow", "Overlay YOLO na podglądzie"))
-        self.dry_run_chk.setText(QtCore.QCoreApplication.translate("MainWindow", "Dry run (bez klików/klawiszy)"))
-        self.movement_chk.setText(QtCore.QCoreApplication.translate("MainWindow", "Movement włączony"))
-        self.rotate_chk.setText(QtCore.QCoreApplication.translate("MainWindow", "Obrót (E) włączony"))
+        self.overlay_chk.setText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Overlay YOLO na podglądzie"
+            )
+        )
+        self.dry_run_chk.setText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Dry run (bez klików/klawiszy)"
+            )
+        )
+        self.movement_chk.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Movement włączony")
+        )
+        self.rotate_chk.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Obrót (E) włączony")
+        )
 
         # scan box
-        self.scan_box.setTitle(QtCore.QCoreApplication.translate("MainWindow", "Parametry skanu (obrót E)"))
+        self.scan_box.setTitle(
+            QtCore.QCoreApplication.translate("MainWindow", "Parametry skanu (obrót E)")
+        )
         scan_form = self.scan_box.findChild(QtWidgets.QFormLayout)
         if scan_form:
             scan_form.labelForField(self.sweeps).setText(
@@ -735,7 +910,9 @@ class MainWindow(QtWidgets.QMainWindow):
             )
 
         # teleport box
-        self.tp_box.setTitle(QtCore.QCoreApplication.translate("MainWindow", "Teleportacja"))
+        self.tp_box.setTitle(
+            QtCore.QCoreApplication.translate("MainWindow", "Teleportacja")
+        )
         tp_form = self.tp_box.findChild(QtWidgets.QFormLayout)
         if tp_form:
             tp_form.labelForField(self.tp_point).setText(
@@ -748,63 +925,128 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtCore.QCoreApplication.translate("MainWindow", "Czas (min):")
             )
         self.tp_point.setPlaceholderText(
-            QtCore.QCoreApplication.translate("MainWindow", "Nazwa punktu (OCR lub template)")
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Nazwa punktu (OCR lub template)"
+            )
         )
         self.tp_side.setPlaceholderText(
-            QtCore.QCoreApplication.translate("MainWindow", "Strona/mapa (np. Strona I)")
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Strona/mapa (np. Strona I)"
+            )
         )
 
         # channels box
-        self.ch_box.setTitle(QtCore.QCoreApplication.translate("MainWindow", "Kanały i cooldown"))
+        self.ch_box.setTitle(
+            QtCore.QCoreApplication.translate("MainWindow", "Kanały i cooldown")
+        )
         self.ch_shortcuts_label.setText(
-            QtCore.QCoreApplication.translate("MainWindow", "Skróty kanałów (Ctrl + klawisz):")
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Skróty kanałów (Ctrl + klawisz):"
+            )
         )
         for i in range(1, 9):
             label = self.ch_box.findChild(QtWidgets.QFormLayout).labelForField(
                 self.ch_key_edits[i]
             )
-            label.setText(QtCore.QCoreApplication.translate("MainWindow", "CH{num}:").format(num=i))
-        self.channel_label.setText(QtCore.QCoreApplication.translate("MainWindow", "Kanał (minimapa):"))
+            label.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "CH{num}:").format(
+                    num=i
+                )
+            )
+        self.channel_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Kanał (minimapa):")
+        )
         self.cooldown_label.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Cooldown slotów (minuty):")
         )
 
         # scale box
-        self.scale_box.setTitle(QtCore.QCoreApplication.translate("MainWindow", "Skala UI"))
+        self.scale_box.setTitle(
+            QtCore.QCoreApplication.translate("MainWindow", "Skala UI")
+        )
 
         # actions box
-        self.actions_box.setTitle(QtCore.QCoreApplication.translate("MainWindow", "Akcje"))
-        self.btn_preview.setText(QtCore.QCoreApplication.translate("MainWindow", "Start podglądu"))
-        self.btn_record.setText(QtCore.QCoreApplication.translate("MainWindow", "Nagrywaj dane (5 min)"))
-        self.btn_agent.setText(QtCore.QCoreApplication.translate("MainWindow", "Start agenta (YOLO + WASD)"))
-        self.btn_tp_hunt.setText(QtCore.QCoreApplication.translate("MainWindow", "Teleportuj i poluj"))
-        self.btn_cycle.setText(QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)"))
-        self.btn_ch.setText(QtCore.QCoreApplication.translate("MainWindow", "Zmień kanał"))
-        self.btn_stop.setText(QtCore.QCoreApplication.translate("MainWindow", "STOP (F12)"))
-        self.btn_train.setText(QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO"))
-        self.seq_box.setTitle(QtCore.QCoreApplication.translate("MainWindow", "Sekwencja cyklu"))
+        self.actions_box.setTitle(
+            QtCore.QCoreApplication.translate("MainWindow", "Akcje")
+        )
+        self.btn_preview.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Start podglądu")
+        )
+        self.btn_record.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Nagrywaj dane (5 min)")
+        )
+        self.btn_agent.setText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Start agenta (YOLO + WASD)"
+            )
+        )
+        self.btn_tp_hunt.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Teleportuj i poluj")
+        )
+        self.btn_cycle.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
+        )
+        self.btn_ch.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Zmień kanał")
+        )
+        self.btn_stop.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "STOP (F12)")
+        )
+        self.btn_train.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO")
+        )
+        self.seq_box.setTitle(
+            QtCore.QCoreApplication.translate("MainWindow", "Sekwencja cyklu")
+        )
         self.seq_help.setText(
-            QtCore.QCoreApplication.translate("MainWindow", "Opcjonalna lista kanałów i slotów; puste = domyślny cykl 8×8.")
+            QtCore.QCoreApplication.translate(
+                "MainWindow",
+                "Opcjonalna lista kanałów i slotów; puste = domyślny cykl 8×8.",
+            )
         )
         self.seq_help.setToolTip(
-            QtCore.QCoreApplication.translate("MainWindow", "Każdy wiersz określa kanał (1-8) i slot (1-8) odwiedzany kolejno.")
+            QtCore.QCoreApplication.translate(
+                "MainWindow",
+                "Każdy wiersz określa kanał (1-8) i slot (1-8) odwiedzany kolejno.",
+            )
         )
         self.seq_box.setToolTip(
-            QtCore.QCoreApplication.translate("MainWindow", "Ustal kolejność kanałów i slotów. Pozostaw puste dla domyślnego 8×8.")
+            QtCore.QCoreApplication.translate(
+                "MainWindow",
+                "Ustal kolejność kanałów i slotów. Pozostaw puste dla domyślnego 8×8.",
+            )
         )
-        self.seq_add_btn.setText(QtCore.QCoreApplication.translate("MainWindow", "Dodaj krok"))
-        self.seq_remove_btn.setText(QtCore.QCoreApplication.translate("MainWindow", "Usuń krok"))
+        self.seq_add_btn.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Dodaj krok")
+        )
+        self.seq_remove_btn.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Usuń krok")
+        )
         self.seq_table.setHorizontalHeaderLabels(
-            [QtCore.QCoreApplication.translate("MainWindow", "CH"), QtCore.QCoreApplication.translate("MainWindow", "Slot")]
+            [
+                QtCore.QCoreApplication.translate("MainWindow", "CH"),
+                QtCore.QCoreApplication.translate("MainWindow", "Slot"),
+            ]
         )
-        self.btn_tp_cfg.setText(QtCore.QCoreApplication.translate("MainWindow", "Konfiguracja teleportu"))
-        self.btn_save_cfg.setText(QtCore.QCoreApplication.translate("MainWindow", "Zapisz konfigurację"))
-        self.btn_load_cfg.setText(QtCore.QCoreApplication.translate("MainWindow", "Wczytaj konfigurację"))
+        self.btn_tp_cfg.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Konfiguracja teleportu")
+        )
+        self.btn_save_cfg.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Zapisz konfigurację")
+        )
+        self.btn_load_cfg.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Wczytaj konfigurację")
+        )
 
         # logs and status
         self.log_box.setTitle(QtCore.QCoreApplication.translate("MainWindow", "Logi"))
-        self.log_level_label.setText(QtCore.QCoreApplication.translate("MainWindow", "Poziom:"))
-        self.status_label.setText(QtCore.QCoreApplication.translate("MainWindow", "Gotowy."))
+        self.log_level_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Poziom:")
+        )
+        self.status_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Gotowy.")
+        )
+
     def current_priority(self) -> list[str]:
         return [self.prio_list.item(i).text() for i in range(self.prio_list.count())]
 
@@ -813,46 +1055,14 @@ class MainWindow(QtWidgets.QMainWindow):
         logging.info(text)
 
     def apply_scale(self, scale: float) -> None:
-        """Apply scaling to window size, video widget and global font."""
-        # Determine maximum geometry available on the primary screen
-        screen = QtWidgets.QApplication.primaryScreen()
-        avail = screen.availableGeometry() if screen else QtCore.QRect()
-
-        base_w = self.base_window_size.width()
-        base_h = self.base_window_size.height()
-
-        # Desired size based purely on the requested scale
-        desired_w = int(base_w * scale)
-        desired_h = int(base_h * scale)
-
-        # Clamp to available screen geometry
-        clamped_w = min(desired_w, avail.width()) if avail.width() else desired_w
-        clamped_h = min(desired_h, avail.height()) if avail.height() else desired_h
-
-        # Effective scale actually applied
-        effective_scale = min(clamped_w / base_w, clamped_h / base_h)
-        self.scale = effective_scale
-
-        # Resize window using clamped dimensions
-        self.resize(clamped_w, clamped_h)
-        self.video.setMinimumSize(
-            int(self.base_video_size.width() * effective_scale),
-            int(self.base_video_size.height() * effective_scale),
-        )
+        """Apply global font scaling and adjust widgets accordingly."""
+        self.scale = scale
         font = QtGui.QFont()
-        font.setPointSizeF(self.base_font_pt * effective_scale)
+        font.setPointSizeF(self.base_font_pt * scale)
         QtWidgets.QApplication.setFont(font)
         # Ensure log view shows exactly three lines at the current scale
         metrics = QtGui.QFontMetrics(font)
         self.log_view.setFixedHeight(int(metrics.lineSpacing() * 4))
-
-        if effective_scale < scale:
-            self.set_status(
-                QtCore.QCoreApplication.translate(
-                    "MainWindow",
-                    "Skala dopasowana do dostępnej rozdzielczości ekranu.",
-                )
-            )
 
     def add_seq_row(self) -> None:
         """Append an empty step to the cycle sequence table."""
@@ -867,7 +1077,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def browse_templates_dir(self) -> None:
         path = QtWidgets.QFileDialog.getExistingDirectory(
             self,
-            QtCore.QCoreApplication.translate("MainWindow", "Wybierz katalog z szablonami"),
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Wybierz katalog z szablonami"
+            ),
             self.templates_dir_edit.text(),
         )
         if path:
@@ -899,12 +1111,20 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.preview_thread.stop()
                 self.preview_thread.wait()
                 self.preview_thread = None
-            self.btn_preview.setText(QtCore.QCoreApplication.translate("MainWindow", "Start podglądu"))
-            self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Podgląd zatrzymany."))
+            self.btn_preview.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Start podglądu")
+            )
+            self.set_status(
+                QtCore.QCoreApplication.translate("MainWindow", "Podgląd zatrzymany.")
+            )
             return
         title = self.title_edit.text().strip()
         if not title:
-            self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Podaj fragment tytułu okna."))
+            self.set_status(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Podaj fragment tytułu okna."
+                )
+            )
             self.btn_preview.setChecked(False)
             return
         # start preview
@@ -917,21 +1137,33 @@ class MainWindow(QtWidgets.QMainWindow):
             self.model_path.text().strip(), classes, self.overlay_chk.isChecked()
         )
         self.preview_thread.start()
-        self.btn_preview.setText(QtCore.QCoreApplication.translate("MainWindow", "Stop podglądu"))
+        self.btn_preview.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Stop podglądu")
+        )
 
     # ---------- recording ----------
     def record_data(self, checked: bool) -> None:
         if not checked:
-            self.btn_record.setText(QtCore.QCoreApplication.translate("MainWindow", "Nagrywaj dane (5 min)"))
+            self.btn_record.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Nagrywaj dane (5 min)")
+            )
             return
         title = self.title_edit.text().strip()
         if not title:
-            self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Podaj fragment tytułu okna."))
+            self.set_status(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Podaj fragment tytułu okna."
+                )
+            )
             self.btn_record.setChecked(False)
             return
         with WindowCapture(title) as wc:
             if not wc.locate(timeout=5):
-                self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Nie znaleziono okna."))
+                self.set_status(
+                    QtCore.QCoreApplication.translate(
+                        "MainWindow", "Nie znaleziono okna."
+                    )
+                )
                 self.btn_record.setChecked(False)
                 return
             wc.update_region()
@@ -1166,7 +1398,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.agent_thread.wait()
                 self.agent_thread = None
             self.btn_cycle.setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Cykl 8×8 (sloty×kanały)"
+                )
             )
             self.set_status(
                 QtCore.QCoreApplication.translate("MainWindow", "Cykl zatrzymany.")
@@ -1179,7 +1413,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.agent_thread.finished.connect(lambda: self.btn_cycle.setChecked(False))
         self.agent_thread.finished.connect(
             lambda: self.btn_cycle.setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Cykl 8×8 (sloty×kanały)"
+                )
             )
         )
         self.agent_thread.start()
@@ -1192,7 +1428,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def change_channel(self, checked: bool) -> None:
         if not checked:
-            self.btn_ch.setText(QtCore.QCoreApplication.translate("MainWindow", "Zmień kanał"))
+            self.btn_ch.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Zmień kanał")
+            )
             return
         cfg = self.build_cfg()
         ch = int(self.channel_combo.currentText().replace("CH", ""))
@@ -1205,8 +1443,12 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         )
         self.channel_thread.start()
-        self.btn_ch.setText(QtCore.QCoreApplication.translate("MainWindow", "Zmiana kanału…"))
-        self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Zmiana kanału…"))
+        self.btn_ch.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Zmiana kanału…")
+        )
+        self.set_status(
+            QtCore.QCoreApplication.translate("MainWindow", "Zmiana kanału…")
+        )
 
     def stop_all(self) -> None:
         try:
@@ -1243,12 +1485,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_train,
         ]:
             b.setChecked(False)
-        self.set_status(QtCore.QCoreApplication.translate("MainWindow", "STOP – wszystkie klawisze zwolnione."))
+        self.set_status(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "STOP – wszystkie klawisze zwolnione."
+            )
+        )
 
     def train_yolo_api(self, checked: bool) -> None:
         """Train YOLO using ultralytics API (runs asynchronously)."""
         if not checked:
-            self.btn_train.setText(QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO"))
+            self.btn_train.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO")
+            )
             return
         self.train_thread = TrainThread()
         self.train_thread.status.connect(self.set_status)
