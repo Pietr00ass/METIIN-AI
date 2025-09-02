@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import types
 
 pyautogui_stub = types.ModuleType("pyautogui")
@@ -19,7 +20,9 @@ import agent.teleport_config as tc
 
 def test_change_channel(monkeypatch):
     calls = []
-    monkeypatch.setattr(tc, "channel_buttons", {2: (10, 20)})
+
+    cfg = tc.TeleportRuntimeConfig({}, 0.0, 0.0, 5.0, {}, {2: (10, 20)})
+    monkeypatch.setattr(tc, "get_config", lambda path="config/teleport.yaml": cfg)
     monkeypatch.setattr(tc.pyautogui, "click", lambda x, y: calls.append((x, y)))
     monkeypatch.setattr(tc.time, "sleep", lambda s: calls.append(s))
     tc.change_channel(2)
@@ -49,3 +52,25 @@ def test_save_teleport_config(tmp_path, monkeypatch):
     tc.save_teleport_config(data, path)
     assert path.read_text() == "written"
     assert captured["data"] == data
+
+
+def test_get_config_reload(tmp_path, monkeypatch):
+    path = tmp_path / "tp.yaml"
+    path.write_text("first")
+
+    data = {"delay_after_panel": 1.0}
+
+    def fake_load(p):
+        return data
+
+    monkeypatch.setattr(tc, "load_teleport_config", fake_load)
+    tc._cfg_cache = None
+    tc._cfg_mtime = None
+    cfg1 = tc.get_config(path)
+    assert cfg1.delay_after_panel == 1.0
+
+    time.sleep(0.01)
+    path.write_text("second")
+    data["delay_after_panel"] = 2.0
+    cfg2 = tc.get_config(path)
+    assert cfg2.delay_after_panel == 2.0
