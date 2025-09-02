@@ -1,13 +1,12 @@
+import importlib
 import os
 import sys
 import types
 
+import pytest
+
 # Ensure repository root is importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-# Remove any stubs that other tests might have installed
-sys.modules.pop("recorder", None)
-sys.modules.pop("recorder.window_capture", None)
 
 
 class DummySct:
@@ -18,27 +17,41 @@ class DummySct:
         self.closed = True
 
     def grab(self, region):
-        # minimal object with width/height attributes
         return types.SimpleNamespace(width=1, height=1)
 
 
-# Stub external dependencies used by WindowCapture
-sys.modules.setdefault("pygetwindow", types.SimpleNamespace(getAllWindows=lambda: []))
-sys.modules.setdefault("win32con", types.SimpleNamespace())
-sys.modules.setdefault("win32gui", types.SimpleNamespace())
-sys.modules["mss"] = types.SimpleNamespace(mss=lambda: DummySct())
+def _import_wc(monkeypatch, platform):
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setitem(
+        sys.modules, "pygetwindow", types.SimpleNamespace(getAllWindows=lambda: [])
+    )
+    monkeypatch.setitem(sys.modules, "mss", types.SimpleNamespace(mss=lambda: DummySct()))
+    if platform == "win32":
+        monkeypatch.setitem(sys.modules, "win32con", types.SimpleNamespace())
+        monkeypatch.setitem(sys.modules, "win32gui", types.SimpleNamespace())
+    else:
+        sys.modules.pop("win32con", None)
+        sys.modules.pop("win32gui", None)
+    sys.modules.pop("recorder", None)
+    sys.modules.pop("recorder.window_capture", None)
+    wc = importlib.import_module("recorder.window_capture")
+    monkeypatch.setitem(sys.modules, "recorder.window_capture", wc)
+    monkeypatch.setitem(sys.modules, "recorder", sys.modules["recorder"])
+    return wc
 
-import recorder.window_capture as wc
 
-
-def test_close_calls_underlying_close():
+@pytest.mark.parametrize("platform", ["win32", "linux", "darwin"])
+def test_close_calls_underlying_close(monkeypatch, platform):
+    wc = _import_wc(monkeypatch, platform)
     cap = wc.WindowCapture("foo")
     assert isinstance(cap.sct, DummySct)
     cap.close()
     assert cap.sct.closed
 
 
-def test_context_manager_closes():
+@pytest.mark.parametrize("platform", ["win32", "linux", "darwin"])
+def test_context_manager_closes(monkeypatch, platform):
+    wc = _import_wc(monkeypatch, platform)
     with wc.WindowCapture("foo") as cap:
         assert isinstance(cap.sct, DummySct)
     assert cap.sct.closed
