@@ -101,10 +101,9 @@ class Teleporter:
     def _safe_click(self, x: int, y: int) -> None:
         if self.dry:
             return
+        self.win.focus()
         if not self.win.is_foreground():
-            self.win.focus()
-            if not self.win.is_foreground():
-                return
+            return
         pyautogui.moveTo(x, y, duration=self.click_duration)
         pyautogui.click()
 
@@ -119,10 +118,9 @@ class Teleporter:
         :class:`RuntimeError`.
         """
 
+        self.win.focus()
         if not self.win.is_foreground():
-            self.win.focus()
-            if not self.win.is_foreground():
-                return False
+            return False
 
         L, T, w, h = self.win.region
         roi = (

@@ -575,6 +575,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.video.setMinimumSize(self.base_video_size)
         self.video.setStyleSheet("background:#222; border:1px solid #444")
         self.video.setAlignment(QtCore.Qt.AlignCenter)
+        self.video.setFocusPolicy(QtCore.Qt.NoFocus)
         right.addWidget(self.video)
 
         # thread references

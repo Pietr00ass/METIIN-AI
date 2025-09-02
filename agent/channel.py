@@ -155,7 +155,7 @@ class ChannelSwitcher:
 
         if not (1 <= ch <= 8):
             raise ValueError("Kanał poza zakresem 1..8")
-
+        self.win.focus()
         roi = self._minimap_roi()
         for _ in range(tries):
             frame = self._frame()

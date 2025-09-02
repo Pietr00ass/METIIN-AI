@@ -49,10 +49,9 @@ def click_bbox_center(
     cy = int(top + (y1 + y2) / 2)
 
     if win is not None:
+        win.focus()
         if not win.is_foreground():
-            win.focus()
-            if not win.is_foreground():
-                return False
+            return False
 
     if not rate_limit or _rate_limit_ok():
         pyautogui.moveTo(cx, cy, duration=0)
