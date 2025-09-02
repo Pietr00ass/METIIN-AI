@@ -210,7 +210,7 @@ class Teleporter:
         """Close the teleport panel if it is open."""
         if self.dry:
             return
-        pyautogui.press("esc")
+        self.keys.tap("esc")
 
     def go_page(self, page_label: str, thresh: float | None = None) -> bool:
         token = page_label.split()[-1].upper().replace(" ", "_")
