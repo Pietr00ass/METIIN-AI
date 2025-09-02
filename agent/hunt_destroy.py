@@ -4,7 +4,7 @@ import logging
 
 import numpy as np
 
-from . import get_config
+from . import AgentConfig, get_config
 from .avoid import CollisionAvoid
 from .channel import ChannelSwitcher
 from .detector import ObjectDetector
@@ -42,56 +42,56 @@ class HuntDestroy(AgentStrategy):
         if cfg is not None or window_capture is not None:
             self.setup(cfg, window_capture)
 
-    def setup(self, cfg=None, window_capture=None):
-        cfg = cfg or get_config()
+    def setup(self, cfg: AgentConfig | dict | None = None, window_capture=None):
+        if cfg is None:
+            cfg = get_config()
+        elif isinstance(cfg, dict):
+            cfg = AgentConfig(**cfg)
         self.cfg = cfg
         self.win = window_capture
         self.det = ObjectDetector(
-            cfg["paths"]["model"],
-            cfg["detector"]["classes"],
-            cfg["detector"].get("conf_thr", 0.5),
-            cfg["detector"].get("iou_thr", 0.45),
+            cfg.paths.model,
+            cfg.detector.classes,
+            cfg.detector.conf_thr,
+            cfg.detector.iou_thr,
         )
         self.avoid = CollisionAvoid()
-        dry = cfg.get("dry_run", False)
+        dry = cfg.dry_run
         self.keys = KeyHold(dry=dry, active_fn=getattr(self.win, "is_foreground", None))
-        tdir = cfg["paths"]["templates_dir"]
+        tdir = cfg.paths.templates_dir
         self.teleporter = Teleporter(self.win, tdir, use_ocr=True, dry=dry, cfg=cfg)
-        ch_hotkeys = cfg.get("channel", {}).get("hotkeys")
+        ch_hotkeys = cfg.channel.hotkeys
         self.channel_switcher = ChannelSwitcher(
             self.win, tdir, dry=dry, keys=self.keys, hotkeys=ch_hotkeys
         )
-        self.desired_w = float(cfg.get("policy", {}).get("desired_box_w", 0.12))
-        self.deadzone = float(cfg.get("policy", {}).get("deadzone_x", 0.05))
-        self.priority = cfg.get("priority", ["boss", "metin", "potwory"])
-        scan_cfg = cfg.get("scan", {})
-        self.period = scan_cfg.get("period", 1 / 15)
+        self.desired_w = float(cfg.detector.policy.desired_box_w)
+        self.deadzone = float(cfg.detector.policy.deadzone_x)
+        self.priority = list(cfg.priority)
+        scan_cfg = cfg.scan
+        self.period = scan_cfg.period
         self.scanner = None
-        if scan_cfg.get("enabled", True):
-            rot_key = (
-                cfg.get("controls", {}).get("keys", {}).get("rotate")
-                or cfg.get("controls", {}).get("keys", {}).get("left", "a")
-            )
+        if scan_cfg.enabled:
+            rot_key = cfg.controls.keys.rotate or cfg.controls.keys.left
             self.scanner = AreaScanner(
                 self.keys,
                 spin_key=rot_key,
-                sweep_ms=scan_cfg.get("sweep_ms", 250),
-                sweeps=scan_cfg.get("sweeps", 8),
-                idle_sec=scan_cfg.get("idle_sec", 1.5),
-                pause=scan_cfg.get("pause", 0.12),
+                sweep_ms=scan_cfg.sweep_ms,
+                sweeps=scan_cfg.sweeps,
+                idle_sec=scan_cfg.idle_sec,
+                pause=scan_cfg.pause,
             )
 
-        tp_cfg = cfg.get("teleport", {})
+        tp_cfg = cfg.teleport
         self.search = SearchManager(
             self.teleporter,
             self.channel_switcher,
-            list(tp_cfg.get("slots", [])),
-            tp_cfg.get("page") or tp_cfg.get("page_label"),
-            list(cfg.get("channels", [])),
-            tp_cfg.get("no_target_sec", 10),
-            tp_cfg.get("channel_every", 8),
+            [s.slot for s in tp_cfg.slots],
+            tp_cfg.page or tp_cfg.page_label,
+            list(cfg.channels),
+            tp_cfg.no_target_sec,
+            tp_cfg.channel_every,
         )
-        move_enabled = cfg.get("controls", {}).get("movement", True)
+        move_enabled = cfg.controls.movement
         self.movement = MovementController(
             self.keys, self.desired_w, self.deadzone, enabled=move_enabled
         )
