@@ -97,6 +97,7 @@ def check_requirements(requirements_file: Path | None = None) -> bool:
         return check_requirements(requirements_file)
 
     print(
-        "Automatic installation failed. Please run 'pip install -r requirements.txt' manually."
+        "Automatic installation failed. Please run 'pip install .' or "
+        "'pip install -r requirements.txt' manually."
     )
     return False

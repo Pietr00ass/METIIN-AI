@@ -24,6 +24,10 @@ METIIN-AI provides vision-based automation for the Metin2 game. It captures the 
    ```
 2. Install runtime dependencies:
    ```bash
+   pip install .
+   ```
+   For a fully pinned set of packages, use:
+   ```bash
    pip install -r requirements.txt
    ```
 3. (Optional) Install GPU versions of ``torch``/``torchvision`` to speed up training and inference.
