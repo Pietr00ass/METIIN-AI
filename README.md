@@ -64,7 +64,9 @@ All runtime options live in [`config/agent.yaml`](config/agent.yaml).  Key field
 The file ships with sensible defaults; copy it and adjust values for your setup.  Missing entries fall back to built‑in defaults.
 
 ### Templates
-UI templates for channel buttons, teleport pages and other elements are stored in [`assets/templates/`](assets/templates/). Use `tools/capture_template.py` to capture additional templates.
+UI templates for channel buttons, teleport pages and other elements are stored in [`assets/templates/`](assets/templates/). Use `tools/capture_template.py` to capture additional templates, e.g.::
+
+    python tools/capture_template.py --roi 1000 80 90 30 --name wczytaj
 Template matching logic that uses these assets lives in [`agent/template_matcher.py`](agent/template_matcher.py).
 
 ## Recording Input
