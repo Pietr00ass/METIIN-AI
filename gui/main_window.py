@@ -479,9 +479,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.desired_w.valueChanged.connect(
             lambda val: self.desired_w_slider.setValue(int(val * 100))
         )
+        self.desired_w_widget = QtWidgets.QWidget()
         self.desired_w_layout = QtWidgets.QHBoxLayout()
+        self.desired_w_layout.setContentsMargins(0, 0, 0, 0)
         self.desired_w_layout.addWidget(self.desired_w_slider)
         self.desired_w_layout.addWidget(self.desired_w)
+        self.desired_w_widget.setLayout(self.desired_w_layout)
 
         policy_form.addRow(
             QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:"),
@@ -489,7 +492,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         policy_form.addRow(
             QtCore.QCoreApplication.translate("MainWindow", "Desired box W:"),
-            self.desired_w_layout,
+            self.desired_w_widget,
         )
         agent_layout.addLayout(policy_form)
         self.overlay_chk = QtWidgets.QCheckBox(
@@ -887,7 +890,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 label.setText(
                     QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:")
                 )
-            label = policy_form.labelForField(self.desired_w_layout)
+            label = policy_form.labelForField(self.desired_w_widget)
             if label:
                 label.setText(
                     QtCore.QCoreApplication.translate("MainWindow", "Desired box W:")
