@@ -10,6 +10,21 @@ import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.modules.setdefault("yaml", types.ModuleType("yaml"))
 
+_pydantic = types.ModuleType("pydantic")
+
+
+class _BaseModel:
+    pass
+
+
+def _Field(*args, **kwargs):  # noqa: D401 - simple stub
+    return None
+
+
+_pydantic.BaseModel = _BaseModel
+_pydantic.Field = _Field
+sys.modules.setdefault("pydantic", _pydantic)
+
 import agent.wasd as wasd
 
 
@@ -55,6 +70,21 @@ def test_press_release_i_calls_sendinput_when_active():
 
     mock_down.assert_called_once_with(wasd.SCANCODES["i"])
     mock_up.assert_called_once_with(wasd.SCANCODES["i"])
+
+
+def test_press_release_handles_uppercase():
+    """Uppercase keys should be normalized to lowercase scancodes."""
+
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up:
+        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+        kh.press("W")
+        kh.release("W")
+        kh.stop()
+
+    mock_down.assert_called_once_with(wasd.SCANCODES["w"])
+    mock_up.assert_called_once_with(wasd.SCANCODES["w"])
 
 
 @pytest.mark.parametrize("key", ["up", "down", "left", "right"])
@@ -132,3 +162,16 @@ def test_ctrl_x_combo():
     sc_x = wasd.SCANCODES["x"]
     assert mock_down.call_args_list == [call(sc_ctrl), call(sc_x)]
     assert mock_up.call_args_list == [call(sc_x), call(sc_ctrl)]
+
+
+def test_unknown_key_uses_pydirectinput():
+    """Keys missing from SCANCODES should fall back to pydirectinput."""
+
+    with patch.object(wasd, "pydirectinput") as mock_pdi:
+        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+        kh.press("q")
+        kh.release("q")
+        kh.stop()
+
+    mock_pdi.keyDown.assert_called_once_with("q", _pause=False)
+    mock_pdi.keyUp.assert_called_once_with("q", _pause=False)
