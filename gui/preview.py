@@ -15,6 +15,7 @@ class PreviewWorker(QtCore.QThread):
 
     frame_ready = QtCore.Signal(np.ndarray)
     status = QtCore.Signal(str)
+    error = QtCore.Signal(str)
 
     def __init__(self, title_substr: str):
         super().__init__()
@@ -36,7 +37,9 @@ class PreviewWorker(QtCore.QThread):
                 self._det = ObjectDetector(model_path, classes)
                 self.status.emit(QtCore.QCoreApplication.translate("PreviewWorker", "Overlay YOLO aktywny."))
             except Exception as exc:  # pragma: no cover - UI feedback
-                self.status.emit(QtCore.QCoreApplication.translate("PreviewWorker", "Błąd YOLO: {exc}").format(exc=exc))
+                self.error.emit(
+                    QtCore.QCoreApplication.translate("PreviewWorker", "Błąd YOLO: {exc}").format(exc=exc)
+                )
                 self._det = None
         else:
             self._det = None
@@ -75,13 +78,15 @@ class PreviewWorker(QtCore.QThread):
                                     1,
                                 )
                         except Exception as exc:  # pragma: no cover - UI feedback
-                            self.status.emit(
+                            self.error.emit(
                                 QtCore.QCoreApplication.translate("PreviewWorker", "Overlay YOLO błąd: {exc}").format(exc=exc)
                             )
                     self.frame_ready.emit(frame)
                     self.msleep(33)
         except Exception as exc:  # pragma: no cover - UI feedback
-            self.status.emit(QtCore.QCoreApplication.translate("PreviewWorker", "Błąd podglądu: {exc}").format(exc=exc))
+            self.error.emit(
+                QtCore.QCoreApplication.translate("PreviewWorker", "Błąd podglądu: {exc}").format(exc=exc)
+            )
 
     def stop(self) -> None:
         self._stop = True
