@@ -479,9 +479,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.desired_w.valueChanged.connect(
             lambda val: self.desired_w_slider.setValue(int(val * 100))
         )
-        desired_w_layout = QtWidgets.QHBoxLayout()
-        desired_w_layout.addWidget(self.desired_w_slider)
-        desired_w_layout.addWidget(self.desired_w)
+        self.desired_w_widget = QtWidgets.QWidget()
+        self.desired_w_layout = QtWidgets.QHBoxLayout()
+        self.desired_w_layout.setContentsMargins(0, 0, 0, 0)
+        self.desired_w_layout.addWidget(self.desired_w_slider)
+        self.desired_w_layout.addWidget(self.desired_w)
+        self.desired_w_widget.setLayout(self.desired_w_layout)
 
         policy_form.addRow(
             QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:"),
@@ -489,7 +492,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         policy_form.addRow(
             QtCore.QCoreApplication.translate("MainWindow", "Desired box W:"),
-            desired_w_layout,
+            self.desired_w_widget,
         )
         agent_layout.addLayout(policy_form)
         self.overlay_chk = QtWidgets.QCheckBox(
@@ -807,9 +810,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # restore persistent settings
         self.settings = QSettings("METIIN-AI", "MainWindow")
-        geometry = self.settings.value(
-            "window/geometry", b"", type=QtCore.QByteArray
-        )
+        geometry = self.settings.value("window/geometry", b"", type=QtCore.QByteArray)
         if geometry:
             self.restoreGeometry(geometry)
         self.title_edit.setText(self.settings.value("window/title", ""))
@@ -817,9 +818,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.settings.value("paths/model", self.model_path.text())
         )
         self.templates_dir_edit.setText(
-            self.settings.value(
-                "paths/templates_dir", self.templates_dir_edit.text()
-            )
+            self.settings.value("paths/templates_dir", self.templates_dir_edit.text())
         )
         scale = float(self.settings.value("ui/scale", self.scale))
         self.scale_spin.setValue(scale)
@@ -886,12 +885,16 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         policy_form = self.agent_box.findChild(QtWidgets.QFormLayout)
         if policy_form:
-            policy_form.labelForField(self.deadzone).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:")
-            )
-            policy_form.labelForField(self.desired_w).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Desired box W:")
-            )
+            label = policy_form.labelForField(self.deadzone)
+            if label:
+                label.setText(
+                    QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:")
+                )
+            label = policy_form.labelForField(self.desired_w_widget)
+            if label:
+                label.setText(
+                    QtCore.QCoreApplication.translate("MainWindow", "Desired box W:")
+                )
         self.prio_label.setText(
             QtCore.QCoreApplication.translate(
                 "MainWindow", "Priorytety (przeciągnij aby zmienić):"
