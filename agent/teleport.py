@@ -254,7 +254,12 @@ class Teleporter:
 
         logger.debug("Teleporting to slot %s on page '%s'", slot, page_label)
         # otwórz panel i przejdź do strony
-        self.open_panel()
+        try:
+            self.open_panel()
+        except RuntimeError:
+            frame = self._frame()
+            self._save_panel(frame, TeleportResult.TEMPLATE_NOT_FOUND)
+            return TeleportResult.TEMPLATE_NOT_FOUND
         if not self.win.is_foreground():
             return TeleportResult.WINDOW_NOT_FOREGROUND
         if not self.go_page(page_label):
