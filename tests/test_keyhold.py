@@ -175,3 +175,17 @@ def test_unknown_key_uses_pydirectinput():
 
     mock_pdi.keyDown.assert_called_once_with("q", _pause=False)
     mock_pdi.keyUp.assert_called_once_with("q", _pause=False)
+
+
+def test_tap_uses_pydirectinput():
+    """``tap`` should press and release keys via ``pydirectinput``."""
+
+    with patch.object(wasd, "pydirectinput") as mock_pdi, patch.object(
+        wasd.time, "sleep", return_value=None
+    ):
+        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+        kh.tap("q")
+        kh.stop()
+
+    mock_pdi.keyDown.assert_called_once_with("q", _pause=False)
+    mock_pdi.keyUp.assert_called_once_with("q", _pause=False)
