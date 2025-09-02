@@ -98,7 +98,10 @@ class TemplateMatcher:
         scales=(1.0, 0.9, 1.1, 0.8),
         dedup_px=12,
     ):
-        """Zwraca listę dopasowań (:class:`TemplateMatch`) posortowanych po Y (od góry)."""
+        """Return a list of matches (:class:`TemplateMatch`) sorted by Y (top to bottom).
+
+        PL: Zwraca listę dopasowań (:class:`TemplateMatch`) posortowanych po Y (od góry).
+        """
         gray, offx, offy = self._prep(frame_bgr, roi)
         tpl0 = self.load(name)
         found: list[TemplateMatch] = []

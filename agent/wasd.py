@@ -155,7 +155,17 @@ def key_up(scan: int, extended: bool = False) -> None:
 
 class KeyHold:
     def __init__(self, dry: bool = False, active_fn=None):
-        """
+        """Key press helper with optional window activity check.
+
+        Parameters
+        ----------
+        dry : bool, default ``False``
+            If ``True`` do not send real key events (test mode).
+        active_fn : callable or None
+            Zero‑argument function returning ``True`` when the window is
+            active. When ``False`` the watchdog releases all keys.
+
+        PL:
         dry: jeśli True – nie wysyła realnych klawiszy (tryb testowy)
         active_fn: funkcja bezargumentowa -> bool (czy okno jest aktywne). Gdy False, watchdog zwalnia klawisze.
         """

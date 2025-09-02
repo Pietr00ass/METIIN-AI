@@ -18,7 +18,13 @@ logger = logging.getLogger(__name__)
 
 
 class CycleFarm:
-    """
+    """8×8 cycle: slots 1..8 × CH(ch_from..ch_to).
+
+    On each slot: teleport → hunt (with auto scan 'E').
+    No target → short 'E' scan; still none → next slot.
+    Slots have cooldown (minutes) to avoid immediate return.
+
+    PL:
     Cykl 8×8: sloty 1..8 × CH(ch_from..ch_to).
     Na każdym slocie: teleport -> poluj (z autoskanem 'E').
     Brak celu -> krótki skan E; nadal brak -> kolejny slot.
@@ -107,7 +113,10 @@ class CycleFarm:
 
     # ---- logika pojedynczego slotu ----
     def _process_slot(self, ch, slot, page_label, per_spot_sec, clear_sec):
-        """Obsłuż teleportację i polowanie na pojedynczym slocie."""
+        """Handle teleportation and hunting on a single slot.
+
+        PL: Obsłuż teleportację i polowanie na pojedynczym slocie.
+        """
 
         now = time.time()
         key = (ch, slot)
@@ -173,28 +182,35 @@ class CycleFarm:
         clear_sec,
         sequence=None,
     ):
-        """Główna pętla cyklu farmienia.
+        """Main farming cycle loop.
 
+        ``sequence`` specifies the full order of channel/slot visits. Each
+        element should be a two‑element iterable ``(ch, slot)`` or a dict with
+        keys ``ch`` and ``slot``. When ``sequence`` is provided the parameters
+        ``ch_from``, ``ch_to`` and ``slots`` are ignored.
+
+        Parameters
+        ----------
+        page_label: str
+            Teleport page label.
+        ch_from, ch_to: int
+            Range of channels to visit cyclically.
+        slots: Iterable[int]
+            Collection of slot numbers to visit.
+        per_spot_sec: float
+            Maximum time to hunt on a single spot.
+        clear_sec: float
+            Time without a target after which the spot is considered clear.
+        sequence: Iterable
+            Optional full sequence of ``(channel, slot)`` pairs.
+
+        PL:
+        Główna pętla cyklu farmienia.
         "sequence" pozwala określić pełną kolejność odwiedzania kanałów i
         slotów.  Każdy element listy powinien być dwuelementowym iterowalnym
         (ch, slot) lub słownikiem z kluczami ``ch`` i ``slot``.  Gdy sekwencja
         jest podana, parametry ``ch_from``, ``ch_to`` oraz ``slots`` są
         ignorowane.
-
-        Parameters
-        ----------
-        page_label: str
-            Etykieta strony teleportu.
-        ch_from, ch_to: int
-            Zakres kanałów do cyklicznego odwiedzenia.
-        slots: Iterable[int]
-            Kolekcja numerów slotów do odwiedzenia.
-        per_spot_sec: float
-            Maksymalny czas polowania na jednym spocie.
-        clear_sec: float
-            Czas bez celu po którym uznajemy spot za czysty.
-        sequence: Iterable
-            Opcjonalna pełna sekwencja (kanał, slot).
         """
 
         if sequence:

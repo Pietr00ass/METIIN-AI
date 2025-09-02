@@ -12,7 +12,13 @@ cv2.setNumThreads(1)
 
 
 class ObjectDetector:
-    """Lekka nakładka na Ultralytics YOLO do detekcji na klatce BGR (numpy array).
+    """Lightweight wrapper around Ultralytics YOLO for detection on BGR frames.
+
+    Additionally allows limiting detection frequency and dynamically
+    scaling input resolution to reduce CPU/GPU load.
+
+    PL:
+    Lekka nakładka na Ultralytics YOLO do detekcji na klatce BGR (numpy array).
 
     Dodatkowo umożliwia ograniczenie częstotliwości detekcji oraz
     dynamiczne skalowanie rozdzielczości wejściowej w celu redukcji

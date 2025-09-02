@@ -82,3 +82,9 @@ keyboard listener relies on a low‑level hook provided by the
   permissions.
 
 If the hook cannot be installed only mouse clicks will be recorded.
+
+## Contributing
+
+Documentation and in‑code comments should be written in **English**. Polish
+clarifications may be kept as inline comments when helpful, but the primary
+docstrings and README content must remain in English.
