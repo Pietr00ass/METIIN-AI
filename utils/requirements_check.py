@@ -17,6 +17,9 @@ from pathlib import Path
 from packaging.requirements import Requirement
 
 
+MAX_ATTEMPTS = 3
+
+
 def update_requirements(
     requirements: list[Requirement] | None = None,
     requirements_file: Path | None = None,
@@ -57,6 +60,9 @@ def update_requirements(
 def check_requirements(requirements_file: Path | None = None) -> bool:
     """Verify installed packages against ``requirements.txt`` and update if needed.
 
+    The check retries installing missing dependencies up to ``MAX_ATTEMPTS`` times
+    before giving up.
+
     Returns
     -------
     bool
@@ -69,32 +75,33 @@ def check_requirements(requirements_file: Path | None = None) -> bool:
     if not requirements_file.exists():
         return True
 
-    unmet: list[Requirement] = []
-    for line in requirements_file.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
+    for _ in range(MAX_ATTEMPTS):
+        unmet: list[Requirement] = []
+        for line in requirements_file.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
 
-        req = Requirement(line)
-        try:
-            installed = metadata.version(req.name)
-        except PackageNotFoundError:
-            unmet.append(req)
-            continue
+            req = Requirement(line)
+            try:
+                installed = metadata.version(req.name)
+            except PackageNotFoundError:
+                unmet.append(req)
+                continue
 
-        if req.specifier and not req.specifier.contains(installed, prereleases=True):
-            unmet.append(req)
+            if req.specifier and not req.specifier.contains(installed, prereleases=True):
+                unmet.append(req)
 
-    if not unmet:
-        return True
+        if not unmet:
+            return True
 
-    print("Unmet dependencies detected:")
-    for item in unmet:
-        print(f" - {item}")
+        print("Unmet dependencies detected:")
+        for item in unmet:
+            print(f" - {item}")
 
-    print("Attempting to install missing dependencies...")
-    if update_requirements(unmet):
-        return check_requirements(requirements_file)
+        print("Attempting to install missing dependencies...")
+        if not update_requirements(unmet):
+            break
 
     print(
         "Automatic installation failed. Please run 'pip install -r requirements.txt' manually."
