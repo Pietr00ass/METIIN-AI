@@ -8,6 +8,7 @@ install the needed packages via ``pip``.
 
 from __future__ import annotations
 
+import logging
 import subprocess
 import sys
 from importlib import metadata
@@ -15,6 +16,8 @@ from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 
 from packaging.requirements import Requirement
+
+logger = logging.getLogger(__name__)
 
 
 def update_requirements(
@@ -88,15 +91,15 @@ def check_requirements(requirements_file: Path | None = None) -> bool:
     if not unmet:
         return True
 
-    print("Unmet dependencies detected:")
+    logger.error("Unmet dependencies detected:")
     for item in unmet:
-        print(f" - {item}")
+        logger.error(" - %s", item)
 
-    print("Attempting to install missing dependencies...")
+    logger.info("Attempting to install missing dependencies...")
     if update_requirements(unmet):
         return check_requirements(requirements_file)
 
-    print(
+    logger.error(
         "Automatic installation failed. Please run 'pip install -r requirements.txt' manually."
     )
     return False
