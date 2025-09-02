@@ -124,6 +124,7 @@ class Teleporter:
 
         self.win.focus()
         if not self.win.is_foreground():
+            logger.debug("Window is not in foreground before opening teleport panel")
             return False
 
         L, T, w, h = self.win.region
@@ -135,8 +136,19 @@ class Teleporter:
         )
         screen_roi = (L + roi[0], T + roi[1], roi[2], roi[3])
         template_path = self.tm.dir / f"{ref_name}.png"
+        logger.debug(
+            "open_panel setup: region=%s ROI=%s screen_roi=%s template=%s thresh=%.3f",
+            self.win.region,
+            roi,
+            screen_roi,
+            template_path,
+            self.page_thresh,
+        )
 
+        frame = None
         for attempt in range(max_attempts):
+            if not self.win.is_foreground():
+                logger.debug("Window not in foreground on attempt %d", attempt + 1)
             logger.debug("Attempt %d to open teleport panel", attempt + 1)
             if not self.dry:
                 self.keys.press("ctrl")
@@ -148,6 +160,13 @@ class Teleporter:
             time.sleep(self.open_panel_delay)
 
             frame = self._frame()
+            logger.debug(
+                "Captured frame shape: %s", None if frame is None else frame.shape
+            )
+            if not self.win.is_foreground():
+                logger.debug(
+                    "Window lost foreground after keypress on attempt %d", attempt + 1
+                )
 
             found = self.tm.find(
                 frame,
@@ -156,6 +175,12 @@ class Teleporter:
                 roi=roi,
                 multi_scale=True,
             )
+            if found:
+                logger.debug("TemplateMatcher result: %s", found)
+            else:
+                logger.debug(
+                    "TemplateMatcher did not find panel; falling back to pyautogui.locateOnScreen"
+                )
 
             if not found:
                 try:
@@ -164,7 +189,11 @@ class Teleporter:
                         region=screen_roi,
                         confidence=self.page_thresh,
                     )
+                    logger.debug("pyautogui.locateOnScreen result: %s", found)
                 except Exception:
+                    logger.debug(
+                        "pyautogui.locateOnScreen raised exception", exc_info=True
+                    )
                     found = None
 
             if found:
@@ -173,6 +202,8 @@ class Teleporter:
             logger.debug("Teleport panel not detected on attempt %d", attempt + 1)
 
         logger.warning("Teleport panel not detected after %d attempts", max_attempts)
+        if frame is not None:
+            self._save_panel(frame, TeleportResult.TEMPLATE_NOT_FOUND)
         raise RuntimeError("Teleport panel not detected")
 
     def close_panel(self) -> None:
