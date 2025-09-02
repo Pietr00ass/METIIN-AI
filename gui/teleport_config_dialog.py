@@ -13,7 +13,7 @@ class TeleportConfigDialog(QtWidgets.QDialog):
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Konfiguracja teleportu")
+        self.setWindowTitle(QtCore.QCoreApplication.translate("TeleportConfigDialog", "Konfiguracja teleportu"))
         self._cfg = tc.load_teleport_config()
         self._current_edit: tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit] | None = None
         self._edit_map: dict[
@@ -37,22 +37,22 @@ class TeleportConfigDialog(QtWidgets.QDialog):
                 for edit in (x_edit, y_edit):
                     edit.installEventFilter(self)
                     self._edit_map[edit] = (x_edit, y_edit)
-                btn = QtWidgets.QPushButton("Przechwyć")
+                btn = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("TeleportConfigDialog", "Przechwyć"))
                 btn.clicked.connect(lambda _, xe=x_edit, ye=y_edit: self._capture(xe, ye))
                 row = QtWidgets.QHBoxLayout()
-                row.addWidget(QtWidgets.QLabel("X:"))
+                row.addWidget(QtWidgets.QLabel(QtCore.QCoreApplication.translate("TeleportConfigDialog", "X:")))
                 row.addWidget(x_edit)
-                row.addWidget(QtWidgets.QLabel("Y:"))
+                row.addWidget(QtWidgets.QLabel(QtCore.QCoreApplication.translate("TeleportConfigDialog", "Y:")))
                 row.addWidget(y_edit)
                 row.addWidget(btn)
                 w = QtWidgets.QWidget()
                 w.setLayout(row)
-                form.addRow(f"Slot {idx + 1}:", w)
+                form.addRow(QtCore.QCoreApplication.translate("TeleportConfigDialog", "Slot {num}:").format(num=idx + 1), w)
                 slots.append((x_edit, y_edit))
             self.pos_edits[ch] = slots
-            tabs.addTab(tab, f"CH{ch}")
+            tabs.addTab(tab, QtCore.QCoreApplication.translate("TeleportConfigDialog", "CH{num}").format(num=ch))
 
-        btn_group = QtWidgets.QGroupBox("Przyciski kanałów")
+        btn_group = QtWidgets.QGroupBox(QtCore.QCoreApplication.translate("TeleportConfigDialog", "Przyciski kanałów"))
         btn_form = QtWidgets.QFormLayout(btn_group)
         self.btn_edits: dict[int, tuple[QtWidgets.QLineEdit, QtWidgets.QLineEdit]] = {}
         for ch in range(1, 5):
@@ -63,17 +63,17 @@ class TeleportConfigDialog(QtWidgets.QDialog):
             for edit in (x_edit, y_edit):
                 edit.installEventFilter(self)
                 self._edit_map[edit] = (x_edit, y_edit)
-            btn = QtWidgets.QPushButton("Przechwyć")
+            btn = QtWidgets.QPushButton(QtCore.QCoreApplication.translate("TeleportConfigDialog", "Przechwyć"))
             btn.clicked.connect(lambda _, xe=x_edit, ye=y_edit: self._capture(xe, ye))
             row = QtWidgets.QHBoxLayout()
-            row.addWidget(QtWidgets.QLabel("X:"))
+            row.addWidget(QtWidgets.QLabel(QtCore.QCoreApplication.translate("TeleportConfigDialog", "X:")))
             row.addWidget(x_edit)
-            row.addWidget(QtWidgets.QLabel("Y:"))
+            row.addWidget(QtWidgets.QLabel(QtCore.QCoreApplication.translate("TeleportConfigDialog", "Y:")))
             row.addWidget(y_edit)
             row.addWidget(btn)
             w = QtWidgets.QWidget()
             w.setLayout(row)
-            btn_form.addRow(f"CH{ch}:", w)
+            btn_form.addRow(QtCore.QCoreApplication.translate("TeleportConfigDialog", "CH{num}:").format(num=ch), w)
             self.btn_edits[ch] = (x_edit, y_edit)
         layout.addWidget(btn_group)
 

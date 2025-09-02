@@ -34,9 +34,9 @@ class PreviewWorker(QtCore.QThread):
         if enabled and model_path:
             try:
                 self._det = ObjectDetector(model_path, classes)
-                self.status.emit("Overlay YOLO aktywny.")
+                self.status.emit(QtCore.QCoreApplication.translate("PreviewWorker", "Overlay YOLO aktywny."))
             except Exception as exc:  # pragma: no cover - UI feedback
-                self.status.emit(f"Błąd YOLO: {exc}")
+                self.status.emit(QtCore.QCoreApplication.translate("PreviewWorker", "Błąd YOLO: {exc}").format(exc=exc))
                 self._det = None
         else:
             self._det = None
@@ -46,11 +46,11 @@ class PreviewWorker(QtCore.QThread):
 
         try:
             with WindowCapture(self.title) as cap:
-                self.status.emit("Szukam okna…")
+                self.status.emit(QtCore.QCoreApplication.translate("PreviewWorker", "Szukam okna…"))
                 if not cap.locate(timeout=5):
-                    self.status.emit("Nie znaleziono okna.")
+                    self.status.emit(QtCore.QCoreApplication.translate("PreviewWorker", "Nie znaleziono okna."))
                     return
-                self.status.emit("Znaleziono okno. Podgląd działa.")
+                self.status.emit(QtCore.QCoreApplication.translate("PreviewWorker", "Znaleziono okno. Podgląd działa."))
                 while not self._stop:
                     fr = cap.grab()
                     frame = np.array(fr)[:, :, :3].copy()
@@ -75,11 +75,13 @@ class PreviewWorker(QtCore.QThread):
                                     1,
                                 )
                         except Exception as exc:  # pragma: no cover - UI feedback
-                            self.status.emit(f"Overlay YOLO błąd: {exc}")
+                            self.status.emit(
+                                QtCore.QCoreApplication.translate("PreviewWorker", "Overlay YOLO błąd: {exc}").format(exc=exc)
+                            )
                     self.frame_ready.emit(frame)
                     self.msleep(33)
         except Exception as exc:  # pragma: no cover - UI feedback
-            self.status.emit(f"Błąd podglądu: {exc}")
+            self.status.emit(QtCore.QCoreApplication.translate("PreviewWorker", "Błąd podglądu: {exc}").format(exc=exc))
 
     def stop(self) -> None:
         self._stop = True
