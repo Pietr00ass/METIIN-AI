@@ -9,7 +9,10 @@ np = importlib.import_module("numpy")
 
 # Ensure repository root on path and stub optional dependencies
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.modules.setdefault("yaml", types.ModuleType("yaml"))
+# Provide a minimal yaml stub so other tests can still load configurations
+_yaml_stub = types.ModuleType("yaml")
+_yaml_stub.safe_load = lambda *a, **k: {}
+sys.modules.setdefault("yaml", _yaml_stub)
 # Provide minimal cv2 stub with ``resize`` so ObjectDetector can downscale frames
 sys.modules["cv2"] = types.SimpleNamespace(
     setNumThreads=lambda *a, **k: None,
@@ -102,3 +105,10 @@ def test_infer_resizes_when_scaled():
         with patch("agent.detector.cv2.resize", wraps=detector.cv2.resize) as m_resize:
             det.infer(frame)
             assert m_resize.called
+
+
+def test_cv2_threads_option_invokes_setnumthreads():
+    with patch("agent.detector.YOLO"):
+        with patch("agent.detector.cv2.setNumThreads") as m_set:
+            detector.ObjectDetector("model.pt", cv2_threads=2)
+    m_set.assert_called_once_with(2)

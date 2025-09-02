@@ -54,6 +54,10 @@ class _DummyTeleporter:
     def teleport_slot(self, *a, **k):
         pass
 
+    def close_panel(self):
+        if not getattr(self, "dry", False):
+            self.keys.tap("esc")
+
 
 teleport_mod.Teleporter = _DummyTeleporter
 sys.modules["agent.teleport"] = teleport_mod

@@ -55,7 +55,9 @@ class CycleFarm:
             hotkeys=cfg.channel.hotkeys,
         )
         self.agent = load_strategy(cfg, self.win)
-        self.det = ObjectDetector(cfg.paths.model, cfg.detector.classes)
+        self.det = ObjectDetector(
+            cfg.paths.model, cfg.detector.classes, cv2_threads=cfg.detector.cv2_threads
+        )
         self._stop = False
 
         ch_cfg = cfg.channel
