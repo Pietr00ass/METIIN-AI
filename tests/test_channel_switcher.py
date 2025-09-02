@@ -16,7 +16,7 @@ sys.modules.setdefault("yaml", types.ModuleType("yaml"))
 
 # Stub pyautogui to avoid real mouse interaction
 pyautogui_stub = types.SimpleNamespace(
-    moveTo=lambda *a, **k: None, click=lambda *a, **k: None
+    moveTo=lambda *a, **k: None, click=lambda *a, **k: None, PAUSE=0
 )
 sys.modules.setdefault("pyautogui", pyautogui_stub)
 
