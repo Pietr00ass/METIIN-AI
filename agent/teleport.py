@@ -12,7 +12,7 @@ from PIL import Image
 
 from recorder.window_capture import WindowCapture
 
-from . import get_config
+from . import AgentConfig, get_config
 from .template_matcher import TemplateMatcher
 
 try:  # pragma: no cover - prefer pydirectinput if available
@@ -21,7 +21,7 @@ except Exception:  # pragma: no cover - fallback to local implementation
     from .wasd import KeyHold
 
 CFG = get_config()
-pyautogui.PAUSE = CFG.get("controls", {}).get("mouse_pause", 0.02)
+pyautogui.PAUSE = CFG.controls.mouse_pause
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +49,13 @@ class Teleporter:
         templates_dir: str,
         use_ocr: bool = True,
         dry: bool = False,
-        cfg: dict | None = None,
+        cfg: AgentConfig | dict | None = None,
     ):
-        self.cfg = cfg or CFG
+        if cfg is None:
+            cfg = CFG
+        elif isinstance(cfg, dict):
+            cfg = AgentConfig(**cfg)
+        self.cfg = cfg
         self.win = win
         if not os.path.isdir(templates_dir):
             raise FileNotFoundError(f"Brak katalogu z szablonami: {templates_dir}")
@@ -72,14 +76,14 @@ class Teleporter:
         self.keys = KeyHold(
             dry=self.dry, active_fn=getattr(self.win, "is_foreground", None)
         )
-        tp_cfg = self.cfg.get("teleport", {})
-        self.click_duration = tp_cfg.get("click_duration", 0.05)
-        self.open_panel_delay = tp_cfg.get("open_panel_delay", 0.35)
-        self.page_thresh = tp_cfg.get("page_thresh", 0.82)
-        self.after_page_delay = tp_cfg.get("after_page_delay", 0.25)
-        self.row_click_delay = tp_cfg.get("row_click_delay", 0.15)
-        self.load_btn_thresh = tp_cfg.get("load_btn_thresh", 0.8)
-        self.after_load_delay = tp_cfg.get("after_load_delay", 0.35)
+        tp_cfg = self.cfg.teleport
+        self.click_duration = tp_cfg.click_duration
+        self.open_panel_delay = tp_cfg.open_panel_delay
+        self.page_thresh = tp_cfg.page_thresh
+        self.after_page_delay = tp_cfg.after_page_delay
+        self.row_click_delay = tp_cfg.row_click_delay
+        self.load_btn_thresh = tp_cfg.load_btn_thresh
+        self.after_load_delay = tp_cfg.after_load_delay
 
     def _frame(self) -> np.ndarray:
         fr = self.win.grab()
@@ -88,7 +92,7 @@ class Teleporter:
     def _save_panel(self, frame: np.ndarray, reason: TeleportResult) -> None:
         """Save current panel frame for debugging failures."""
         try:
-            log_dir = self.cfg.get("paths", {}).get("log_dir", "runs")
+            log_dir = self.cfg.paths.log_dir or "runs"
             os.makedirs(log_dir, exist_ok=True)
             fname = os.path.join(
                 log_dir, f"tp_fail_{reason.value}_{int(time.time())}.png"

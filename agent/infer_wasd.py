@@ -11,26 +11,15 @@ from .strategy import load_strategy
 
 
 class WasdVisionAgent:
-    def __init__(self, cfg):
-        """Create a vision agent using ``cfg`` configuration.
+    def __init__(self, cfg: AgentConfig | dict):
+        """Create a vision agent using ``cfg`` configuration."""
 
-        ``cfg`` may be either a raw configuration dictionary or an
-        :class:`agent.AgentConfig` instance.  The teleport slots and channel
-        list are parsed during initialisation so that the user may modify them
-        later through :meth:`set_teleport_slots` and :meth:`set_channels`.
-        """
-
-        if isinstance(cfg, AgentConfig):
-            self.channels = list(cfg.channels)
-            self.teleport_slots = list(cfg.teleport_slots)
-            cfg = cfg.data
-        else:
-            self.channels = list(cfg.get("channels", []))
-            self.teleport_slots = [
-                TeleportSlot(**s) for s in cfg.get("teleport", {}).get("slots", [])
-            ]
+        if isinstance(cfg, dict):
+            cfg = AgentConfig(**cfg)
         self.cfg = cfg
-        self.win = WindowCapture(cfg["window"]["title_substr"])
+        self.channels = list(cfg.channels)
+        self.teleport_slots = list(cfg.teleport.slots)
+        self.win = WindowCapture(cfg.window.title_substr)
         self.period = 1 / 15
         self.hd = None
 
@@ -41,13 +30,13 @@ class WasdVisionAgent:
         """Replace the channel list used by the agent."""
 
         self.channels = list(channels)
-        self.cfg["channels"] = list(channels)
+        self.cfg.channels = list(channels)
 
     def set_teleport_slots(self, slots: list[TeleportSlot]) -> None:
         """Replace the teleport slot definitions."""
 
         self.teleport_slots = list(slots)
-        self.cfg.setdefault("teleport", {})["slots"] = [s.__dict__ for s in slots]
+        self.cfg.teleport.slots = list(slots)
 
     def run(self):
         try:

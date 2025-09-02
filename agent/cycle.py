@@ -5,7 +5,7 @@ import time
 
 import numpy as np
 
-from agent import get_config
+from agent import AgentConfig, get_config
 from agent.channel import ChannelSwitcher
 from agent.detector import ObjectDetector
 from agent.strategy import load_strategy
@@ -25,15 +25,18 @@ class CycleFarm:
     Ma cooldown slotów (minuty) by nie wracać od razu.
     """
 
-    def __init__(self, cfg: dict | None = None):
-        cfg = cfg or get_config()
+    def __init__(self, cfg: AgentConfig | dict | None = None):
+        if cfg is None:
+            cfg = get_config()
+        elif isinstance(cfg, dict):
+            cfg = AgentConfig(**cfg)
         self.cfg = cfg
-        self.win = WindowCapture(cfg["window"]["title_substr"])
+        self.win = WindowCapture(cfg.window.title_substr)
         if not self.win.locate(timeout=5):
             raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
 
-        self.dry = cfg.get("dry_run", False)
-        tdir = cfg["paths"]["templates_dir"]
+        self.dry = cfg.dry_run
+        tdir = cfg.paths.templates_dir
         self.tp = Teleporter(self.win, tdir, use_ocr=True, dry=self.dry, cfg=cfg)
         self.keys = KeyHold(
             dry=self.dry, active_fn=getattr(self.win, "is_foreground", None)
@@ -43,28 +46,28 @@ class CycleFarm:
             tdir,
             dry=self.dry,
             keys=self.keys,
-            hotkeys=cfg.get("channel", {}).get("hotkeys"),
+            hotkeys=cfg.channel.hotkeys,
         )
         self.agent = load_strategy(cfg, self.win)
-        self.det = ObjectDetector(cfg["paths"]["model"], cfg["detector"]["classes"])
+        self.det = ObjectDetector(cfg.paths.model, cfg.detector.classes)
         self._stop = False
 
-        ch_cfg = cfg.get("channel", {})
-        self.ch_settle = float(ch_cfg.get("settle_sec", 5.0))
-        self.ch_check = float(ch_cfg.get("timeout_per_ch", 5.0))
+        ch_cfg = cfg.channel
+        self.ch_settle = float(ch_cfg.settle_sec)
+        self.ch_check = float(ch_cfg.timeout_per_ch)
 
         # progi i priorytety
-        self.conf_thr = float(cfg.get("detector", {}).get("conf_thr", 0.5))
-        self.priority = list(cfg.get("priority", []))
+        self.conf_thr = float(cfg.detector.conf_thr)
+        self.priority = list(cfg.priority)
 
         # parametry skanowania
-        scan = cfg.get("scan", {})
-        self.spin_key = scan.get("key", "e")
-        self.sweep_ms = int(scan.get("sweep_ms", 250))
-        self.sweeps = int(scan.get("sweeps", 8))
-        self.idle_before_scan = float(scan.get("idle_sec", 1.5))
-        self.pause_between_sweeps = float(scan.get("pause", 0.12))
-        self.scan_enabled = scan.get("enabled", True)
+        scan = cfg.scan
+        self.spin_key = scan.key
+        self.sweep_ms = int(scan.sweep_ms)
+        self.sweeps = int(scan.sweeps)
+        self.idle_before_scan = float(scan.idle_sec)
+        self.pause_between_sweeps = float(scan.pause)
+        self.scan_enabled = scan.enabled
         if self.scan_enabled:
             # AreaScanner emulates a human turning in place by repeatedly holding the
             # camera‑rotate key.  This reveals monsters that might spawn behind the
@@ -82,7 +85,7 @@ class CycleFarm:
 
         # cooldown slotów
         self.cooldown = {}
-        self.cooldown_min = int(cfg.get("cooldowns", {}).get("slot_min", 10))
+        self.cooldown_min = int(cfg.cooldowns.slot_min)
 
     def stop(self):
         self._stop = True

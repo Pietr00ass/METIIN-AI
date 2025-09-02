@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib
-from typing import Protocol, Type, Dict, Callable
+from typing import Callable, Dict, Protocol, Type
+
+from . import AgentConfig
 
 
 class AgentStrategy(Protocol):
@@ -29,14 +31,17 @@ def register(name: str) -> Callable[[Type[AgentStrategy]], Type[AgentStrategy]]:
     return decorator
 
 
-def load_strategy(cfg=None, window_capture=None) -> AgentStrategy:
+def load_strategy(cfg: AgentConfig | dict | None = None, window_capture=None) -> AgentStrategy:
     """Load and instantiate strategy specified in ``cfg``.
 
     The configuration may contain the key ``"strategy"`` naming the desired
     strategy module.  Strategies register themselves via :func:`register`.
     """
 
-    name = (cfg or {}).get("strategy", "hunt_destroy")
+    if isinstance(cfg, AgentConfig):
+        name = cfg.strategy
+    else:
+        name = (cfg or {}).get("strategy", "hunt_destroy")
     if name not in _STRATEGIES:
         importlib.import_module(f"agent.{name}")
     cls = _STRATEGIES.get(name)

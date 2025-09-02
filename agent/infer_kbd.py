@@ -9,20 +9,23 @@ import torchvision.models as models
 
 from recorder.window_capture import WindowCapture
 
+from . import AgentConfig
 from .model_kbd import KbdPolicy
 from .stuck_flow import FlowStuck
 from .wasd import KeyHold
 
 
 class KbdVisionAgent:
-    def __init__(self, cfg):
-        self.win = WindowCapture(cfg["window"]["title_substr"])
+    def __init__(self, cfg: AgentConfig | dict):
+        if isinstance(cfg, dict):
+            cfg = AgentConfig(**cfg)
+        self.win = WindowCapture(cfg.window.title_substr)
         self.keys = KeyHold()
         self.period = 1 / 15
         self.flow = FlowStuck(
-            cfg.get("stuck", {}).get("flow_window", 0.8),
+            cfg.stuck.flow_window,
             fps=15,
-            min_mag=cfg.get("stuck", {}).get("min_flow_mag", 0.7),
+            min_mag=cfg.stuck.min_flow_mag,
         )
         self.net = KbdPolicy(weights=models.ResNet18_Weights.IMAGENET1K_V1)
         self.net.load_state_dict(

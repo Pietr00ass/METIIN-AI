@@ -10,3 +10,4 @@ Pillow==11.3.0
 pynput==1.8.1
 keyboard==0.13.5
 pywin32>=306
+pydantic==1.10.15
