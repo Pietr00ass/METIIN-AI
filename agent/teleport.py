@@ -21,7 +21,6 @@ except Exception:  # pragma: no cover - fallback to local implementation
     from .wasd import KeyHold
 
 CFG = get_config()
-pyautogui.PAUSE = CFG.controls.mouse_pause
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +55,7 @@ class Teleporter:
         elif isinstance(cfg, dict):
             cfg = AgentConfig(**cfg)
         self.cfg = cfg
+        pyautogui.PAUSE = self.cfg.controls.mouse_pause
         self.win = win
         if not os.path.isdir(templates_dir):
             raise FileNotFoundError(f"Brak katalogu z szablonami: {templates_dir}")

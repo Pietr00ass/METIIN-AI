@@ -6,6 +6,7 @@ import types
 pyautogui_stub = types.ModuleType("pyautogui")
 pyautogui_stub.click = lambda *a, **k: None
 pyautogui_stub.press = lambda *a, **k: None
+pyautogui_stub.PAUSE = 0
 sys.modules.setdefault("pyautogui", pyautogui_stub)
 
 yaml_stub = types.ModuleType("yaml")

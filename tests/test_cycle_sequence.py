@@ -8,7 +8,7 @@ def test_cycle_sequence(monkeypatch):
 
     # Stub optional dependencies before importing agent modules.
     sys.modules.setdefault("ultralytics", types.SimpleNamespace(YOLO=object))
-    sys.modules.setdefault("pyautogui", types.SimpleNamespace())
+    sys.modules.setdefault("pyautogui", types.SimpleNamespace(PAUSE=0))
     sys.modules.setdefault("mss", types.SimpleNamespace(mss=lambda: None))
     sys.modules.setdefault("pygetwindow", types.SimpleNamespace(getAllWindows=lambda: []))
     sys.modules.setdefault("win32con", types.SimpleNamespace())
