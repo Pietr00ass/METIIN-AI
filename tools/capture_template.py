@@ -5,9 +5,17 @@ an image template.  GUI operations such as locating the window and capturing a
 frame are wrapped in ``try``/``except`` blocks to avoid crashing when the
 window is missing or inaccessible.  Logging is used instead of ``print`` so
 messages can easily be filtered or redirected.
+
+Usage
+-----
+``python tools/capture_template.py --roi X Y W H --name LABEL``
+
+The ``--roi`` argument specifies the region of interest in pixels relative to
+the Metin2 window, while ``--name`` determines the output filename.
 """
 
 import logging
+import argparse
 from pathlib import Path
 
 import cv2
@@ -19,6 +27,18 @@ logging.basicConfig(level=logging.INFO)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--roi",
+        nargs=4,
+        type=int,
+        metavar=("X", "Y", "W", "H"),
+        default=[1000, 80, 90, 30],
+        help="współrzędne regionu okna Metin2",
+    )
+    parser.add_argument("--name", default="wczytaj", help="nazwa pliku wyjściowego")
+    args = parser.parse_args()
+
     out = Path("assets/templates")
     out.mkdir(parents=True, exist_ok=True)
 
@@ -28,10 +48,8 @@ def main() -> None:
                 raise RuntimeError("Nie znaleziono okna")
             frame = np.array(wc.grab())[:, :, :3]
 
-        # ustaw ROI ręcznie na start
-        x, y, w, h = 1000, 80, 90, 30
-        name = "wczytaj"
-        out_path = out / f"{name}.png"
+        x, y, w, h = args.roi
+        out_path = out / f"{args.name}.png"
         cv2.imwrite(str(out_path), frame[y : y + h, x : x + w])
         logging.info("Zapisano szablon: %s", out_path)
     except Exception as exc:
