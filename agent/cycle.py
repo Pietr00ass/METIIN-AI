@@ -8,7 +8,7 @@ import numpy as np
 from agent import get_config
 from agent.channel import ChannelSwitcher
 from agent.detector import ObjectDetector
-from agent.hunt_destroy import HuntDestroy
+from agent.strategy import load_strategy
 from agent.scanner import AreaScanner
 from agent.teleport import Teleporter
 from agent.wasd import KeyHold
@@ -45,7 +45,7 @@ class CycleFarm:
             keys=self.keys,
             hotkeys=cfg.get("channel", {}).get("hotkeys"),
         )
-        self.agent = HuntDestroy(cfg, self.win)
+        self.agent = load_strategy(cfg, self.win)
         self.det = ObjectDetector(cfg["paths"]["model"], cfg["detector"]["classes"])
         self._stop = False
 

@@ -47,7 +47,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from agent.channel import ChannelSwitcher
 from agent.cycle import CycleFarm
 from agent.detector import ObjectDetector
-from agent.hunt_destroy import HuntDestroy
+from agent.strategy import load_strategy
 from agent.teleport import Teleporter, TeleportResult
 from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
@@ -923,7 +923,7 @@ class MainWindow(QtWidgets.QMainWindow):
         def run():
             cap = WindowCapture(cfg["window"]["title_substr"])
             try:
-                agent = HuntDestroy(cfg, cap)
+                agent = load_strategy(cfg, cap)
                 if not agent.win.locate(timeout=5):
                     self.set_status("Nie znaleziono okna.")
                     return
@@ -989,7 +989,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         TeleportResult.WINDOW_NOT_FOREGROUND: "Okno gry nie jest aktywne.",
                     }
                     self.set_status(msg_map.get(res, "Teleportacja nie powiodła się."))
-                hd = HuntDestroy(cfg, win)
+                hd = load_strategy(cfg, win)
                 t_end = time.time() + minutes * 60
                 period = cfg.get("scan", {}).get("period", 1 / 15)
                 while time.time() < t_end and not self._panic:
