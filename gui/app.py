@@ -307,8 +307,9 @@ class TeleportConfigDialog(QtWidgets.QDialog):
         data["positions_by_channel"] = pos_out
         data["channel_buttons"] = btn_out
         tc.save_teleport_config(data)
-        tc.positions_by_channel = pos_out
-        tc.channel_buttons = btn_out
+        tc._cfg_cache = None
+        tc._cfg_mtime = None
+        tc.get_config()
         super().accept()
 
 
