@@ -12,6 +12,7 @@ import numpy as np
 import pyautogui
 from pynput import keyboard as pynput_keyboard
 from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtCore import QSettings
 
 import agent.teleport_config as tc
 from agent.channel import ChannelSwitcher
@@ -803,7 +804,27 @@ class MainWindow(QtWidgets.QMainWindow):
         self.log_level_combo.currentTextChanged.connect(
             lambda lvl: self.logger.setLevel(getattr(logging, lvl))
         )
-        self.apply_scale(self.scale)
+
+        # restore persistent settings
+        self.settings = QSettings("METIIN-AI", "MainWindow")
+        geometry = self.settings.value(
+            "window/geometry", b"", type=QtCore.QByteArray
+        )
+        if geometry:
+            self.restoreGeometry(geometry)
+        self.title_edit.setText(self.settings.value("window/title", ""))
+        self.model_path.setText(
+            self.settings.value("paths/model", self.model_path.text())
+        )
+        self.templates_dir_edit.setText(
+            self.settings.value(
+                "paths/templates_dir", self.templates_dir_edit.text()
+            )
+        )
+        scale = float(self.settings.value("ui/scale", self.scale))
+        self.scale_spin.setValue(scale)
+        self.apply_scale(scale)
+
         self.retranslate_ui()
 
     # ---------- helpers ----------
@@ -1510,6 +1531,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_train.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Trwa trening…")
         )
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # pragma: no cover
+        self.settings.setValue("window/geometry", self.saveGeometry())
+        self.settings.setValue("window/title", self.title_edit.text())
+        self.settings.setValue("paths/model", self.model_path.text())
+        self.settings.setValue("paths/templates_dir", self.templates_dir_edit.text())
+        self.settings.setValue("ui/scale", self.scale_spin.value())
+        self.settings.sync()
+        super().closeEvent(event)
 
     # ---------- hotkey ----------
     def start_hotkey_listener(self) -> None:
