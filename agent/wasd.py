@@ -237,22 +237,28 @@ class KeyHold:
     def _down(self, key: str) -> None:
         if self.dry or (self.active_fn is not None and not self.active_fn()):
             return
-        scan = SCANCODES[key]
-        extended = key in EXTENDED_KEYS
-        if extended:
-            key_down(scan, extended=True)
-        else:
-            key_down(scan)
+        if key in SCANCODES:
+            scan = SCANCODES[key]
+            extended = key in EXTENDED_KEYS
+            if extended:
+                key_down(scan, extended=True)
+            else:
+                key_down(scan)
+        elif pydirectinput is not None:
+            pydirectinput.keyDown(key, _pause=False)
 
     def _up(self, key: str) -> None:
         if self.dry or (self.active_fn is not None and not self.active_fn()):
             return
-        scan = SCANCODES[key]
-        extended = key in EXTENDED_KEYS
-        if extended:
-            key_up(scan, extended=True)
-        else:
-            key_up(scan)
+        if key in SCANCODES:
+            scan = SCANCODES[key]
+            extended = key in EXTENDED_KEYS
+            if extended:
+                key_up(scan, extended=True)
+            else:
+                key_up(scan)
+        elif pydirectinput is not None:
+            pydirectinput.keyUp(key, _pause=False)
 
     def press(self, key: str):
         with self.lock:
