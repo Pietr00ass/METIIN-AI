@@ -1,101 +1,48 @@
 from __future__ import annotations
 
-import ctypes
 import logging
 import threading
 import time
-from ctypes import wintypes
 
 try:  # pragma: no cover - optional dependency
     import pydirectinput
+
+    pydirectinput.PAUSE = 0
+    pydirectinput.FAILSAFE = False
 except Exception:  # pragma: no cover - gracefully handle missing module
     pydirectinput = None
 
-# ---------------------------------------------------------------------------
-# ``SendInput`` helpers working with scan codes
-# ---------------------------------------------------------------------------
-
-PUL = ctypes.POINTER(ctypes.c_ulong)
-
 logger = logging.getLogger(__name__)
 
-
-class KEYBDINPUT(ctypes.Structure):
-    _fields_ = [
-        ("wVk", wintypes.WORD),
-        ("wScan", wintypes.WORD),
-        ("dwFlags", wintypes.DWORD),
-        ("time", wintypes.DWORD),
-        ("dwExtraInfo", PUL),
-    ]
-
-
-class _INPUTUNION(ctypes.Union):
-    _fields_ = [("ki", KEYBDINPUT)]
-
-
-class INPUT(ctypes.Structure):
-    _anonymous_ = ("u",)
-    _fields_ = [("type", wintypes.DWORD), ("u", _INPUTUNION)]
-
-
-INPUT_KEYBOARD = 1
-KEYEVENTF_KEYUP = 0x0002
-KEYEVENTF_SCANCODE = 0x0008
-KEYEVENTF_EXTENDEDKEY = 0x0001
-
-if hasattr(ctypes, "windll"):
-    _user32 = ctypes.windll.user32
-else:
-    _user32 = None
+# ``_user32`` is kept for backward compatibility but is unused when relying
+# solely on ``pydirectinput``.
+_user32 = None
 
 
 def _send_scan(scan: int, keyup: bool = False, extended: bool = False) -> None:
-    """Send a single keyboard event using the provided scan code."""
+    """Send a single keyboard event using ``pydirectinput``.
 
-    key = REVERSE_SCANCODES.get(scan)
-    if pydirectinput is not None and key:
-        func = pydirectinput.keyUp if keyup else pydirectinput.keyDown
-        try:
-            # ``pydirectinput`` adds a small pause between calls by default
-            # which would slow down rapid key sequences.  Pass ``_pause=False``
-            # to disable this behavior and send the event immediately.
-            result = func(key, _pause=False)
-            if result is not False:
-                return
-            logger.warning(
-                "pydirectinput.%s returned False for %r; falling back to SendInput",
-                func.__name__,
-                key,
-            )
-        except Exception:  # pragma: no cover - log and fall back
-            logger.warning(
-                "pydirectinput.%s failed for %r; falling back to SendInput",
-                func.__name__,
-                key,
-                exc_info=True,
-            )
-        # Fall through to the Windows ``SendInput`` path
+    ``scan`` is looked up in :data:`REVERSE_SCANCODES` to obtain the key name.
+    The ``extended`` flag is accepted for API compatibility but ignored.
+    """
 
-    if _user32 is None:
+    if pydirectinput is None:
         return
 
-    flags = KEYEVENTF_SCANCODE
-    if keyup:
-        flags |= KEYEVENTF_KEYUP
-    if extended:
-        flags |= KEYEVENTF_EXTENDEDKEY
+    key = REVERSE_SCANCODES.get(scan)
+    if not key:
+        logger.warning("Unknown scancode %r", scan)
+        return
 
-    extra = ctypes.c_ulong(0)
-    ki = KEYBDINPUT(
-        wVk=0,
-        wScan=scan,
-        dwFlags=flags,
-        time=0,
-        dwExtraInfo=ctypes.pointer(extra),
-    )
-    inp = INPUT(type=INPUT_KEYBOARD, ki=ki)
-    _user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp))
+    func = pydirectinput.keyUp if keyup else pydirectinput.keyDown
+    try:
+        result = func(key, _pause=False)
+        if result is False:
+            logger.warning("pydirectinput.%s returned False for %r", func.__name__, key)
+    except Exception:  # pragma: no cover - log but do not raise
+        logger.warning(
+            "pydirectinput.%s failed for %r", func.__name__, key, exc_info=True
+        )
 
 
 SCANCODES = {
@@ -237,6 +184,7 @@ class KeyHold:
     def _down(self, key: str) -> None:
         if self.dry or (self.active_fn is not None and not self.active_fn()):
             return
+        key = key.lower()
         if key in SCANCODES:
             scan = SCANCODES[key]
             extended = key in EXTENDED_KEYS
@@ -250,6 +198,7 @@ class KeyHold:
     def _up(self, key: str) -> None:
         if self.dry or (self.active_fn is not None and not self.active_fn()):
             return
+        key = key.lower()
         if key in SCANCODES:
             scan = SCANCODES[key]
             extended = key in EXTENDED_KEYS
@@ -261,6 +210,7 @@ class KeyHold:
             pydirectinput.keyUp(key, _pause=False)
 
     def press(self, key: str):
+        key = key.lower()
         with self.lock:
             if key not in self.down:
                 logger.debug("Naciśnięto klawisz %s", key)
@@ -268,6 +218,7 @@ class KeyHold:
                 self.down.add(key)
 
     def release(self, key: str):
+        key = key.lower()
         with self.lock:
             if key in self.down:
                 logger.debug("Zwolniono klawisz %s", key)

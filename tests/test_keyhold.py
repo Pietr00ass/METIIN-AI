@@ -72,6 +72,21 @@ def test_press_release_i_calls_sendinput_when_active():
     mock_up.assert_called_once_with(wasd.SCANCODES["i"])
 
 
+def test_press_release_handles_uppercase():
+    """Uppercase keys should be normalized to lowercase scancodes."""
+
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up:
+        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+        kh.press("W")
+        kh.release("W")
+        kh.stop()
+
+    mock_down.assert_called_once_with(wasd.SCANCODES["w"])
+    mock_up.assert_called_once_with(wasd.SCANCODES["w"])
+
+
 @pytest.mark.parametrize("key", ["up", "down", "left", "right"])
 def test_press_release_arrow_calls_sendinput_with_extended(key):
     with patch.object(wasd, "key_down") as mock_down, patch.object(
