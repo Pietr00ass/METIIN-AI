@@ -39,6 +39,34 @@ def test_main(monkeypatch):
     assert change_calls == [2, 3, 4]
 
 
+def test_run_positions_calls_keys_tap(monkeypatch):
+    class StubKeys:
+        def __init__(self):
+            self.calls = []
+
+        def tap(self, key: str, duration: float = 0.05):
+            self.calls.append((key, duration))
+
+    keys = StubKeys()
+
+    cfg = tc.TeleportRuntimeConfig(
+        {},
+        0.0,
+        1.0,
+        0.0,
+        {1: [(10, 20), (30, 40)]},
+        {},
+    )
+    monkeypatch.setattr(tc, "get_config", lambda path="config/teleport.yaml": cfg)
+    monkeypatch.setattr(tc.pyautogui, "click", lambda x, y: None)
+    monkeypatch.setattr(tc.time, "sleep", lambda s: None)
+    monkeypatch.setattr(tc, "open_panel", lambda: None)
+
+    tc.run_positions(1, keys=keys)
+
+    assert keys.calls == [("e", 0.05), ("e", 0.05)]
+
+
 def test_save_teleport_config(tmp_path, monkeypatch):
     captured = {}
 

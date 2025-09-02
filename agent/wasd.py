@@ -225,6 +225,18 @@ class KeyHold:
                 self._up(key)
                 self.down.remove(key)
 
+    def tap(self, key: str, duration: float = 0.05) -> None:
+        """Press and release ``key`` after ``duration`` seconds.
+
+        This helper ensures that both the press and release events are
+        dispatched through :mod:`pydirectinput` by delegating to
+        :meth:`press` and :meth:`release`.
+        """
+
+        self.press(key)
+        time.sleep(duration)
+        self.release(key)
+
     def release_all(self):
         with self.lock:
             if self.down:
