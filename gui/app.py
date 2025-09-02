@@ -19,7 +19,8 @@ from utils.requirements_check import check_requirements
 
 
 def main() -> None:
-    check_requirements()
+    """Launch the Qt GUI."""
+
     from PySide6 import QtWidgets
 
     app = QtWidgets.QApplication(sys.argv)
