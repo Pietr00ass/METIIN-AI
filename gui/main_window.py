@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import threading
 import time
 
 import cv2
@@ -58,6 +57,295 @@ class QtLogHandler(QtCore.QObject, logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         msg = self.format(record)
         self.log.emit(msg)
+
+
+class RecordThread(QtCore.QThread):
+    status = QtCore.Signal(str)
+    finished = QtCore.Signal()
+
+    def __init__(self, region: tuple[int, int, int, int]):
+        super().__init__()
+        self.region = region
+
+    def run(self) -> None:  # pragma: no cover - GUI thread
+        from recorder.capture import record_session
+
+        try:
+            self.status.emit(
+                QtCore.QCoreApplication.translate("MainWindow", "Nagrywanie 5 min…")
+            )
+            record_session(
+                "data/recordings", region=self.region, fps=15, duration_sec=300
+            )
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow",
+                    "Nagrywanie zakończone. Użyj narzędzia 'extract_frames'.",
+                )
+            )
+        except Exception as exc:  # pragma: no cover - UI feedback
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Błąd nagrywania: {exc}").format(exc=exc)
+            )
+        finally:
+            self.finished.emit()
+
+
+class AgentThread(QtCore.QThread):
+    status = QtCore.Signal(str)
+    finished = QtCore.Signal()
+
+    def __init__(self, cfg: dict):
+        super().__init__()
+        self.cfg = cfg
+        self._stop = False
+
+    def stop(self) -> None:
+        self._stop = True
+
+    def run(self) -> None:  # pragma: no cover - GUI thread
+        win = WindowCapture(self.cfg["window"]["title_substr"])
+        try:
+            if not win.locate(timeout=5):
+                self.status.emit(
+                    QtCore.QCoreApplication.translate("MainWindow", "Nie znaleziono okna.")
+                )
+                return
+            agent = load_strategy(self.cfg, win)
+            period = self.cfg.get("scan", {}).get("period", 1 / 15)
+            while not self._stop:
+                agent.step()
+                time.sleep(period)
+        except Exception as exc:  # pragma: no cover - UI feedback
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Błąd agenta: {exc}").format(exc=exc)
+            )
+        finally:
+            win.close()
+            self.finished.emit()
+
+
+class TeleportHuntThread(QtCore.QThread):
+    status = QtCore.Signal(str)
+    finished = QtCore.Signal()
+
+    def __init__(self, cfg: dict, point: str, side: str, minutes: int):
+        super().__init__()
+        self.cfg = cfg
+        self.point = point
+        self.side = side
+        self.minutes = minutes
+        self._stop = False
+
+    def stop(self) -> None:
+        self._stop = True
+
+    def run(self) -> None:  # pragma: no cover - GUI thread
+        win = WindowCapture(self.cfg["window"]["title_substr"])
+        try:
+            if not win.locate(timeout=5):
+                self.status.emit(
+                    QtCore.QCoreApplication.translate("MainWindow", "Nie znaleziono okna.")
+                )
+                return
+            try:
+                test_img = pyautogui.screenshot()
+                logger.info(
+                    "Zrzut ekranu zakończony powodzeniem (%dx%d)",
+                    test_img.width,
+                    test_img.height,
+                )
+            except Exception as e:  # pragma: no cover - UI feedback
+                logger.error("Błąd przy robieniu zrzutu ekranu: %s", e)
+                self.status.emit(
+                    QtCore.QCoreApplication.translate(
+                        "MainWindow", "Błąd przechwytywania ekranu: {e}").format(e=e)
+                )
+                return
+            tp = Teleporter(win, self.cfg["paths"]["templates_dir"], use_ocr=True)
+            res = tp.teleport(self.point, self.side)
+            if res is not TeleportResult.OK:
+                msg_map = {
+                    TeleportResult.TEMPLATE_NOT_FOUND: QtCore.QCoreApplication.translate(
+                        "MainWindow", "Nie znaleziono szablonu w panelu teleportu."
+                    ),
+                    TeleportResult.OCR_MISS: QtCore.QCoreApplication.translate(
+                        "MainWindow", "Nie rozpoznano wskazanego slotu (OCR)."
+                    ),
+                    TeleportResult.WINDOW_NOT_FOREGROUND: QtCore.QCoreApplication.translate(
+                        "MainWindow", "Okno gry nie jest aktywne."
+                    ),
+                }
+                self.status.emit(
+                    msg_map.get(
+                        res,
+                        QtCore.QCoreApplication.translate(
+                            "MainWindow", "Teleportacja nie powiodła się."
+                        ),
+                    )
+                )
+            hd = load_strategy(self.cfg, win)
+            t_end = time.time() + self.minutes * 60
+            period = self.cfg.get("scan", {}).get("period", 1 / 15)
+            while time.time() < t_end and not self._stop:
+                hd.step()
+                time.sleep(period)
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Zakończono 'Teleportuj i poluj'."
+                )
+            )
+        except RuntimeError as exc:  # pragma: no cover - UI feedback
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow",
+                    "Błąd przechwytywania ekranu: {exc}. Czy okno gry jest poza ekranem lub zminimalizowane?",
+                ).format(exc=exc)
+            )
+        except Exception as exc:  # pragma: no cover - UI feedback
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Błąd teleport+poluj: {exc}").format(exc=exc)
+            )
+        finally:
+            win.close()
+            self.finished.emit()
+
+
+class CycleThread(QtCore.QThread):
+    status = QtCore.Signal(str)
+    finished = QtCore.Signal()
+
+    def __init__(self, cfg: dict, page: str | None):
+        super().__init__()
+        self.cfg = cfg
+        self.page = page
+        self._stop = False
+        self.cycle_agent: CycleFarm | None = None
+
+    def stop(self) -> None:
+        self._stop = True
+        if self.cycle_agent:
+            try:
+                self.cycle_agent.stop()
+            except Exception:
+                pass
+
+    def run(self) -> None:  # pragma: no cover - GUI thread
+        cfg = self.cfg
+        cycle_cfg = cfg.get("cycle", {})
+        try:
+            cf = CycleFarm(cfg)
+            self.cycle_agent = cf
+            cf.run(
+                page_label=self.page,
+                ch_from=cycle_cfg.get("ch_from", 1),
+                ch_to=cycle_cfg.get("ch_to", 8),
+                slots=cycle_cfg.get("slots", list(range(1, 9))),
+                per_spot_sec=cycle_cfg.get("per_spot_sec", 90),
+                clear_sec=cycle_cfg.get("clear_sec", 6),
+                sequence=cycle_cfg.get("sequence"),
+            )
+            self.status.emit(
+                QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 zakończony.")
+            )
+        except Exception as exc:  # pragma: no cover - UI feedback
+            self.status.emit(
+                QtCore.QCoreApplication.translate("MainWindow", "Błąd cyklu: {exc}").format(exc=exc)
+            )
+        finally:
+            self.cycle_agent = None
+            self.finished.emit()
+
+
+class ChannelThread(QtCore.QThread):
+    status = QtCore.Signal(str)
+    finished = QtCore.Signal()
+
+    def __init__(self, cfg: dict, channel: int):
+        super().__init__()
+        self.cfg = cfg
+        self.channel = channel
+
+    def run(self) -> None:  # pragma: no cover - GUI thread
+        try:
+            cfg = self.cfg
+            win = WindowCapture(cfg["window"]["title_substr"])
+            try:
+                if not win.locate(timeout=5):
+                    self.status.emit(
+                        QtCore.QCoreApplication.translate("MainWindow", "Nie znaleziono okna.")
+                    )
+                    return
+                keys = KeyHold(
+                    dry=cfg.get("dry_run", False),
+                    active_fn=getattr(win, "is_foreground", None),
+                )
+                cs = ChannelSwitcher(
+                    win,
+                    cfg["paths"]["templates_dir"],
+                    dry=cfg.get("dry_run", False),
+                    keys=keys,
+                    hotkeys=cfg.get("channel", {}).get("hotkeys"),
+                )
+                try:
+                    ok = cs.switch(self.channel)
+                finally:
+                    keys.stop()
+                msg = (
+                    QtCore.QCoreApplication.translate("MainWindow", "Zmieniono kanał na CH{ch}").format(
+                        ch=self.channel
+                    )
+                    if ok
+                    else QtCore.QCoreApplication.translate(
+                        "MainWindow", "Nie znaleziono przycisku CH – sprawdź szablony."
+                    )
+                )
+                self.status.emit(msg)
+            finally:
+                win.close()
+        except Exception as exc:  # pragma: no cover - UI feedback
+            self.status.emit(
+                QtCore.QCoreApplication.translate("MainWindow", "Błąd zmiany kanału: {exc}").format(exc=exc)
+            )
+        finally:
+            self.finished.emit()
+
+
+class TrainThread(QtCore.QThread):
+    status = QtCore.Signal(str)
+    finished = QtCore.Signal()
+
+    def run(self) -> None:  # pragma: no cover - GUI thread
+        try:
+            self.status.emit(
+                QtCore.QCoreApplication.translate("MainWindow", "Trening YOLO – start…")
+            )
+            from ultralytics import YOLO
+
+            model = YOLO("yolov8n.pt")
+            model.train(
+                data="datasets/mt2/data.yaml",
+                imgsz=640,
+                epochs=50,
+                batch=16,
+                device="cpu",
+            )
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow",
+                    "Trening zakończony. Wybierz runs/detect/train/weights/best.pt",
+                )
+            )
+        except Exception as exc:  # pragma: no cover - UI feedback
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Błąd treningu: {exc}").format(exc=exc)
+            )
+        finally:
+            self.finished.emit()
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -343,9 +631,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # thread references
         self.preview_thread: PreviewWorker | None = None
-        self.agent_thread: threading.Thread | None = None
-        self.cycle_agent: CycleFarm | None = None
-        self._panic = False
+        self.agent_thread: QtCore.QThread | None = None
+        self.record_thread: QtCore.QThread | None = None
+        self.channel_thread: QtCore.QThread | None = None
+        self.train_thread: QtCore.QThread | None = None
         self._hotkey_listener = None
 
         # connections
@@ -622,6 +911,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.preview_thread = PreviewWorker(title)
         self.preview_thread.frame_ready.connect(self.show_frame)
         self.preview_thread.status.connect(self.set_status)
+        self.preview_thread.error.connect(self.set_status)
         classes = [c.strip() for c in self.classes_edit.text().split(",") if c.strip()]
         self.preview_thread.configure_overlay(
             self.model_path.text().strip(), classes, self.overlay_chk.isChecked()
@@ -634,8 +924,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if not checked:
             self.btn_record.setText(QtCore.QCoreApplication.translate("MainWindow", "Nagrywaj dane (5 min)"))
             return
-        from recorder.capture import record_session
-
         title = self.title_edit.text().strip()
         if not title:
             self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Podaj fragment tytułu okna."))
@@ -649,22 +937,18 @@ class MainWindow(QtWidgets.QMainWindow):
             wc.update_region()
             l, t, w, h = wc.region
 
-        def job():
-            try:
-                self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Nagrywanie 5 min…"))
-                record_session(
-                    "data/recordings", region=(l, t, w, h), fps=15, duration_sec=300
-                )
-                self.set_status(
-                    QtCore.QCoreApplication.translate("MainWindow", "Nagrywanie zakończone. Użyj narzędzia 'extract_frames'.")
-                )
-            except Exception as exc:
-                self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Błąd nagrywania: {exc}").format(exc=exc))
-            finally:
-                self.btn_record.setChecked(False)
-
-        threading.Thread(target=job, daemon=True).start()
-        self.btn_record.setText(QtCore.QCoreApplication.translate("MainWindow", "Nagrywam dane (5 min)"))
+        self.record_thread = RecordThread((l, t, w, h))
+        self.record_thread.status.connect(self.set_status)
+        self.record_thread.finished.connect(lambda: self.btn_record.setChecked(False))
+        self.record_thread.finished.connect(
+            lambda: self.btn_record.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Nagrywaj dane (5 min)")
+            )
+        )
+        self.record_thread.start()
+        self.btn_record.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Nagrywam dane (5 min)")
+        )
 
     # ---------- configuration ----------
     def build_cfg(self) -> dict:
@@ -823,45 +1107,29 @@ class MainWindow(QtWidgets.QMainWindow):
     # ---------- agent actions ----------
     def start_agent(self, checked: bool) -> None:
         if not checked:
-            self._panic = True
             if self.agent_thread:
-                self.agent_thread.join(timeout=1)
+                self.agent_thread.stop()
+                self.agent_thread.wait()
                 self.agent_thread = None
             self.btn_agent.setText("Start agenta (YOLO + WASD)")
             self.set_status("Agent zatrzymany.")
             return
         cfg = self.build_cfg()
-
-        def run():
-            cap = WindowCapture(cfg["window"]["title_substr"])
-            try:
-                agent = load_strategy(cfg, cap)
-                if not agent.win.locate(timeout=5):
-                    self.set_status("Nie znaleziono okna.")
-                    return
-                period = cfg.get("scan", {}).get("period", 1 / 15)
-                while not self._panic:
-                    agent.step()
-                    time.sleep(period)
-            except Exception as exc:
-                self.set_status(f"Błąd agenta: {exc}")
-            finally:
-                cap.close()
-                self.agent_thread = None
-                self.btn_agent.setChecked(False)
-                self.btn_agent.setText("Start agenta (YOLO + WASD)")
-
-        self._panic = False
-        self.agent_thread = threading.Thread(target=run, daemon=True)
+        self.agent_thread = AgentThread(cfg)
+        self.agent_thread.status.connect(self.set_status)
+        self.agent_thread.finished.connect(lambda: self.btn_agent.setChecked(False))
+        self.agent_thread.finished.connect(
+            lambda: self.btn_agent.setText("Start agenta (YOLO + WASD)")
+        )
         self.agent_thread.start()
         self.btn_agent.setText("Stop agenta")
         self.set_status("Agent YOLO+WASD uruchomiony.")
 
     def start_tp_and_hunt(self, checked: bool) -> None:
         if not checked:
-            self._panic = True
             if self.agent_thread:
-                self.agent_thread.join(timeout=1)
+                self.agent_thread.stop()
+                self.agent_thread.wait()
                 self.agent_thread = None
             self.btn_tp_hunt.setText("Teleportuj i poluj")
             self.set_status("Przerwano 'Teleportuj i poluj'.")
@@ -875,183 +1143,92 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         cfg = self.build_cfg()
 
-        def run():
-            win = WindowCapture(cfg["window"]["title_substr"])
-            try:
-                if not win.locate(timeout=5):
-                    self.set_status("Nie znaleziono okna.")
-                    return
-                try:
-                    test_img = pyautogui.screenshot()
-                    logger.info(
-                        "Zrzut ekranu zakończony powodzeniem (%dx%d)",
-                        test_img.width,
-                        test_img.height,
-                    )
-                except Exception as e:
-                    logger.error("Błąd przy robieniu zrzutu ekranu: %s", e)
-                    self.set_status(f"Błąd przechwytywania ekranu: {e}")
-                    return
-                tp = Teleporter(win, cfg["paths"]["templates_dir"], use_ocr=True)
-                res = tp.teleport(point, side)
-                if res is not TeleportResult.OK:
-                    msg_map = {
-                        TeleportResult.TEMPLATE_NOT_FOUND: QtCore.QCoreApplication.translate(
-                            "MainWindow", "Nie znaleziono szablonu w panelu teleportu."
-                        ),
-                        TeleportResult.OCR_MISS: QtCore.QCoreApplication.translate(
-                            "MainWindow", "Nie rozpoznano wskazanego slotu (OCR)."
-                        ),
-                        TeleportResult.WINDOW_NOT_FOREGROUND: QtCore.QCoreApplication.translate(
-                            "MainWindow", "Okno gry nie jest aktywne."
-                        ),
-                    }
-                    self.set_status(
-                        msg_map.get(
-                            res, QtCore.QCoreApplication.translate("MainWindow", "Teleportacja nie powiodła się.")
-                        )
-                    )
-                hd = load_strategy(cfg, win)
-                t_end = time.time() + minutes * 60
-                period = cfg.get("scan", {}).get("period", 1 / 15)
-                while time.time() < t_end and not self._panic:
-                    hd.step()
-                    time.sleep(period)
-                self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Zakończono 'Teleportuj i poluj'."))
-            except RuntimeError as exc:
-                self.set_status(
-                    QtCore.QCoreApplication.translate(
-                        "MainWindow",
-                        "Błąd przechwytywania ekranu: {exc}. Czy okno gry jest poza ekranem lub zminimalizowane?",
-                    ).format(exc=exc)
-                )
-            except Exception as exc:
-                self.set_status(
-                    QtCore.QCoreApplication.translate("MainWindow", "Błąd teleport+poluj: {exc}").format(exc=exc)
-                )
-            finally:
-                win.close()
-                self.agent_thread = None
-                self.btn_tp_hunt.setChecked(False)
-                self.btn_tp_hunt.setText(QtCore.QCoreApplication.translate("MainWindow", "Teleportuj i poluj"))
-
-        self._panic = False
-        self.agent_thread = threading.Thread(target=run, daemon=True)
+        self.agent_thread = TeleportHuntThread(cfg, point, side, minutes)
+        self.agent_thread.status.connect(self.set_status)
+        self.agent_thread.finished.connect(lambda: self.btn_tp_hunt.setChecked(False))
+        self.agent_thread.finished.connect(
+            lambda: self.btn_tp_hunt.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Teleportuj i poluj")
+            )
+        )
         self.agent_thread.start()
-        self.btn_tp_hunt.setText(QtCore.QCoreApplication.translate("MainWindow", "Stop 'Teleportuj i poluj'"))
-        self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Teleportuję i poluję…"))
+        self.btn_tp_hunt.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Stop 'Teleportuj i poluj'")
+        )
+        self.set_status(
+            QtCore.QCoreApplication.translate("MainWindow", "Teleportuję i poluję…")
+        )
 
     def start_cycle(self, checked: bool) -> None:
         if not checked:
-            self._panic = True
             if self.agent_thread:
-                self.agent_thread.join(timeout=1)
+                self.agent_thread.stop()
+                self.agent_thread.wait()
                 self.agent_thread = None
-            if self.cycle_agent:
-                try:
-                    self.cycle_agent.stop()
-                except Exception:
-                    pass
-                self.cycle_agent = None
-            self.btn_cycle.setText(QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)"))
-            self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Cykl zatrzymany."))
+            self.btn_cycle.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
+            )
+            self.set_status(
+                QtCore.QCoreApplication.translate("MainWindow", "Cykl zatrzymany.")
+            )
             return
         page = self.tp_side.text().strip() or None
         cfg = self.build_cfg()
-        cycle_cfg = cfg.get("cycle", {})
-
-        def run():
-            try:
-                cf = CycleFarm(cfg)
-                self.cycle_agent = cf
-                cf.run(
-                    page_label=page,
-                    ch_from=cycle_cfg.get("ch_from", 1),
-                    ch_to=cycle_cfg.get("ch_to", 8),
-                    slots=cycle_cfg.get("slots", list(range(1, 9))),
-                    per_spot_sec=cycle_cfg.get("per_spot_sec", 90),
-                    clear_sec=cycle_cfg.get("clear_sec", 6),
-                    sequence=cycle_cfg.get("sequence"),
-                )
-                self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 zakończony."))
-            except Exception as exc:
-                self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Błąd cyklu: {exc}").format(exc=exc))
-            finally:
-                self.cycle_agent = None
-                self.agent_thread = None
-                self.btn_cycle.setChecked(False)
-                self.btn_cycle.setText(QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)"))
-
-        self._panic = False
-        self.agent_thread = threading.Thread(target=run, daemon=True)
+        self.agent_thread = CycleThread(cfg, page)
+        self.agent_thread.status.connect(self.set_status)
+        self.agent_thread.finished.connect(lambda: self.btn_cycle.setChecked(False))
+        self.agent_thread.finished.connect(
+            lambda: self.btn_cycle.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
+            )
+        )
         self.agent_thread.start()
-        self.btn_cycle.setText(QtCore.QCoreApplication.translate("MainWindow", "Stop cyklu 8×8"))
-        self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Start cyklu 8×8…"))
+        self.btn_cycle.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Stop cyklu 8×8")
+        )
+        self.set_status(
+            QtCore.QCoreApplication.translate("MainWindow", "Start cyklu 8×8…")
+        )
 
     def change_channel(self, checked: bool) -> None:
         if not checked:
             self.btn_ch.setText(QtCore.QCoreApplication.translate("MainWindow", "Zmień kanał"))
             return
-
-        def job():
-            try:
-                cfg = self.build_cfg()
-                win = WindowCapture(cfg["window"]["title_substr"])
-                try:
-                    if not win.locate(timeout=5):
-                        self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Nie znaleziono okna."))
-                        return
-                    ch = int(self.channel_combo.currentText().replace("CH", ""))
-                    keys = KeyHold(
-                        dry=cfg.get("dry_run", False),
-                        active_fn=getattr(win, "is_foreground", None),
-                    )
-                    cs = ChannelSwitcher(
-                        win,
-                        cfg["paths"]["templates_dir"],
-                        dry=cfg.get("dry_run", False),
-                        keys=keys,
-                        hotkeys=cfg.get("channel", {}).get("hotkeys"),
-                    )
-                    try:
-                        ok = cs.switch(ch)
-                    finally:
-                        keys.stop()
-                    msg = (
-                        QtCore.QCoreApplication.translate("MainWindow", "Zmieniono kanał na CH{ch}").format(ch=ch)
-                        if ok
-                        else QtCore.QCoreApplication.translate(
-                            "MainWindow",
-                            "Nie znaleziono przycisku CH – sprawdź szablony.",
-                        )
-                    )
-                    self.set_status(msg)
-                finally:
-                    win.close()
-            except Exception as exc:
-                self.set_status(
-                    QtCore.QCoreApplication.translate("MainWindow", "Błąd zmiany kanału: {exc}").format(exc=exc)
-                )
-            finally:
-                self.btn_ch.setChecked(False)
-                self.btn_ch.setText(QtCore.QCoreApplication.translate("MainWindow", "Zmień kanał"))
-
-        threading.Thread(target=job, daemon=True).start()
+        cfg = self.build_cfg()
+        ch = int(self.channel_combo.currentText().replace("CH", ""))
+        self.channel_thread = ChannelThread(cfg, ch)
+        self.channel_thread.status.connect(self.set_status)
+        self.channel_thread.finished.connect(lambda: self.btn_ch.setChecked(False))
+        self.channel_thread.finished.connect(
+            lambda: self.btn_ch.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Zmień kanał")
+            )
+        )
+        self.channel_thread.start()
         self.btn_ch.setText(QtCore.QCoreApplication.translate("MainWindow", "Zmiana kanału…"))
         self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Zmiana kanału…"))
 
     def stop_all(self) -> None:
-        self._panic = True
         try:
             KeyHold().release_all()
         except Exception:
             pass
-        if self.cycle_agent:
+        if self.agent_thread and self.agent_thread.isRunning():
             try:
-                self.cycle_agent.stop()
+                self.agent_thread.stop()
             except Exception:
                 pass
-            self.cycle_agent = None
+            self.agent_thread.wait()
+            self.agent_thread = None
+        if self.record_thread and self.record_thread.isRunning():
+            self.record_thread.wait()
+            self.record_thread = None
+        if self.channel_thread and self.channel_thread.isRunning():
+            self.channel_thread.wait()
+            self.channel_thread = None
+        if self.train_thread and self.train_thread.isRunning():
+            self.train_thread.wait()
+            self.train_thread = None
         if self.preview_thread and self.preview_thread.isRunning():
             self.preview_thread.stop()
             self.preview_thread.wait()
@@ -1073,34 +1250,18 @@ class MainWindow(QtWidgets.QMainWindow):
         if not checked:
             self.btn_train.setText(QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO"))
             return
-
-        def job():
-            try:
-                self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Trening YOLO – start…"))
-                from ultralytics import YOLO
-
-                model = YOLO("yolov8n.pt")
-                model.train(
-                    data="datasets/mt2/data.yaml",
-                    imgsz=640,
-                    epochs=50,
-                    batch=16,
-                    device="cpu",
-                )
-                self.set_status(
-                    QtCore.QCoreApplication.translate(
-                        "MainWindow",
-                        "Trening zakończony. Wybierz runs/detect/train/weights/best.pt",
-                    )
-                )
-            except Exception as exc:
-                self.set_status(QtCore.QCoreApplication.translate("MainWindow", "Błąd treningu: {exc}").format(exc=exc))
-            finally:
-                self.btn_train.setChecked(False)
-                self.btn_train.setText(QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO"))
-
-        threading.Thread(target=job, daemon=True).start()
-        self.btn_train.setText(QtCore.QCoreApplication.translate("MainWindow", "Trwa trening…"))
+        self.train_thread = TrainThread()
+        self.train_thread.status.connect(self.set_status)
+        self.train_thread.finished.connect(lambda: self.btn_train.setChecked(False))
+        self.train_thread.finished.connect(
+            lambda: self.btn_train.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO")
+            )
+        )
+        self.train_thread.start()
+        self.btn_train.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Trwa trening…")
+        )
 
     # ---------- hotkey ----------
     def start_hotkey_listener(self) -> None:
