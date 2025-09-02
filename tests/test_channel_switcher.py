@@ -238,3 +238,9 @@ def test_cycle_until_target_seen(tmp_path, monkeypatch):
         is True
     )
     assert switched == [2, 3]
+
+
+def test_default_hotkeys_mapping(tmp_path):
+    _setup_templates(tmp_path)
+    cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True, keys=KH())
+    assert cs.hotkeys == {i: str(i) for i in range(1, 9)}

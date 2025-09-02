@@ -1,7 +1,7 @@
 import os
 import sys
 import types
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import pytest
 
@@ -93,3 +93,42 @@ def test_press_release_e_calls_sendinput_when_active():
 
     mock_down.assert_called_once_with(wasd.SCANCODES["e"])
     mock_up.assert_called_once_with(wasd.SCANCODES["e"])
+
+
+@pytest.mark.parametrize("num", list("12345678"))
+def test_ctrl_number_combo(num):
+    """Ctrl+1..8 should send expected scan codes."""
+
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up:
+        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+        kh.press("ctrl")
+        kh.press(num)
+        kh.release(num)
+        kh.release("ctrl")
+        kh.stop()
+
+    sc_ctrl = wasd.SCANCODES["ctrl"]
+    sc_num = wasd.SCANCODES[num]
+    assert mock_down.call_args_list == [call(sc_ctrl), call(sc_num)]
+    assert mock_up.call_args_list == [call(sc_num), call(sc_ctrl)]
+
+
+def test_ctrl_x_combo():
+    """Ctrl+X hotkey should be emitted correctly."""
+
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up:
+        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+        kh.press("ctrl")
+        kh.press("x")
+        kh.release("x")
+        kh.release("ctrl")
+        kh.stop()
+
+    sc_ctrl = wasd.SCANCODES["ctrl"]
+    sc_x = wasd.SCANCODES["x"]
+    assert mock_down.call_args_list == [call(sc_ctrl), call(sc_x)]
+    assert mock_up.call_args_list == [call(sc_x), call(sc_ctrl)]

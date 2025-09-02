@@ -109,11 +109,8 @@ SCANCODES = {
     "shift": 0x2A,
     "ctrl": 0x1D,
     "alt": 0x38,
+    # Hotkeys for teleport (Ctrl+X) and channel switching (Ctrl+1..8)
     "x": 0x2D,
-    "up": 0x48,
-    "down": 0x50,
-    "left": 0x4B,
-    "right": 0x4D,
     "1": 0x02,
     "2": 0x03,
     "3": 0x04,
@@ -122,6 +119,10 @@ SCANCODES = {
     "6": 0x07,
     "7": 0x08,
     "8": 0x09,
+    "up": 0x48,
+    "down": 0x50,
+    "left": 0x4B,
+    "right": 0x4D,
 }
 
 # Keys that require the extended flag when sent via ``SendInput``.
@@ -140,11 +141,8 @@ VK_CODES = {
     "shift": 0x10,
     "ctrl": 0x11,
     "alt": 0x12,
+    # Hotkeys for teleport (Ctrl+X) and channel switching (Ctrl+1..8)
     "x": 0x58,
-    "up": 0x26,
-    "down": 0x28,
-    "left": 0x25,
-    "right": 0x27,
     "1": 0x31,
     "2": 0x32,
     "3": 0x33,
@@ -153,6 +151,10 @@ VK_CODES = {
     "6": 0x36,
     "7": 0x37,
     "8": 0x38,
+    "up": 0x26,
+    "down": 0x28,
+    "left": 0x25,
+    "right": 0x27,
 }
 
 REVERSE_VK_CODES = {v: k for k, v in VK_CODES.items()}
