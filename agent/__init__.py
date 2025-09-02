@@ -23,6 +23,7 @@ except Exception:  # pragma: no cover - provide dummy fallback
 # Default configuration used when keys are missing from the YAML file.
 # ---------------------------------------------------------------------------
 DEFAULT_CFG: Dict[str, Any] = {
+    "strategy": "hunt_destroy",
     "window": {"title_substr": "Metin2"},
     "paths": {
         "templates_dir": "assets/templates",

@@ -83,8 +83,8 @@ def test_cycle_sequence(monkeypatch):
     monkeypatch.setattr("agent.cycle.Teleporter", DummyTeleporter)
     monkeypatch.setattr("agent.cycle.ChannelSwitcher", DummyChannelSwitcher)
     monkeypatch.setattr("agent.cycle.KeyHold", DummyKeyHold)
-    monkeypatch.setattr("agent.cycle.HuntDestroy", DummyHuntDestroy)
     monkeypatch.setattr("agent.cycle.ObjectDetector", DummyDetector)
+    monkeypatch.setattr("agent.cycle.load_strategy", lambda cfg, win: DummyHuntDestroy(cfg, win))
 
     cfg = {
         "window": {"title_substr": "x"},

@@ -7,7 +7,7 @@ import numpy as np
 from recorder.window_capture import WindowCapture
 
 from . import AgentConfig, TeleportSlot
-from .hunt_destroy import HuntDestroy
+from .strategy import load_strategy
 
 
 class WasdVisionAgent:
@@ -53,7 +53,7 @@ class WasdVisionAgent:
         try:
             if not self.win.locate(timeout=5):
                 raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
-            self.hd = HuntDestroy(self.cfg, self.win)
+            self.hd = load_strategy(self.cfg, self.win)
             while True:
                 self.hd.step()
                 time.sleep(self.period)

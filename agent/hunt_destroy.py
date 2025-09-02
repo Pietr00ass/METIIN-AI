@@ -12,6 +12,7 @@ from .interaction import click_bbox_center
 from .movement import MovementController
 from .scanner import AreaScanner
 from .search import SearchManager
+from .strategy import AgentStrategy, register
 from .targets import pick_target
 from .teleport import Teleporter
 from .wasd import KeyHold
@@ -19,8 +20,29 @@ from .wasd import KeyHold
 logger = logging.getLogger(__name__)
 
 
-class HuntDestroy:
+@register("hunt_destroy")
+class HuntDestroy(AgentStrategy):
     def __init__(self, cfg=None, window_capture=None):
+        self.cfg = None
+        self.win = None
+        self.det = None
+        self.avoid = None
+        self.keys = None
+        self.teleporter = None
+        self.channel_switcher = None
+        self.desired_w = 0.0
+        self.deadzone = 0.0
+        self.priority = []
+        self.period = 0.0
+        self.scanner = None
+        self.search = None
+        self.movement = None
+        self._last_tgt = None
+        self._prev_names: set[str] = set()
+        if cfg is not None or window_capture is not None:
+            self.setup(cfg, window_capture)
+
+    def setup(self, cfg=None, window_capture=None):
         cfg = cfg or get_config()
         self.cfg = cfg
         self.win = window_capture
@@ -44,7 +66,7 @@ class HuntDestroy:
         self.priority = cfg.get("priority", ["boss", "metin", "potwory"])
         scan_cfg = cfg.get("scan", {})
         self.period = scan_cfg.get("period", 1 / 15)
-        self.scanner: AreaScanner | None = None
+        self.scanner = None
         if scan_cfg.get("enabled", True):
             rot_key = (
                 cfg.get("controls", {}).get("keys", {}).get("rotate")
@@ -74,7 +96,7 @@ class HuntDestroy:
             self.keys, self.desired_w, self.deadzone, enabled=move_enabled
         )
         self._last_tgt = None
-        self._prev_names: set[str] = set()
+        self._prev_names = set()
 
     def step(self):
         fr = self.win.grab()
