@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
+from .wasd import KeyHold
+
 try:  # pyautogui is optional during tests
     import pyautogui
 except Exception:  # pragma: no cover - provide a tiny stub
@@ -94,6 +96,7 @@ def run_positions(
     *,
     delay: float | None = None,
     close_panel: Callable[[], None] | None = None,
+    keys: KeyHold | None = None,
 ) -> None:
     """Run all configured positions for ``channel``."""
 
@@ -102,12 +105,14 @@ def run_positions(
     if not positions:
         return
 
+    keys = keys or KeyHold()
+
     open_panel()
     time.sleep(cfg.delay_after_panel)
     sleep_delay = delay if delay is not None else cfg.delay_after_teleport
     for x, y in positions:
         pyautogui.click(x, y)
-        pyautogui.press("e")
+        keys.tap("e")
         time.sleep(sleep_delay)
         if close_panel:
             close_panel()
