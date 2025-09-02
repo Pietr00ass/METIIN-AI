@@ -357,6 +357,14 @@ class MainWindow(QtWidgets.QMainWindow):
         tmpl_layout.addWidget(self.btn_templates_dir)
         settings_form.addRow("Katalog szablonów:", tmpl_widget)
         self.btn_templates_dir.clicked.connect(self.browse_templates_dir)
+
+        # hotkey for opening teleport configuration dialog
+        self.tp_cfg_hotkey = QtWidgets.QLineEdit("f9")
+        self.tp_cfg_hotkey.setMaximumWidth(60)
+        settings_form.addRow("Skrót panelu teleportu:", self.tp_cfg_hotkey)
+        self.tp_cfg_hotkey.textChanged.connect(
+            lambda _: self.start_hotkey_listener()
+        )
         left.addWidget(settings_box)
 
         # agent parameters group
@@ -811,7 +819,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 "timeout_per_ch": 2.5,
                 "hotkeys": hotkeys,
             },
-            "ui": {"scale": float(self.scale_spin.value())},
+            "ui": {
+                "scale": float(self.scale_spin.value()),
+                "tp_cfg_hotkey": self.tp_cfg_hotkey.text().strip(),
+            },
         }
 
         sequence: list[dict[str, int]] = []
@@ -885,6 +896,7 @@ class MainWindow(QtWidgets.QMainWindow):
         scale = float(ui.get("scale", 1.0))
         self.scale_spin.setValue(scale)
         self.apply_scale(scale)
+        self.tp_cfg_hotkey.setText(ui.get("tp_cfg_hotkey", "f9"))
         self.prio_list.clear()
         for name in cfg.get("priority", []):
             self.prio_list.addItem(QtWidgets.QListWidgetItem(name))
@@ -907,6 +919,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.seq_table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(ch)))
             self.seq_table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(slot)))
         self.set_status("Wczytano konfigurację.")
+        self.start_hotkey_listener()
 
     # ---------- agent actions ----------
     def start_agent(self, checked: bool) -> None:
@@ -1170,13 +1183,28 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # ---------- hotkey ----------
     def start_hotkey_listener(self) -> None:
+        tp_key = self.tp_cfg_hotkey.text().strip().lower()
+
         def on_press(key):
             try:
                 if key == pynput_keyboard.Key.f12:
                     self.stop_all()
+                elif tp_key:
+                    try:
+                        target = getattr(pynput_keyboard.Key, tp_key)
+                        if key == target:
+                            self.open_teleport_config()
+                    except AttributeError:
+                        if (
+                            isinstance(key, pynput_keyboard.KeyCode)
+                            and key.char == tp_key
+                        ):
+                            self.open_teleport_config()
             except Exception:
                 pass
 
+        if self._hotkey_listener:
+            self._hotkey_listener.stop()
         self._hotkey_listener = pynput_keyboard.Listener(on_press=on_press)
         self._hotkey_listener.daemon = True
         self._hotkey_listener.start()
