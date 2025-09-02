@@ -7,8 +7,10 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 
-# ogranicz wątki OpenCV na Windows (stabilniej na CPU)
-cv2.setNumThreads(1)
+# OpenCV spawns multiple worker threads by default.  On some systems,
+# particularly Windows, this can lead to high CPU usage or instability.
+# The thread count can now be controlled via ``ObjectDetector``.  By
+# default we leave OpenCV's configuration untouched.
 
 
 class ObjectDetector:
@@ -16,7 +18,9 @@ class ObjectDetector:
 
     Dodatkowo umożliwia ograniczenie częstotliwości detekcji oraz
     dynamiczne skalowanie rozdzielczości wejściowej w celu redukcji
-    obciążenia CPU/GPU.
+    obciążenia CPU/GPU.  Opcjonalnie można także zmienić liczbę wątków
+    OpenCV, wywołując ``cv2.setNumThreads`` podczas inicjalizacji.
+    Domyślnie ustawienie to pozostaje bez zmian.
     """
 
     def __init__(
@@ -29,7 +33,10 @@ class ObjectDetector:
         max_fps: float | None = None,
         dynamic_resize: bool = False,
         min_scale: float = 0.5,
+        cv2_threads: int | None = None,
     ):
+        if cv2_threads is not None:
+            cv2.setNumThreads(cv2_threads)
         self.model_path = model_path
         self.model = YOLO(model_path)
         self.classes = classes
