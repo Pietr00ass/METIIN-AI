@@ -4,7 +4,13 @@ import numpy as np
 
 
 class ClickPolicy:
-    """Prosty model zwracający zerowe przewidywania.
+    """Simple model returning zero predictions.
+
+    In this test implementation we avoid PyTorch; instead we operate on
+    ``numpy`` arrays and return matrices of the appropriate shapes.
+
+    PL:
+    Prosty model zwracający zerowe przewidywania.
 
     W implementacji testowej nie używamy PyTorcha; zamiast tego działamy na
     tablicach ``numpy`` i zwracamy macierze o odpowiednich kształtach.

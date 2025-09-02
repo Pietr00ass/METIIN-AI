@@ -4,7 +4,13 @@ import numpy as np
 
 
 class KbdPolicy:
-    """Prosty model zwracający prawdopodobieństwa klawiszy WASD.
+    """Simple model returning probabilities for WASD keys.
+
+    Returns a zero matrix of shape ``(B, 4)`` corresponding to ``W``, "A",
+    "S" and "D".
+
+    PL:
+    Prosty model zwracający prawdopodobieństwa klawiszy WASD.
 
     Zwraca macierz zer o kształcie ``(B, 4)`` odpowiadającą klawiszom
     ``W``, ``A``, ``S`` i ``D``.

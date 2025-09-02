@@ -26,21 +26,23 @@ def _rate_limit_ok() -> bool:
 def click_bbox_center(
     bbox, region, rate_limit: bool = True, win: WindowCapture | None = None
 ) -> bool:
-    """Kliknij w środek ``bbox`` w obrębie ``region`` jeśli okno jest aktywne.
+    """Click the centre of ``bbox`` within ``region`` if the window is active.
 
     Parameters
     ----------
     bbox, region: tuple
-        Współrzędne celu i obszaru w jakim się znajduje.
+        Target and region coordinates.
     rate_limit: bool
-        Czy stosować ograniczenie liczby klików na sekundę.
+        Whether to limit the number of clicks per second.
     win: WindowCapture | None
-        Opcjonalna instancja okna pozwalająca sprawdzić fokus.
+        Optional window instance used to verify focus.
 
     Returns
     -------
     bool
-        ``True`` jeśli kliknięcie zostało wykonane.
+        ``True`` if the click was performed.
+
+    PL: Kliknij w środek ``bbox`` w obrębie ``region`` jeśli okno jest aktywne.
     """
 
     x1, y1, x2, y2 = bbox
@@ -61,7 +63,10 @@ def click_bbox_center(
 
 
 def burst_click(bbox, region, n=3, interval=0.08, win: WindowCapture | None = None):
-    """Seria kliknięć w ``bbox`` z zachowaniem bezpieczeństwa fokusu."""
+    """Series of clicks within ``bbox`` while ensuring window focus.
+
+    PL: Seria kliknięć w ``bbox`` z zachowaniem bezpieczeństwa fokusu.
+    """
     for _ in range(n):
         if not click_bbox_center(bbox, region, rate_limit=False, win=win):
             break

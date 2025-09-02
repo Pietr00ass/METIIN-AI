@@ -34,7 +34,15 @@ class TeleportResult(Enum):
 
 
 class Teleporter:
-    """
+    """Teleport panel helper.
+
+    - ``open_panel()``: Ctrl+X (with focus)
+    - ``go_page('Page I'..'Page VIII')``
+    - ``teleport(point, page)``
+    - ``teleport_slot(slot, page)``: scroll + retry, click "Load"
+    Requires templates: ``wczytaj.png``, ``strona_I.png``..``strona_VIII.png``
+
+    PL:
     Panel teleportu:
     - open_panel(): Ctrl+X (z focusem)
     - go_page('Strona I'..'Strona VIII')
@@ -245,12 +253,21 @@ class Teleporter:
 
     # ---- teleportacja ----
     def teleport_slot(self, slot: int, page_label: str) -> TeleportResult:
-        """Teleportuj do danego numeru slotu na podanej stronie.
+        """Teleport to ``slot`` on ``page_label``.
+
+        Returns :class:`TeleportResult` describing the outcome of the
+        attempt. On failure a screenshot of the panel is saved to
+        ``runs/`` (or the directory specified by ``paths.log_dir`` in the
+        configuration).
+
+        PL:
+        Teleportuj do danego numeru slotu na podanej stronie.
 
         Zwraca :class:`TeleportResult` opisujący rezultat próby
         teleportacji.  Przy niepowodzeniu zrzut panelu jest zapisywany w
         ``runs/`` (lub w katalogu wskazanym przez ``paths.log_dir`` w
-        konfiguracji)."""
+        konfiguracji).
+        """
 
         logger.debug("Teleporting to slot %s on page '%s'", slot, page_label)
         # otwórz panel i przejdź do strony
@@ -303,5 +320,8 @@ class Teleporter:
         return TeleportResult.OK
 
     def teleport(self, slot: int, page_label: str) -> TeleportResult:
-        """Zachowana dla kompatybilności nazwa ``teleport``."""
+        """Compatibility wrapper named ``teleport``.
+
+        PL: Zachowana dla kompatybilności nazwa ``teleport``.
+        """
         return self.teleport_slot(slot, page_label)

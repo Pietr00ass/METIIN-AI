@@ -5,7 +5,10 @@ import numpy as np
 
 
 class CollisionAvoid:
-    """Ekranowe unikanie kolizji: krawędzie + przepływ w centralnym pasku."""
+    """Screen-space collision avoidance using edges and flow in the central band.
+
+    PL: Ekranowe unikanie kolizji: krawędzie + przepływ w centralnym pasku.
+    """
 
     def __init__(
         self,
