@@ -14,12 +14,14 @@ for parent in ROOT_DIR.parents:
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from PySide6 import QtWidgets
-
 from gui.main_window import MainWindow
 
 
 def main() -> None:
+    """Launch the Qt GUI."""
+
+    from PySide6 import QtWidgets
+
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.show()
@@ -28,4 +30,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
