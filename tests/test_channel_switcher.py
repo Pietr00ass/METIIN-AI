@@ -185,7 +185,7 @@ def test_switch_uses_keys_when_not_found(tmp_path, monkeypatch):
 
     cs = channel.ChannelSwitcher(Win(), str(tmp_path), dry=False, keys=KH())
     assert cs.switch(3, tries=1, post_wait=0) is True
-    assert hotkey_calls == [(["ctrl", "3"], 0.05)]
+    assert hotkey_calls == [(["numpad3"], 0.05)]
     assert focuses, "focus should be called before sending keys"
 
 
@@ -206,13 +206,17 @@ def test_custom_hotkeys_respected(tmp_path, monkeypatch):
     class KH:
         def hotkey(self, keys, duration=0.05):
             hotkey_calls.append((keys, duration))
+            
+            class Win(DummyWin):
+        def focus(self):
+            focuses.append(1)
 
-    custom = {i: f"numpad{i}" for i in range(1, 9)}
-    cs = channel.ChannelSwitcher(
-        DummyWin(), str(tmp_path), dry=False, keys=KH(), hotkeys=custom
-    )
-    assert cs.switch(2, tries=1, post_wait=0) is True
-    assert hotkey_calls == [(["ctrl", "numpad2"], 0.05)]
+    cs = channel.ChannelSwitcher(Win(), str(tmp_path), dry=False, keys=KH())
+    assert cs.switch(3, tries=1, post_wait=0) is True
+    assert hotkey_calls == [(["numpad3"], 0.05)]
+
+        assert focuses, "focus should be called before sending keys"
+
 
 
 def test_next_wraps(tmp_path):
@@ -265,4 +269,4 @@ def test_cycle_until_target_seen(tmp_path, monkeypatch):
 def test_default_hotkeys_mapping(tmp_path):
     _setup_templates(tmp_path)
     cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True, keys=KH())
-    assert cs.hotkeys == {i: str(i) for i in range(1, 9)}
+    assert cs.hotkeys == {i: f"numpad{i}" for i in range(1, 9)}

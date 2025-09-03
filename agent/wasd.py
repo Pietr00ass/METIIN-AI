@@ -56,7 +56,7 @@ SCANCODES = {
     "shift": 0x2A,
     "ctrl": 0x1D,
     "alt": 0x38,
-    # Hotkeys for teleport (Ctrl+X) and channel switching (Ctrl+1..8)
+    # Hotkey for teleport (Ctrl+X); channel switching uses NumPad1..8
     "x": 0x2D,
     "1": 0x02,
     "2": 0x03,
@@ -97,7 +97,7 @@ VK_CODES = {
     "shift": 0x10,
     "ctrl": 0x11,
     "alt": 0x12,
-    # Hotkeys for teleport (Ctrl+X) and channel switching (Ctrl+1..8)
+    # Hotkey for teleport (Ctrl+X); channel switching uses NumPad1..8
     "x": 0x58,
     "1": 0x31,
     "2": 0x32,
