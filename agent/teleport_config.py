@@ -51,7 +51,7 @@ class TeleportRuntimeConfig:
     delay_after_panel: float
     delay_after_teleport: float
     delay_after_channel: float
-    positions_by_channel: Dict[int, List[Tuple[int, int]]]
+    positions: List[Tuple[int, int]]
     channel_buttons: Dict[int, Tuple[int, int]]
 
 
@@ -76,8 +76,8 @@ def get_config(path: str | Path = "config/teleport.yaml") -> TeleportRuntimeConf
             delay_after_panel=float(raw.get("delay_after_panel", 0.5)),
             delay_after_teleport=float(raw.get("delay_after_teleport", 1.0)),
             delay_after_channel=float(raw.get("delay_after_channel", 5.0)),
-            positions_by_channel=raw.get("positions_by_channel", {}),
-            channel_buttons=raw.get("channel_buttons", {}),
+            positions=[tuple(p) for p in raw.get("positions", [])],
+            channel_buttons={int(k): tuple(v) for k, v in raw.get("channel_buttons", {}).items()},
         )
         _cfg_mtime = mtime
     return _cfg_cache
@@ -98,10 +98,10 @@ def run_positions(
     close_panel: Callable[[], None] | None = None,
     keys: KeyHold | None = None,
 ) -> None:
-    """Run all configured positions for ``channel``."""
+    """Run all configured positions."""
 
     cfg = get_config()
-    positions = cfg.positions_by_channel.get(channel)
+    positions = cfg.positions
     if not positions:
         return
 
