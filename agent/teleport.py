@@ -162,10 +162,7 @@ class Teleporter:
                 logger.debug("Window not in foreground on attempt %d", attempt + 1)
             logger.debug("Attempt %d to open teleport panel", attempt + 1)
             if not self.dry:
-                self.keys.press("ctrl")
-                self.keys.press("x")
-                self.keys.release("x")
-                self.keys.release("ctrl")
+                self.keys.hotkey(["ctrl", "x"], duration=0.05)
             else:
                 return True
             time.sleep(self.open_panel_delay)

@@ -246,6 +246,19 @@ class KeyHold:
         time.sleep(duration)
         self.release(key)
 
+    def hotkey(self, keys: list[str], duration: float = 0.05) -> None:
+        """Press ``keys`` together and hold for ``duration`` seconds.
+
+        Keys are pressed in the provided order and released in reverse order
+        after a short sleep so that the combination is reliably registered.
+        """
+
+        for k in keys:
+            self.press(k)
+        time.sleep(duration)
+        for k in reversed(keys):
+            self.release(k)
+
     def release_all(self):
         with self.lock:
             if self.down:

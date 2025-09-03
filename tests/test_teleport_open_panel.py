@@ -79,10 +79,12 @@ from agent.teleport import Teleporter
 def test_open_panel_detects_non_first_page():
     teleporter = Teleporter.__new__(Teleporter)
     teleporter.dry = False
-    teleporter.keys = types.SimpleNamespace(
-        press=lambda *a, **k: None,
-        release=lambda *a, **k: None,
-    )
+    hotkey_calls: list[tuple[list[str], float]] = []
+
+    def _hotkey(keys, duration=0.05):
+        hotkey_calls.append((keys, duration))
+
+    teleporter.keys = types.SimpleNamespace(hotkey=_hotkey)
     teleporter.open_panel_delay = 0
     teleporter.page_thresh = 0.5
     teleporter.win = types.SimpleNamespace(
@@ -106,4 +108,5 @@ def test_open_panel_detects_non_first_page():
     teleporter.tm = TM()
 
     assert teleporter.open_panel() is True
+    assert hotkey_calls == [(["ctrl", "x"], 0.05)]
     assert call_order[:2] == ["strona_I", "strona_II"]
