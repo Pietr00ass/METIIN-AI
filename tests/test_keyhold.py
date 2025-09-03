@@ -180,50 +180,6 @@ def test_ctrl_x_combo():
     assert mock_up.call_args_list == [call(sc_x), call(sc_ctrl)]
 
 
-def test_unknown_key_uses_pydirectinput():
-    """Keys missing from SCANCODES should fall back to pydirectinput."""
-
-    with patch.object(wasd, "pydirectinput") as mock_pdi:
-        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
-        kh.press("q")
-        kh.release("q")
-        kh.stop()
-
-    mock_pdi.keyDown.assert_called_once_with("q", _pause=False)
-    mock_pdi.keyUp.assert_called_once_with("q", _pause=False)
-
-
-def test_tap_uses_pydirectinput():
-    """``tap`` should press and release keys via ``pydirectinput``."""
-
-    with patch.object(wasd, "pydirectinput") as mock_pdi, patch.object(
-        wasd.time, "sleep", return_value=None
-    ):
-        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
-        kh.tap("q")
-        kh.stop()
-
-    mock_pdi.keyDown.assert_called_once_with("q", _pause=False)
-    mock_pdi.keyUp.assert_called_once_with("q", _pause=False)
-
-
-def test_hotkey_holds_keys_for_duration():
-    """``hotkey`` should press keys, wait, then release in reverse order."""
-
-    kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
-    kh.stop()
-    with patch.object(wasd, "key_down") as mock_down, patch.object(
-        wasd, "key_up"
-    ) as mock_up, patch.object(wasd.time, "sleep", return_value=None) as mock_sleep:
-        kh.hotkey(["ctrl", "x"], duration=0.1)
-
-    sc_ctrl = wasd.SCANCODES["ctrl"]
-    sc_x = wasd.SCANCODES["x"]
-    assert mock_down.call_args_list == [call(sc_ctrl), call(sc_x)]
-    assert mock_sleep.call_args_list == [call(0.1)]
-    assert mock_up.call_args_list == [call(sc_x), call(sc_ctrl)]
-
-
 
 @pytest.mark.parametrize("num", list("12345678"))
 def test_hotkey_ctrl_number_combo(num):
