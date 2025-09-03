@@ -5,6 +5,7 @@ import types
 
 pyautogui_stub = types.ModuleType("pyautogui")
 pyautogui_stub.click = lambda *a, **k: None
+pyautogui_stub.moveTo = lambda *a, **k: None
 pyautogui_stub.press = lambda *a, **k: None
 pyautogui_stub.PAUSE = 0
 sys.modules.setdefault("pyautogui", pyautogui_stub)
@@ -31,13 +32,10 @@ def test_change_channel(monkeypatch):
 
 
 def test_main(monkeypatch):
-    run_calls = []
-    change_calls = []
-    monkeypatch.setattr(tc, "run_positions", lambda ch: run_calls.append(ch))
-    monkeypatch.setattr(tc, "change_channel", lambda ch: change_calls.append(ch))
+    calls = []
+    monkeypatch.setattr(tc, "cycle_channels", lambda chs: calls.append(chs))
     tc.main()
-    assert run_calls == [1, 2, 3, 4]
-    assert change_calls == [2, 3, 4]
+    assert calls == [[1, 2, 3, 4]]
 
 
 def test_run_positions_calls_keys_tap(monkeypatch):
@@ -59,7 +57,8 @@ def test_run_positions_calls_keys_tap(monkeypatch):
         {},
     )
     monkeypatch.setattr(tc, "get_config", lambda path="config/teleport.yaml": cfg)
-    monkeypatch.setattr(tc.pyautogui, "click", lambda x, y: None)
+    monkeypatch.setattr(tc.pyautogui, "moveTo", lambda x, y: None)
+    monkeypatch.setattr(tc.pyautogui, "click", lambda *a, **k: None)
     monkeypatch.setattr(tc.time, "sleep", lambda s: None)
     monkeypatch.setattr(tc, "open_panel", lambda: None)
 
@@ -103,3 +102,13 @@ def test_get_config_reload(tmp_path, monkeypatch):
     data["delay_after_panel"] = 2.0
     cfg2 = tc.get_config(path)
     assert cfg2.delay_after_panel == 2.0
+
+
+def test_cycle_channels(monkeypatch):
+    run_calls = []
+    change_calls = []
+    monkeypatch.setattr(tc, "run_positions", lambda ch: run_calls.append(ch))
+    monkeypatch.setattr(tc, "change_channel", lambda ch: change_calls.append(ch))
+    tc.cycle_channels([1, 2, 3])
+    assert run_calls == [1, 2, 3]
+    assert change_calls == [2, 3]
