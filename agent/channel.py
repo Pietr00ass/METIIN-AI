@@ -156,13 +156,14 @@ class ChannelSwitcher:
             raise ValueError("Kanał poza zakresem 1..8")
         if not self.keys:
             return False
-
+          
         key = self.hotkeys.get(ch)
         if not key:
             return False
 
         self.win.focus()
-        if not self._ensure_active_window():
+        
+                if not self._ensure_active_window():
             return False
 
         # Hold the channel hotkey briefly to ensure it registers

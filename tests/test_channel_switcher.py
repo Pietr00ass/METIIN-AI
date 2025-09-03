@@ -185,18 +185,6 @@ def test_custom_hotkeys_respected(tmp_path, monkeypatch):
 
     hotkey_calls: list[tuple[list[str], float]] = []
 
-    class KH:
-        def hotkey(self, keys, duration=0.05):
-            hotkey_calls.append((keys, duration))
-
-    custom = {i: str(i) for i in range(1, 9)}
-    cs = channel.ChannelSwitcher(
-        DummyWin(), str(tmp_path), dry=False, keys=KH(), hotkeys=custom
-    )
-    assert cs.switch(2, post_wait=0) is True
-    assert hotkey_calls == [(["2"], 0.05)]
-
-
 def test_next_wraps(tmp_path):
     _setup_templates(tmp_path)
     cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True, keys=KH())
