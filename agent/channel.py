@@ -178,10 +178,8 @@ class ChannelSwitcher:
             if key:
                 if not self._ensure_active_window():
                     return False
-                self.keys.press("ctrl")
-                self.keys.press(key)
-                self.keys.release(key)
-                self.keys.release("ctrl")
+                # Hold the Ctrl+<number> hotkey briefly to ensure it registers
+                self.keys.hotkey(["ctrl", key], duration=0.05)
                 if post_wait:
                     time.sleep(post_wait)
                 return True
