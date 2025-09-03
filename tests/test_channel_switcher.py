@@ -12,7 +12,9 @@ np = importlib.import_module("numpy")
 
 # Ensure repository root on path and stub optional dependencies
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.modules.setdefault("yaml", types.ModuleType("yaml"))
+yaml_stub = types.ModuleType("yaml")
+yaml_stub.safe_load = lambda f: {}
+sys.modules.setdefault("yaml", yaml_stub)
 
 # Stub pyautogui to avoid real mouse interaction
 pyautogui_stub = types.SimpleNamespace(
@@ -83,10 +85,7 @@ class DummyWin:
 
 
 class KH:
-    def press(self, key):
-        pass
-
-    def release(self, key):
+    def hotkey(self, keys, duration=0.05):
         pass
 
 
@@ -173,15 +172,12 @@ def test_switch_uses_keys_when_not_found(tmp_path, monkeypatch):
 
     monkeypatch.setattr(channel, "TemplateMatcher", TM)
 
-    presses = []
+    hotkey_calls: list[tuple[list[str], float]] = []
     focuses = []
 
     class KH:
-        def press(self, key):
-            presses.append(f"down-{key}")
-
-        def release(self, key):
-            presses.append(f"up-{key}")
+        def hotkey(self, keys, duration=0.05):
+            hotkey_calls.append((keys, duration))
 
     class Win(DummyWin):
         def focus(self):
@@ -189,7 +185,7 @@ def test_switch_uses_keys_when_not_found(tmp_path, monkeypatch):
 
     cs = channel.ChannelSwitcher(Win(), str(tmp_path), dry=False, keys=KH())
     assert cs.switch(3, tries=1, post_wait=0) is True
-    assert presses == ["down-ctrl", "down-3", "up-3", "up-ctrl"]
+    assert hotkey_calls == [(["ctrl", "3"], 0.05)]
     assert focuses, "focus should be called before sending keys"
 
 

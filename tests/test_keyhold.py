@@ -208,3 +208,21 @@ def test_hotkey_holds_keys_for_duration():
     assert mock_down.call_args_list == [call(sc_ctrl), call(sc_x)]
     assert mock_sleep.call_args_list == [call(0.1)]
     assert mock_up.call_args_list == [call(sc_x), call(sc_ctrl)]
+
+
+@pytest.mark.parametrize("num", list("12345678"))
+def test_hotkey_ctrl_number_combo(num):
+    """Hotkey should handle Ctrl+1..8 combinations with a delay."""
+
+    kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+    kh.stop()
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up, patch.object(wasd.time, "sleep", return_value=None) as mock_sleep:
+        kh.hotkey(["ctrl", num], duration=0.1)
+
+    sc_ctrl = wasd.SCANCODES["ctrl"]
+    sc_num = wasd.SCANCODES[num]
+    assert mock_down.call_args_list == [call(sc_ctrl), call(sc_num)]
+    assert mock_sleep.call_args_list == [call(0.1)]
+    assert mock_up.call_args_list == [call(sc_num), call(sc_ctrl)]
