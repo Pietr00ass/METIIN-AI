@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import types
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
@@ -53,6 +53,7 @@ class TeleportRuntimeConfig:
     delay_after_channel: float
     positions: List[Tuple[int, int]]
     channel_buttons: Dict[int, Tuple[int, int]]
+    positions_by_channel: Dict[int, List[Tuple[int, int]]] = field(default_factory=dict)
 
 
 _cfg_cache: TeleportRuntimeConfig | None = None
@@ -77,19 +78,23 @@ def get_config(path: str | Path = "config/teleport.yaml") -> TeleportRuntimeConf
             delay_after_teleport=float(raw.get("delay_after_teleport", 1.0)),
             delay_after_channel=float(raw.get("delay_after_channel", 5.0)),
             positions=[tuple(p) for p in raw.get("positions", [])],
-            channel_buttons={int(k): tuple(v) for k, v in raw.get("channel_buttons", {}).items()},
+            channel_buttons={
+                int(k): tuple(v) for k, v in raw.get("channel_buttons", {}).items()
+            },
+            positions_by_channel={
+                int(k): [tuple(p) for p in v]
+                for k, v in raw.get("positions_by_channel", {}).items()
+            },
         )
         _cfg_mtime = mtime
     return _cfg_cache
 
 
-def open_panel() -> None:  # pragma: no cover - provided by the game
-    """Open the in‑game teleport panel.
+def open_panel(keys: KeyHold | None = None) -> None:
+    """Open the in‑game teleport panel using ``Ctrl+X``."""
 
-    The actual implementation is expected to be supplied by the runtime
-    environment.  A stub is provided so tests can monkeypatch it.
-    """
-
+    keys = keys or KeyHold()
+    keys.hotkey(["ctrl", "x"], duration=0.05)
 
 def run_positions(
     channel: int,
@@ -101,7 +106,7 @@ def run_positions(
     """Run all configured positions."""
 
     cfg = get_config()
-    positions = cfg.positions
+    positions = cfg.positions_by_channel.get(channel, cfg.positions)
     if not positions:
         return
 
