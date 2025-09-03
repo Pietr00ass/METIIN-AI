@@ -189,6 +189,32 @@ def test_switch_uses_keys_when_not_found(tmp_path, monkeypatch):
     assert focuses, "focus should be called before sending keys"
 
 
+def test_custom_hotkeys_respected(tmp_path, monkeypatch):
+    _setup_templates(tmp_path)
+
+    class TM:
+        def __init__(self, *a, **k):
+            pass
+
+        def find(self, frame, name, **kw):
+            return None
+
+    monkeypatch.setattr(channel, "TemplateMatcher", TM)
+
+    hotkey_calls: list[tuple[list[str], float]] = []
+
+    class KH:
+        def hotkey(self, keys, duration=0.05):
+            hotkey_calls.append((keys, duration))
+
+    custom = {i: f"numpad{i}" for i in range(1, 9)}
+    cs = channel.ChannelSwitcher(
+        DummyWin(), str(tmp_path), dry=False, keys=KH(), hotkeys=custom
+    )
+    assert cs.switch(2, tries=1, post_wait=0) is True
+    assert hotkey_calls == [(["ctrl", "numpad2"], 0.05)]
+
+
 def test_next_wraps(tmp_path):
     _setup_templates(tmp_path)
     cs = channel.ChannelSwitcher(DummyWin(), str(tmp_path), dry=True, keys=KH())
