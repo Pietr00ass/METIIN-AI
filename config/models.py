@@ -85,7 +85,9 @@ class TeleportConfig(BaseModel):
 class ChannelConfig(BaseModel):
     settle_sec: float = 5.0
     timeout_per_ch: float = 5.0
-    hotkeys: Dict[int, str] = Field(default_factory=lambda: {i: str(i) for i in range(1, 9)})
+    hotkeys: Dict[int, str] = Field(
+        default_factory=lambda: {i: f"numpad{i}" for i in range(1, 9)}
+    )
 
 
 class CycleConfig(BaseModel):

@@ -147,6 +147,20 @@ def test_ctrl_number_combo(num):
     assert mock_up.call_args_list == [call(sc_num), call(sc_ctrl)]
 
 
+@pytest.mark.parametrize("key", [f"numpad{i}" for i in range(1, 9)])
+def test_press_release_numpad_calls_sendinput(key):
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up:
+        kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+        kh.press(key)
+        kh.release(key)
+        kh.stop()
+
+    mock_down.assert_called_once_with(wasd.SCANCODES[key])
+    mock_up.assert_called_once_with(wasd.SCANCODES[key])
+
+
 def test_ctrl_x_combo():
     """Ctrl+X hotkey should be emitted correctly."""
 
@@ -208,3 +222,56 @@ def test_hotkey_holds_keys_for_duration():
     assert mock_down.call_args_list == [call(sc_ctrl), call(sc_x)]
     assert mock_sleep.call_args_list == [call(0.1)]
     assert mock_up.call_args_list == [call(sc_x), call(sc_ctrl)]
+
+
+@pytest.mark.parametrize("num", list("12345678"))
+def test_hotkey_ctrl_number_combo(num):
+    """Hotkey should handle Ctrl+1..8 combinations with a delay."""
+
+    kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+    kh.stop()
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up, patch.object(wasd.time, "sleep", return_value=None) as mock_sleep:
+        kh.hotkey(["ctrl", num], duration=0.1)
+
+    sc_ctrl = wasd.SCANCODES["ctrl"]
+    sc_num = wasd.SCANCODES[num]
+    assert mock_down.call_args_list == [call(sc_ctrl), call(sc_num)]
+    assert mock_sleep.call_args_list == [call(0.1)]
+    assert mock_up.call_args_list == [call(sc_num), call(sc_ctrl)]
+
+
+@pytest.mark.parametrize("num", [f"numpad{i}" for i in range(1, 9)])
+def test_hotkey_ctrl_numpad_combo(num):
+    """Hotkey should handle Ctrl+NumPad1..8 combinations with a delay."""
+
+    kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+    kh.stop()
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up, patch.object(wasd.time, "sleep", return_value=None) as mock_sleep:
+        kh.hotkey(["ctrl", num], duration=0.1)
+
+    sc_ctrl = wasd.SCANCODES["ctrl"]
+    sc_num = wasd.SCANCODES[num]
+    assert mock_down.call_args_list == [call(sc_ctrl), call(sc_num)]
+    assert mock_sleep.call_args_list == [call(0.1)]
+    assert mock_up.call_args_list == [call(sc_num), call(sc_ctrl)]
+
+
+@pytest.mark.parametrize("key", [f"numpad{i}" for i in range(1, 9)])
+def test_hotkey_single_numpad(key):
+    """Hotkey should handle single NumPad keys with a delay."""
+
+    kh = wasd.KeyHold(dry=False, active_fn=lambda: True)
+    kh.stop()
+    with patch.object(wasd, "key_down") as mock_down, patch.object(
+        wasd, "key_up"
+    ) as mock_up, patch.object(wasd.time, "sleep", return_value=None) as mock_sleep:
+        kh.hotkey([key], duration=0.1)
+
+    sc = wasd.SCANCODES[key]
+    assert mock_down.call_args_list == [call(sc)]
+    assert mock_sleep.call_args_list == [call(0.1)]
+    assert mock_up.call_args_list == [call(sc)]

@@ -5,7 +5,6 @@ import time
 from typing import Callable, Optional, Tuple
 
 import numpy as np
-import pyautogui
 
 from recorder.window_capture import WindowCapture
 
@@ -14,12 +13,13 @@ from .wasd import KeyHold, pydirectinput
 
 
 class ChannelSwitcher:
-    """Utility for clicking CH1..CH8 buttons on the in‑game minimap.
+    """Utility for switching channels in the in‑game minimap.
 
-    The implementation relies on template images ``ch1.png`` … ``ch8.png``
-    stored within ``templates_dir``.  Channels are switched by locating the
-    corresponding template on the minimap and clicking it.  A dry mode can be
-    enabled which skips the actual mouse interaction for testing purposes.
+    Template images ``ch1.png`` … ``ch8.png`` stored within ``templates_dir`` are
+    used by helper methods to locate and identify minimap buttons.  Actual
+    channel switching is performed via configurable keyboard hotkeys emitted
+    through :mod:`pydirectinput`.  A ``dry`` mode can be enabled to skip real
+    keyboard events for testing purposes.
     """
 
     def __init__(
@@ -59,7 +59,8 @@ class ChannelSwitcher:
             keys = KeyHold(dry=dry, active_fn=getattr(win, "is_foreground", None))
 
         self.keys = keys
-        self.hotkeys = hotkeys or {i: str(i) for i in range(1, 9)}
+        # Default to numeric keypad hotkeys (``numpad1`` … ``numpad8``)
+        self.hotkeys = hotkeys or {i: f"numpad{i}" for i in range(1, 9)}
 
     def _ensure_active_window(self) -> bool:
         """Ensure the game window is focused and in the foreground.
@@ -142,50 +143,33 @@ class ChannelSwitcher:
     def switch(
         self,
         ch: int,
-        thresh: float = 0.82,
-        tries: int = 3,
         post_wait: float = 5.0,
     ) -> bool:
-        """Attempt to switch to channel ``ch``.
+        """Switch to channel ``ch`` using the configured hotkey.
 
-        The window is focused before clicking.  In dry mode no mouse actions are
-        performed.  ``post_wait`` seconds are waited after a successful click to
-        allow the game to perform the switch.
+        The implementation relies solely on :mod:`pydirectinput` via
+        :class:`KeyHold`. ``post_wait`` seconds are waited after the keypress
+        to give the game time to perform the switch.
         """
 
         if not (1 <= ch <= 8):
             raise ValueError("Kanał poza zakresem 1..8")
-        self.win.focus()
-        roi = self._minimap_roi()
-        for _ in range(tries):
-            frame = self._frame()
-            m = self.find_button(frame, ch, thresh=thresh, roi=roi)
-            if m:
-                L, T, _, _ = self.win.region
-                cx, cy = m.center
-                if not self._ensure_active_window():
-                    return False
+        if not self.keys:
+            return False
 
-                if not self.dry:
-                    pyautogui.moveTo(L + cx, T + cy, duration=0.05)
-                    pyautogui.click()
-                if post_wait:
-                    time.sleep(post_wait)
-                return True
-            time.sleep(0.2)
-        if self.keys:
-            key = self.hotkeys.get(ch)
-            if key:
-                if not self._ensure_active_window():
-                    return False
-                self.keys.press("ctrl")
-                self.keys.press(key)
-                self.keys.release(key)
-                self.keys.release("ctrl")
-                if post_wait:
-                    time.sleep(post_wait)
-                return True
-        return False
+        key = self.hotkeys.get(ch)
+        if not key:
+            return False
+
+        self.win.focus()
+        if not self._ensure_active_window():
+            return False
+
+        # Hold the channel hotkey briefly to ensure it registers
+        self.keys.hotkey([key], duration=0.05)
+        if post_wait:
+            time.sleep(post_wait)
+        return True
 
     def current_channel_guess(self, thresh: float = 0.82) -> Optional[int]:
         """Guess currently selected channel by looking for gold buttons."""

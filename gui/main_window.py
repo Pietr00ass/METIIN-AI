@@ -580,14 +580,14 @@ class MainWindow(QtWidgets.QMainWindow):
         ch_layout = QtWidgets.QVBoxLayout(self.ch_box)
         self.ch_shortcuts_label = QtWidgets.QLabel(
             QtCore.QCoreApplication.translate(
-                "MainWindow", "Skróty kanałów (Ctrl + klawisz):"
+                "MainWindow", "Skróty kanałów (klawisze numpada):"
             )
         )
         ch_layout.addWidget(self.ch_shortcuts_label)
         self.ch_key_edits = {}
         ch_form = QtWidgets.QFormLayout()
         for i in range(1, 9):
-            edit = QtWidgets.QLineEdit(str(i))
+            edit = QtWidgets.QLineEdit(f"numpad{i}")
             edit.setMaximumWidth(40)
             self.ch_key_edits[i] = edit
             ch_form.addRow(
@@ -965,7 +965,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.ch_shortcuts_label.setText(
             QtCore.QCoreApplication.translate(
-                "MainWindow", "Skróty kanałów (Ctrl + klawisz):"
+                "MainWindow", "Skróty kanałów (klawisze numpada):"
             )
         )
         for i in range(1, 9):
@@ -1212,7 +1212,8 @@ class MainWindow(QtWidgets.QMainWindow):
         classes = [c.strip() for c in self.classes_edit.text().split(",") if c.strip()]
         prio = self.current_priority()
         hotkeys = {
-            i: self.ch_key_edits[i].text().strip() or str(i) for i in range(1, 9)
+            i: self.ch_key_edits[i].text().strip() or f"numpad{i}"
+            for i in range(1, 9)
         }
         cfg = {
             "window": {"title_substr": title},
@@ -1346,7 +1347,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tp_minutes.setValue(int(tp.get("minutes", 10)))
         ch_hot = cfg.get("channel", {}).get("hotkeys", {})
         for i in range(1, 9):
-            key = ch_hot.get(str(i)) or ch_hot.get(i) or str(i)
+            key = ch_hot.get(str(i)) or ch_hot.get(i) or f"numpad{i}"
             self.ch_key_edits[i].setText(key)
 
         seq = cfg.get("cycle", {}).get("sequence", [])

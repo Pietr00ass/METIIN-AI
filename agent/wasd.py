@@ -56,7 +56,7 @@ SCANCODES = {
     "shift": 0x2A,
     "ctrl": 0x1D,
     "alt": 0x38,
-    # Hotkeys for teleport (Ctrl+X) and channel switching (Ctrl+1..8)
+    # Hotkey for teleport (Ctrl+X); channel switching uses NumPad1..8
     "x": 0x2D,
     "1": 0x02,
     "2": 0x03,
@@ -66,6 +66,15 @@ SCANCODES = {
     "6": 0x07,
     "7": 0x08,
     "8": 0x09,
+    # Numeric keypad keys allow configuring channel hotkeys to e.g. ``numpad1``
+    "numpad1": 0x4F,
+    "numpad2": 0x50,
+    "numpad3": 0x51,
+    "numpad4": 0x4B,
+    "numpad5": 0x4C,
+    "numpad6": 0x4D,
+    "numpad7": 0x47,
+    "numpad8": 0x48,
     "up": 0x48,
     "down": 0x50,
     "left": 0x4B,
@@ -88,7 +97,7 @@ VK_CODES = {
     "shift": 0x10,
     "ctrl": 0x11,
     "alt": 0x12,
-    # Hotkeys for teleport (Ctrl+X) and channel switching (Ctrl+1..8)
+    # Hotkey for teleport (Ctrl+X); channel switching uses NumPad1..8
     "x": 0x58,
     "1": 0x31,
     "2": 0x32,
@@ -98,6 +107,15 @@ VK_CODES = {
     "6": 0x36,
     "7": 0x37,
     "8": 0x38,
+    # Numeric keypad virtual key codes
+    "numpad1": 0x61,
+    "numpad2": 0x62,
+    "numpad3": 0x63,
+    "numpad4": 0x64,
+    "numpad5": 0x65,
+    "numpad6": 0x66,
+    "numpad7": 0x67,
+    "numpad8": 0x68,
     "up": 0x26,
     "down": 0x28,
     "left": 0x25,
