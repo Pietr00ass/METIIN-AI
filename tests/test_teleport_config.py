@@ -22,7 +22,7 @@ import agent.teleport_config as tc
 def test_change_channel(monkeypatch):
     calls = []
 
-    cfg = tc.TeleportRuntimeConfig({}, 0.0, 0.0, 5.0, {}, {2: (10, 20)})
+    cfg = tc.TeleportRuntimeConfig({}, 0.0, 0.0, 5.0, [], {2: (10, 20)})
     monkeypatch.setattr(tc, "get_config", lambda path="config/teleport.yaml": cfg)
     monkeypatch.setattr(tc.pyautogui, "click", lambda x, y: calls.append((x, y)))
     monkeypatch.setattr(tc.time, "sleep", lambda s: calls.append(s))
@@ -55,7 +55,7 @@ def test_run_positions_calls_keys_tap(monkeypatch):
         0.0,
         1.0,
         0.0,
-        {1: [(10, 20), (30, 40)]},
+        [(10, 20), (30, 40)],
         {},
     )
     monkeypatch.setattr(tc, "get_config", lambda path="config/teleport.yaml": cfg)
@@ -77,7 +77,7 @@ def test_save_teleport_config(tmp_path, monkeypatch):
 
     monkeypatch.setattr(tc.yaml, "safe_dump", fake_dump)
     path = tmp_path / "tp.yaml"
-    data = {"positions_by_channel": {1: [[1, 2]]}, "channel_buttons": {1: [3, 4]}}
+    data = {"positions": [[1, 2]], "channel_buttons": {1: [3, 4]}}
     tc.save_teleport_config(data, path)
     assert path.read_text() == "written"
     assert captured["data"] == data
