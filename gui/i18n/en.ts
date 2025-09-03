@@ -143,7 +143,7 @@
     <message>
         <location filename="../main_window.py" line="209"/>
         <location filename="../main_window.py" line="472"/>
-        <source>Skróty kanałów (Ctrl + klawisz):</source>
+        <source>Skróty kanałów (klawisze numpada):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

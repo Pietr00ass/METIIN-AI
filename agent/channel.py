@@ -59,7 +59,8 @@ class ChannelSwitcher:
             keys = KeyHold(dry=dry, active_fn=getattr(win, "is_foreground", None))
 
         self.keys = keys
-        self.hotkeys = hotkeys or {i: str(i) for i in range(1, 9)}
+        # Default to numeric keypad hotkeys (``numpad1`` … ``numpad8``)
+        self.hotkeys = hotkeys or {i: f"numpad{i}" for i in range(1, 9)}
 
     def _ensure_active_window(self) -> bool:
         """Ensure the game window is focused and in the foreground.
@@ -178,10 +179,8 @@ class ChannelSwitcher:
             if key:
                 if not self._ensure_active_window():
                     return False
-                self.keys.press("ctrl")
-                self.keys.press(key)
-                self.keys.release(key)
-                self.keys.release("ctrl")
+                # Hold the channel hotkey briefly to ensure it registers
+                self.keys.hotkey([key], duration=0.05)
                 if post_wait:
                     time.sleep(post_wait)
                 return True
