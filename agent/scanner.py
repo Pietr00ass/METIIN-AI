@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import threading
 import time
+from typing import Callable, Optional
 
 from .wasd import KeyHold
 
@@ -30,21 +32,74 @@ class AreaScanner:
         self.idle_sec = idle_sec
         self.pause = pause
 
-    def scan(self) -> None:
-        """Perform the scan by slowly rotating the camera.
+        # internal state for asynchronous operation
+        self._thread: Optional[threading.Thread] = None
+        self._stop = threading.Event()
+        self._completed = False
+        self._progress = 0
+        self._progress_cb: Optional[Callable[[float], None]] = None
 
-        ``sweep_ms`` controls how long the spin key is held which translates
-        roughly into the angle of rotation.  After ``sweeps`` iterations the
-        character has usually completed a full 360° turn.
-        """
+    # ------------------------------------------------------------------
+    # threading helpers
+    def _run(self) -> None:
+        """Worker method executed in a background thread."""
 
-        # Allow the game to settle before starting the rotation, otherwise
-        # the first frames may still show the previous teleport location.
+        # Allow the game to settle before starting the rotation
         time.sleep(self.idle_sec)
-        for _ in range(self.sweeps):
+        for i in range(self.sweeps):
+            if self._stop.is_set():
+                break
             self.keys.press(self.spin_key)
             time.sleep(self.sweep_ms / 1000.0)
             self.keys.release(self.spin_key)
-            # Small pause between sweeps ensures the key tap is registered and
-            # gives the detector time to process the new view.
+            self._progress = (i + 1) / float(self.sweeps)
+            if self._progress_cb:
+                try:
+                    self._progress_cb(self._progress)
+                except Exception:
+                    pass
             time.sleep(self.pause)
+        else:
+            # loop did not break -> full scan completed
+            self._completed = True
+
+    def scan(self, progress_cb: Optional[Callable[[float], None]] = None) -> None:
+        """Start an asynchronous scan.
+
+        Parameters
+        ----------
+        progress_cb: callable or None
+            Callback invoked with a float in the ``0..1`` range each time a
+            sweep is completed.
+        """
+
+        if self.is_scanning():
+            return
+        self._progress_cb = progress_cb
+        self._progress = 0
+        self._completed = False
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def cancel(self) -> None:
+        """Cancel the running scan if any."""
+
+        self._stop.set()
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=0)
+
+    def is_scanning(self) -> bool:
+        return bool(self._thread and self._thread.is_alive())
+
+    def progress(self) -> float:
+        return self._progress
+
+    def is_done(self) -> bool:
+        return self._completed and not self.is_scanning()
+
+    def reset(self) -> None:
+        """Reset completion flag so a new scan can begin."""
+
+        self._completed = False
+        self._progress = 0

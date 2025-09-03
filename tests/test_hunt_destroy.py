@@ -84,20 +84,25 @@ class _StubKeyHold:
         self.down = set()
         self.pressed = []
         self.released = []
+        self.lock = __import__("threading").Lock()
 
     def press(self, key):
-        if key not in self.down:
-            self.down.add(key)
-            self.pressed.append(key)
+        with self.lock:
+            if key not in self.down:
+                self.down.add(key)
+                self.pressed.append(key)
 
     def release(self, key):
-        if key in self.down:
-            self.down.remove(key)
-            self.released.append(key)
+        with self.lock:
+            if key in self.down:
+                self.down.remove(key)
+                self.released.append(key)
 
     def release_all(self):
-        for k in list(self.down):
-            self.release(k)
+        with self.lock:
+            for k in list(self.down):
+                self.down.remove(k)
+                self.released.append(k)
 
     def stop(self):
         pass
@@ -132,9 +137,11 @@ class _EmptyDetector:
 class _StubSearch:
     def __init__(self, *a, **k):
         self.calls = 0
+        self.spin_done_values = []
 
     def handle_no_target(self, spin_done):
         self.calls += 1
+        self.spin_done_values.append(spin_done)
 
     def update_last_target(self):
         pass
@@ -195,11 +202,25 @@ def test_scan_no_target(monkeypatch):
             self.keys = keys
             self.spin_key = spin_key
             self.calls = 0
+            self._scanning = False
+            self._done = False
 
-        def scan(self):
+        def scan(self, progress_cb=None):
             self.calls += 1
+            self._scanning = True
             self.keys.press(self.spin_key)
             self.keys.release(self.spin_key)
+            self._scanning = False
+            self._done = True
+
+        def is_scanning(self):
+            return self._scanning
+
+        def is_done(self):
+            return self._done
+
+        def reset(self):
+            self._done = False
 
     monkeypatch.setattr(hd, "AreaScanner", _StubScanner)
 
@@ -211,9 +232,59 @@ def test_scan_no_target(monkeypatch):
     }
     agent = hd.HuntDestroy(cfg, _DummyWin())
 
-    agent.step()
+    agent.step()  # start scan
     assert agent.scanner.calls == 1
+    assert agent.search.calls == 0
+
+    agent.step()  # handle completed scan
     assert agent.search.calls == 1
     assert agent.keys.down == set()
     assert agent.keys.pressed == [agent.scanner.spin_key]
     assert agent.keys.released == [agent.scanner.spin_key]
+
+
+def test_scan_interrupt_on_target(monkeypatch):
+    monkeypatch.setattr(hd, "CollisionAvoid", lambda: _DummyAvoid())
+    monkeypatch.setattr(hd, "KeyHold", _StubKeyHold)
+    monkeypatch.setattr(hd, "SearchManager", _StubSearch)
+    monkeypatch.setattr(hd, "pick_target", _pick_target)
+    monkeypatch.setattr(hd, "click_bbox_center", lambda *a, **k: None)
+
+    class _Detector:
+        def __init__(self, *a, **k):
+            self.calls = 0
+
+        def infer(self, frame):
+            self.calls += 1
+            if self.calls < 3:
+                return []
+            return [{"name": "enemy", "bbox": (10, 10, 20, 20)}]
+
+    monkeypatch.setattr(hd, "ObjectDetector", _Detector)
+
+    cfg = {
+        "paths": {"model": "", "templates_dir": ""},
+        "detector": {"classes": [], "conf_thr": 0.5, "iou_thr": 0.5},
+        "policy": {"desired_box_w": 0.2, "deadzone_x": 0.1},
+        "dry_run": True,
+        "scan": {"enabled": True, "sweep_ms": 1, "sweeps": 50, "idle_sec": 0, "pause": 0.001},
+    }
+
+    agent = hd.HuntDestroy(cfg, _DummyWin())
+
+    agent.step()  # start scan
+    assert agent.scanner.is_scanning()
+
+    agent.step()  # still scanning, no target
+    assert agent.scanner.is_scanning()
+
+    agent.step()  # target appears
+    # wait briefly for scan thread to react to cancellation
+    import time as _t
+    for _ in range(100):
+        if not agent.scanner.is_scanning():
+            break
+        _t.sleep(0.01)
+    assert not agent.scanner.is_scanning()
+    assert agent.search.calls == 1
+    assert agent.search.spin_done_values == [False]

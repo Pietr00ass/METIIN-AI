@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 
 import numpy as np
 
@@ -39,6 +40,7 @@ class HuntDestroy(AgentStrategy):
         self.movement = None
         self._last_tgt = None
         self._prev_names: set[str] = set()
+        self._grab_lock = threading.Lock()
         if cfg is not None or window_capture is not None:
             self.setup(cfg, window_capture)
 
@@ -100,7 +102,8 @@ class HuntDestroy(AgentStrategy):
         self._prev_names = set()
 
     def step(self):
-        fr = self.win.grab()
+        with self._grab_lock:
+            fr = self.win.grab()
         frame = np.array(fr)[:, :, :3].copy()
         H, W = frame.shape[:2]
         dets = self.det.infer(frame)
@@ -118,14 +121,22 @@ class HuntDestroy(AgentStrategy):
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
             if self.scanner:
-                self.scanner.scan()
-                self.search.handle_no_target(True)
+                if self.scanner.is_scanning():
+                    self.search.handle_no_target(False)
+                else:
+                    if self.scanner.is_done():
+                        self.search.handle_no_target(True)
+                        self.scanner.reset()
+                    else:
+                        self.scanner.scan()
                 self._last_tgt = None
                 return
             self._last_tgt = None
             return
 
         self.search.update_last_target()
+        if self.scanner and self.scanner.is_scanning():
+            self.scanner.cancel()
 
         bw = None
         if tgt:
