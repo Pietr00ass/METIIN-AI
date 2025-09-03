@@ -224,6 +224,7 @@ def test_hotkey_holds_keys_for_duration():
     assert mock_up.call_args_list == [call(sc_x), call(sc_ctrl)]
 
 
+
 @pytest.mark.parametrize("num", list("12345678"))
 def test_hotkey_ctrl_number_combo(num):
     """Hotkey should handle Ctrl+1..8 combinations with a delay."""
