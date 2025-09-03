@@ -116,7 +116,8 @@ def run_positions(
     time.sleep(cfg.delay_after_panel)
     sleep_delay = delay if delay is not None else cfg.delay_after_teleport
     for x, y in positions:
-        pyautogui.click(x, y)
+        pyautogui.moveTo(x, y)
+        pyautogui.click(button="left")
         keys.tap("e")
         time.sleep(sleep_delay)
         if close_panel:
@@ -135,11 +136,17 @@ def change_channel(target_ch: int, *, delay: float | None = None) -> None:
     time.sleep(delay if delay is not None else cfg.delay_after_channel)
 
 
-def main() -> None:  # pragma: no cover - helper script
-    for ch in [1, 2, 3, 4]:
+def cycle_channels(channels: list[int]) -> None:
+    """Run positions for each channel and switch between them."""
+
+    for idx, ch in enumerate(channels):
         run_positions(ch)
-        if ch < 4:
-            change_channel(ch + 1)
+        if idx + 1 < len(channels):
+            change_channel(channels[idx + 1])
+
+
+def main() -> None:  # pragma: no cover - helper script
+    cycle_channels([1, 2, 3, 4])
 
 
 __all__ = [
