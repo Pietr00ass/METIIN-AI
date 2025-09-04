@@ -25,10 +25,15 @@ def test_change_channel(monkeypatch):
 
     cfg = tc.TeleportRuntimeConfig({}, 0.0, 0.0, 5.0, [], {2: (10, 20)})
     monkeypatch.setattr(tc, "get_config", lambda path="config/teleport.yaml": cfg)
-    monkeypatch.setattr(tc.pyautogui, "click", lambda x, y: calls.append((x, y)))
+    monkeypatch.setattr(
+        tc.pyautogui, "moveTo", lambda x, y: calls.append(("move", x, y))
+    )
+    monkeypatch.setattr(
+        tc.pyautogui, "click", lambda *a, **k: calls.append(("click", k.get("button")))
+    )
     monkeypatch.setattr(tc.time, "sleep", lambda s: calls.append(s))
     tc.change_channel(2)
-    assert calls == [(10, 20), 5.0]
+    assert calls == [("move", 10, 20), ("click", "left"), 5.0]
 
 
 def test_main(monkeypatch):

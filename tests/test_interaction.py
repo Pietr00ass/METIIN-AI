@@ -10,7 +10,9 @@ pyautogui_stub = types.SimpleNamespace(
     moveTo=lambda *a, **k: None, click=lambda *a, **k: None, PAUSE=0
 )
 sys.modules.setdefault("pyautogui", pyautogui_stub)
-sys.modules.setdefault("yaml", types.ModuleType("yaml"))
+yaml_stub = types.ModuleType("yaml")
+yaml_stub.safe_load = lambda *a, **k: {}
+sys.modules.setdefault("yaml", yaml_stub)
 
 import agent.interaction as interaction
 
