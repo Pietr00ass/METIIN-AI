@@ -132,7 +132,8 @@ def change_channel(target_ch: int, *, delay: float | None = None) -> None:
     if not coords:
         return
     x, y = coords
-    pyautogui.click(x, y)
+    pyautogui.moveTo(x, y)
+    pyautogui.click(button="left")
     time.sleep(delay if delay is not None else cfg.delay_after_channel)
 
 
