@@ -3,8 +3,8 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 
 from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
@@ -18,7 +18,7 @@ except Exception:  # pragma: no cover - fallback for minimal environments
 class Metin2Env(gym.Env):
     """Minimal Gym environment around the Metin2 game window."""
 
-    metadata = {"render.modes": ["rgb_array"]}
+    metadata = {"render_modes": ["rgb_array"]}
 
     def __init__(
         self,
@@ -95,7 +95,7 @@ class Metin2Env(gym.Env):
         filled = np.count_nonzero(red > 200)
         return float(filled) / float(red.size)
 
-    def step(self, action: int):
+    def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict]:
         keys = self.key_map[action]
         if keys:
             if len(keys) == 1:
@@ -110,7 +110,8 @@ class Metin2Env(gym.Env):
         )
 
         reward = 0.0
-        done = False
+        terminated = False
+        truncated = False
 
         # monster detection -------------------------------------------------
         dets = self._detect_monsters(frame)
@@ -125,7 +126,7 @@ class Metin2Env(gym.Env):
         if hp < self._last_hp:
             reward -= self._last_hp - hp
         if hp <= 0.0:
-            done = True
+            terminated = True
             reward -= 1.0
         self._last_hp = hp
 
@@ -133,7 +134,7 @@ class Metin2Env(gym.Env):
         reward -= 0.01
 
         info: dict = {"hp": hp, "monsters": curr}
-        return frame, reward, done, info
+        return frame, reward, terminated, truncated, info
 
     def render(self):
         if self.wincap is None:
