@@ -111,11 +111,14 @@ def main() -> None:
 
     model = algo_cls("CnnPolicy", env, **kwargs)
     logging.info("Starting training for %s steps", args.total_timesteps)
-    model.learn(total_timesteps=args.total_timesteps)
-    model_path = run_dir / args.save_name
-    model.save(str(model_path))
-    env.close()
-    logging.info("Model saved to %s", model_path)
+    try:
+        model.learn(total_timesteps=args.total_timesteps)
+        model_path = run_dir / args.save_name
+        model.save(str(model_path))
+        logging.info("Model saved to %s", model_path)
+    finally:
+        # Guarantee cleanup even if training fails
+        env.close()
 
 
 if __name__ == "__main__":
