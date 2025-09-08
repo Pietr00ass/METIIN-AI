@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import warnings
 
-import numpy as np
 import gymnasium as gym
+import numpy as np
 from gymnasium import spaces
+from PIL import Image
 
 from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
@@ -16,7 +17,12 @@ except Exception:  # pragma: no cover - fallback for minimal environments
 
 
 class Metin2Env(gym.Env):
-    """Minimal Gym environment around the Metin2 game window."""
+    """Minimal Gym environment around the Metin2 game window.
+
+    Frames are returned in ``(height, width, channel)`` RGB format. When using
+    Stable-Baselines3, wrap this environment with ``VecTransposeImage`` or a
+    similar wrapper to obtain channel-first tensors.
+    """
 
     metadata = {"render_modes": ["rgb_array"]}
 
@@ -24,7 +30,7 @@ class Metin2Env(gym.Env):
         self,
         title: str = "Metin2",
         key_map: list[list[str]] | None = None,
-        frame_shape: tuple[int, int, int] = (720, 1280, 4),
+        frame_shape: tuple[int, int, int] = (84, 84, 3),
         dry: bool = True,
         detector_model: str | None = None,
         hp_bar: tuple[slice, slice] | None = None,
@@ -33,8 +39,9 @@ class Metin2Env(gym.Env):
         self.title = title
         self.key_map = key_map or [["w"], ["a"], ["s"], ["d"], ["space"], []]
         self.action_space = spaces.Discrete(len(self.key_map))
+        self.frame_shape = frame_shape
         self.observation_space = spaces.Box(
-            low=0, high=255, shape=frame_shape, dtype=np.uint8
+            low=0, high=255, shape=self.frame_shape, dtype=np.uint8
         )
         self.kb = KeyHold(dry=dry)
         self.wincap: WindowCapture | None = None
@@ -57,11 +64,9 @@ class Metin2Env(gym.Env):
         self.wincap = WindowCapture(self.title)
         self.wincap.locate()
         img = self.wincap.grab()
-        frame = np.array(img)
-        if frame.shape != self.observation_space.shape:
-            self.observation_space = spaces.Box(
-                low=0, high=255, shape=frame.shape, dtype=np.uint8
-            )
+        frame = self._preprocess(
+            np.frombuffer(img.rgb, dtype=np.uint8).reshape(img.height, img.width, 3)
+        )
         self.kb.release_all()
         info = {}
         return frame, info
@@ -103,11 +108,12 @@ class Metin2Env(gym.Env):
             else:
                 self.kb.hotkey(keys)
         img = self.wincap.grab() if self.wincap is not None else None
-        frame = (
-            np.array(img)
+        raw = (
+            np.frombuffer(img.rgb, dtype=np.uint8).reshape(img.height, img.width, 3)
             if img is not None
-            else np.zeros(self.observation_space.shape, dtype=np.uint8)
+            else np.zeros(self.frame_shape, dtype=np.uint8)
         )
+        frame = self._preprocess(raw)
 
         reward = 0.0
         terminated = False
@@ -140,7 +146,14 @@ class Metin2Env(gym.Env):
         if self.wincap is None:
             return None
         img = self.wincap.grab()
-        return np.array(img)
+        return np.frombuffer(img.rgb, dtype=np.uint8).reshape(img.height, img.width, 3)
+
+    def _preprocess(self, frame: np.ndarray) -> np.ndarray:
+        """Drop alpha channel and resize to the configured frame shape."""
+        img = Image.fromarray(frame)
+        img = img.resize(self.frame_shape[1::-1], Image.BILINEAR)
+        arr = np.array(img, dtype=np.uint8)
+        return arr
 
     def close(self) -> None:
         if self.wincap is not None:
