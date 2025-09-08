@@ -367,6 +367,68 @@ class TrainThread(QtCore.QThread):
             self.finished.emit()
 
 
+class RLTrainThread(QtCore.QThread):
+    """Thread executing RL training with ``stable-baselines3``."""
+
+    status = QtCore.Signal(str)
+    finished = QtCore.Signal()
+
+    def __init__(self, timesteps: int = 10000, algo: str = "dqn") -> None:
+        super().__init__()
+        self.timesteps = timesteps
+        self.algo = algo
+
+    def run(self) -> None:  # pragma: no cover - GUI thread
+        env = None
+        try:
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Trening RL – start…"
+                )
+            )
+            from datetime import datetime
+            from pathlib import Path
+
+            from agent_rl import Metin2Env
+            from stable_baselines3 import A2C, DQN, PPO
+
+            algos = {"dqn": DQN, "ppo": PPO, "a2c": A2C}
+            algo_cls = algos.get(self.algo)
+            if algo_cls is None:
+                self.status.emit(
+                    QtCore.QCoreApplication.translate(
+                        "MainWindow", "Nieznany algorytm RL"
+                    )
+                )
+                return
+
+            run_dir = Path("runs/rl") / f"{self.algo}_{datetime.now():%Y%m%d_%H%M%S}"
+            run_dir.mkdir(parents=True, exist_ok=True)
+
+            env = Metin2Env()
+            model = algo_cls("CnnPolicy", env, tensorboard_log=str(run_dir))
+            model.learn(total_timesteps=self.timesteps)
+            model.save(str(run_dir / "metin2_rl_agent"))
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Zakończono trening RL"
+                )
+            )
+        except Exception as exc:  # pragma: no cover - UI feedback
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Błąd treningu RL: {exc}"
+                ).format(exc=exc)
+            )
+        finally:
+            if env is not None:
+                try:
+                    env.close()
+                except Exception:
+                    pass
+            self.finished.emit()
+
+
 class MainWindow(QtWidgets.QMainWindow):
     """Main GUI window with controls for vision agent automation."""
 
@@ -550,6 +612,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_stop = QtWidgets.QPushButton(
             QtCore.QCoreApplication.translate("MainWindow", "STOP (F12)")
         )
+        self.btn_train_rl = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Trenuj RL")
+        )
+        self.btn_train_rl.setCheckable(True)
         self.btn_train = QtWidgets.QPushButton(
             QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO")
         )
@@ -562,6 +628,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_cycle,
             self.btn_ch,
             self.btn_stop,
+            self.btn_train_rl,
             self.btn_train,
         ]:
             actions_layout.addWidget(b)
@@ -675,6 +742,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.record_thread: QtCore.QThread | None = None
         self.channel_thread: QtCore.QThread | None = None
         self.train_thread: QtCore.QThread | None = None
+        self.rl_thread: QtCore.QThread | None = None
         self._hotkey_listener = None
 
         # connections
@@ -685,6 +753,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_cycle.toggled.connect(self.start_cycle)
         self.btn_ch.toggled.connect(self.change_channel)
         self.btn_stop.clicked.connect(self.stop_all)
+        self.btn_train_rl.toggled.connect(self.train_rl_agent)
         self.btn_train.toggled.connect(self.train_yolo_api)
         self.btn_save_cfg.clicked.connect(self.save_config)
         self.btn_load_cfg.clicked.connect(self.load_config)
@@ -835,6 +904,9 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.btn_stop.setText(
             QtCore.QCoreApplication.translate("MainWindow", "STOP (F12)")
+        )
+        self.btn_train_rl.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Trenuj RL")
         )
         self.btn_train.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Trenuj YOLO")
@@ -1270,6 +1342,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.train_thread and self.train_thread.isRunning():
             self.train_thread.wait()
             self.train_thread = None
+        if self.rl_thread and self.rl_thread.isRunning():
+            self.rl_thread.wait()
+            self.rl_thread = None
         if self.preview_thread and self.preview_thread.isRunning():
             self.preview_thread.stop()
             self.preview_thread.wait()
@@ -1282,11 +1357,34 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_cycle,
             self.btn_ch,
             self.btn_train,
+            self.btn_train_rl,
         ]:
             b.setChecked(False)
         self.set_status(
             QtCore.QCoreApplication.translate(
                 "MainWindow", "STOP – wszystkie klawisze zwolnione."
+            )
+        )
+
+    def train_rl_agent(self, checked: bool) -> None:
+        """Start training of RL agent asynchronously."""
+        if not checked:
+            self.btn_train_rl.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Trenuj RL")
+            )
+            return
+        self.rl_thread = RLTrainThread()
+        self.rl_thread.status.connect(self.set_status)
+        self.rl_thread.finished.connect(lambda: self.btn_train_rl.setChecked(False))
+        self.rl_thread.finished.connect(
+            lambda: self.btn_train_rl.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Trenuj RL")
+            )
+        )
+        self.rl_thread.start()
+        self.btn_train_rl.setText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Trwa trening RL…"
             )
         )
 

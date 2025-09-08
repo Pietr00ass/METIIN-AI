@@ -114,7 +114,7 @@ def main() -> None:
         label_path = lbl_dir / f"{img_path.stem}.txt"
 
         if args.skip_existing and label_path.exists():
-            logging.info("Pomijam (istnieje etykieta): %s", img_path.name)
+            logging.info("Skipping %s", img_path.name)
             continue
 
         img = cv2.imread(str(img_path))
