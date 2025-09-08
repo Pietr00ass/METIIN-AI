@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import gym
 from gym import spaces
 
 from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
+
+try:  # ``ObjectDetector`` uses ``ultralytics`` which might be unavailable in tests
+    from agent.detector import ObjectDetector
+except Exception:  # pragma: no cover - fallback for minimal environments
+    ObjectDetector = None  # type: ignore
 
 
 class Metin2Env(gym.Env):
@@ -19,6 +26,8 @@ class Metin2Env(gym.Env):
         key_map: list[list[str]] | None = None,
         frame_shape: tuple[int, int, int] = (720, 1280, 4),
         dry: bool = True,
+        detector_model: str | None = None,
+        hp_bar: tuple[slice, slice] | None = None,
     ) -> None:
         super().__init__()
         self.title = title
@@ -29,6 +38,17 @@ class Metin2Env(gym.Env):
         )
         self.kb = KeyHold(dry=dry)
         self.wincap: WindowCapture | None = None
+        self.detector = (
+            ObjectDetector(detector_model)
+            if (detector_model and ObjectDetector is not None)
+            else None
+        )
+        if detector_model and self.detector is None:
+            warnings.warn("Detector initialization failed; proceeding without it")
+        self._last_dets: list[dict] = []
+        self._last_hp = 1.0
+        # Region of the HP bar within the frame. Defaults assume top-left bar
+        self.hp_bar = hp_bar or (slice(0, 20), slice(0, 200))
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
@@ -46,6 +66,35 @@ class Metin2Env(gym.Env):
         info = {}
         return frame, info
 
+    # --- helpers ---------------------------------------------------------
+    def _detect_monsters(self, frame: np.ndarray) -> list[dict]:
+        """Run the configured detector on the frame and return detections.
+
+        Returns an empty list when no detector is available. The frame is
+        expected in RGBA/RGB format and converted to BGR for YOLO."""
+
+        if self.detector is None:
+            return []
+        # convert RGB(A) -> BGR
+        bgr = frame[..., :3][:, :, ::-1]
+        try:
+            return self.detector.infer(bgr)
+        except Exception:
+            return []
+
+    def _read_hp(self, frame: np.ndarray) -> float:
+        """Estimate current HP from the HUD.
+
+        This simplistic implementation computes the fraction of red pixels in
+        a predefined screen region. It returns a value in ``[0, 1]``."""
+
+        bar = frame[self.hp_bar]
+        if bar.size == 0:
+            return 0.0
+        red = bar[..., 0]
+        filled = np.count_nonzero(red > 200)
+        return float(filled) / float(red.size)
+
     def step(self, action: int):
         keys = self.key_map[action]
         if keys:
@@ -54,12 +103,36 @@ class Metin2Env(gym.Env):
             else:
                 self.kb.hotkey(keys)
         img = self.wincap.grab() if self.wincap is not None else None
-        frame = np.array(img) if img is not None else np.zeros(
-            self.observation_space.shape, dtype=np.uint8
+        frame = (
+            np.array(img)
+            if img is not None
+            else np.zeros(self.observation_space.shape, dtype=np.uint8)
         )
+
         reward = 0.0
         done = False
-        info: dict = {}
+
+        # monster detection -------------------------------------------------
+        dets = self._detect_monsters(frame)
+        prev = len(self._last_dets)
+        curr = len(dets)
+        if prev and curr < prev:
+            reward += float(prev - curr)
+        self._last_dets = dets
+
+        # HP tracking -------------------------------------------------------
+        hp = self._read_hp(frame)
+        if hp < self._last_hp:
+            reward -= self._last_hp - hp
+        if hp <= 0.0:
+            done = True
+            reward -= 1.0
+        self._last_hp = hp
+
+        # idle/time penalty -------------------------------------------------
+        reward -= 0.01
+
+        info: dict = {"hp": hp, "monsters": curr}
         return frame, reward, done, info
 
     def render(self):
