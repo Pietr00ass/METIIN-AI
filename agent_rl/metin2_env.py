@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import warnings
 
 import gymnasium as gym
@@ -84,7 +85,8 @@ class Metin2Env(gym.Env):
         bgr = frame[..., :3][:, :, ::-1]
         try:
             return self.detector.infer(bgr)
-        except Exception:
+        except Exception as exc:
+            logging.exception("Detector inference failed", exc_info=exc)
             return []
 
     def _read_hp(self, frame: np.ndarray) -> float:
