@@ -5,6 +5,8 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+import psutil
+
 from agent_rl import Metin2Env
 
 try:  # pragma: no cover - optional dependency for tests
@@ -29,10 +31,11 @@ def parse_args() -> argparse.Namespace:
         "--buffer-size",
         type=int,
         default=10000,
-        help=
-        "Replay buffer capacity (transitions). Memory usage scales roughly as "
-        "buffer_size × frame_pixels bytes; default 10000 with 84×84×3 frames "
-        "uses about 210 MB.",
+        help=(
+            "Replay buffer capacity (transitions). Memory usage scales roughly as "
+            "buffer_size × bytes_per_transition; default 10000 with 84×84×3 "
+            "frames requires about 420 MB and will be reduced if RAM is insufficient."
+        ),
     )
     ap.add_argument(
         "--frame-shape",
@@ -41,12 +44,6 @@ def parse_args() -> argparse.Namespace:
         metavar=("H", "W"),
         default=(84, 84),
         help="Resize captured frames to this height and width.",
-    )
-    ap.add_argument(
-        "--memory-limit",
-        type=int,
-        default=512,
-        help="Maximum allowed replay buffer memory in MB.",
     )
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--exploration-initial-eps", type=float, default=1.0)
@@ -60,12 +57,22 @@ def parse_args() -> argparse.Namespace:
     args = ap.parse_args()
     h, w = args.frame_shape
     frame_pixels = h * w * 3
-    required = args.buffer_size * frame_pixels
-    if required > args.memory_limit * 1024 * 1024:
-        ap.error(
-            f"buffer_size × frame_pixels requires {required / (1024 * 1024):.1f} MB, "
-            f"exceeding --memory-limit {args.memory_limit} MB",
+    bytes_per_transition = frame_pixels * 4 * 2  # obs and next_obs as float32
+    required = args.buffer_size * bytes_per_transition
+    available = psutil.virtual_memory().available
+    if required > available:
+        max_transitions = available // bytes_per_transition
+        if max_transitions <= 0:
+            ap.error(
+                f"buffer_size × bytes_per_transition requires {required / (1024 ** 2):.1f} MB, "
+                f"but only {available / (1024 ** 2):.1f} MB is available",
+            )
+        logging.warning(
+            "Reducing buffer_size from %d to %d due to limited RAM",
+            args.buffer_size,
+            max_transitions,
         )
+        args.buffer_size = int(max_transitions)
     args.frame_shape = (h, w)
     return args
 
