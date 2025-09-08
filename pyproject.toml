@@ -1,27 +1,44 @@
-[build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "metiin-ai"
 version = "0.1.0"
 description = "Vision-based automation for the Metin2 game"
-requires-python = ">=3.10"
-dependencies = [
-    "numpy==2.3.2",
-    "opencv-python==4.12.0.88",
-    "pyautogui==0.9.54",
-    "PySide6==6.9.1",
-    "easyocr==1.7.2",
-    "ultralytics==8.3.186",
-    "torch==2.8.0",
-    "torchvision==0.23.0",
-    "Pillow==11.3.0",
-    "pynput==1.8.1",
-    "keyboard==0.13.5",
-    "pywin32>=306",
-    "pydantic>=2.11.7",
+authors = ["metiin-ai developers <developers@example.com>"]
+readme = "README.md"
+packages = [
+    { include = "agent" },
+    { include = "config" },
+    { include = "gui" },
+    { include = "pydirectinput" },
+    { include = "recorder" },
+    { include = "training" },
+    { include = "tools" },
+    { include = "utils" },
+    { include = "torchvision_stub" },
 ]
+include = ["assets/**"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.14"
+numpy = "2.2.2"
+opencv-python = "4.12.0.88"
+pyautogui = "0.9.54"
+PySide6 = "6.9.1"
+easyocr = "1.7.2"
+ultralytics = "8.3.186"
+torch = "2.8.0"
+torchvision = "0.23.0"
+Pillow = "11.3.0"
+pynput = "1.8.1"
+keyboard = "0.13.5"
+pywin32 = { version = ">=306", markers = "sys_platform == 'win32'" }
+pydantic = "1.10.15"
+pyyaml = "6.0.2"
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+isort = "*"
+flake8 = "*"
+pytest = "*"
 
 [tool.black]
 line-length = 88
@@ -33,3 +50,8 @@ line_length = 88
 [tool.flake8]
 max-line-length = 88
 extend-ignore = ["E203", "W503"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
