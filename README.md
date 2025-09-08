@@ -39,6 +39,38 @@ python training/train_yolo.py --data path/to/data.yaml --model yolov8n.pt --epoc
 ```
 The script saves results under `runs/detect/train` by default. Adjust epochs, image size or device as needed.
 
+## RL Agent
+The [`agent_rl`](agent_rl) package exposes Metin2 as a minimal Gym environment.
+`Metin2Env` wraps the game window and provides:
+
+- **Action space** – discrete actions mapped to key combinations (WASD, jump, etc.).
+- **Observation space** – raw RGBA frames captured from the window.
+- **Info dict** – helper metrics such as current HP ratio and number of detected monsters.
+
+Rewards combine monster defeats, HP loss and a small time penalty, e.g.:
+
+```
++1 per defeated monster
+-ΔHP when taking damage (extra -1 on death)
+-0.01 every step
+```
+
+Train an agent with [stable-baselines3](https://stable-baselines3.readthedocs.io/):
+
+```bash
+python training/train_rl_agent.py --algo dqn --total-timesteps 10000
+```
+
+TensorBoard logs and the final model are stored under `runs/rl/<algo_timestamp>/`.
+
+Each environment step yields `(observation, reward, done, info)` where:
+
+- `observation` – ``H×W×4`` frame array.
+- `reward` – value computed from the scheme above.
+- `info` – `{"hp": <0-1>, "monsters": <count>}`.
+
+A short run (~10k steps) typically produces an average reward around **-0.2**.
+
 ## Dataset Tools
 Utilities in the [`tools/`](tools) folder help build training datasets.
 
