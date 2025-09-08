@@ -26,6 +26,10 @@ METIIN-AI provides vision-based automation for the Metin2 game. It captures the 
    ```bash
    pip install -r requirements.txt
    ```
+   or using [Poetry](https://python-poetry.org/) for an isolated environment:
+   ```bash
+   poetry install
+   ```
 3. (Optional) Install GPU versions of ``torch``/``torchvision`` to speed up training and inference.
 
 ## Model Training
