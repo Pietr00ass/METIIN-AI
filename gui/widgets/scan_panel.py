@@ -13,18 +13,21 @@ class ScanPanel(QtWidgets.QGroupBox):
         self.sweeps = QtWidgets.QSpinBox()
         self.sweeps.setRange(1, 20)
         self.sweeps.setValue(8)
-        form.addRow("", self.sweeps)  # placeholders for labels
+        self.sweeps_label = QtWidgets.QLabel()
+        form.addRow(self.sweeps_label, self.sweeps)
 
         self.sweep_ms = QtWidgets.QSpinBox()
         self.sweep_ms.setRange(50, 1000)
         self.sweep_ms.setValue(250)
-        form.addRow("", self.sweep_ms)
+        self.sweep_ms_label = QtWidgets.QLabel()
+        form.addRow(self.sweep_ms_label, self.sweep_ms)
 
         self.idle_sec = QtWidgets.QDoubleSpinBox()
         self.idle_sec.setRange(0.5, 5.0)
         self.idle_sec.setSingleStep(0.1)
         self.idle_sec.setValue(1.5)
-        form.addRow("", self.idle_sec)
+        self.idle_sec_label = QtWidgets.QLabel()
+        form.addRow(self.idle_sec_label, self.idle_sec)
 
         self.retranslate_ui()
 
@@ -32,15 +35,16 @@ class ScanPanel(QtWidgets.QGroupBox):
         self.setTitle(
             QtCore.QCoreApplication.translate("MainWindow", "Parametry skanu (obrót E)")
         )
-        form = self.layout()
-        if isinstance(form, QtWidgets.QFormLayout):
-            form.labelForField(self.sweeps).setText(
+        if getattr(self, "sweeps_label", None) is not None:
+            self.sweeps_label.setText(
                 QtCore.QCoreApplication.translate("MainWindow", "Skan sweeps:")
             )
-            form.labelForField(self.sweep_ms).setText(
+        if getattr(self, "sweep_ms_label", None) is not None:
+            self.sweep_ms_label.setText(
                 QtCore.QCoreApplication.translate("MainWindow", "Sweep ms:")
             )
-            form.labelForField(self.idle_sec).setText(
+        if getattr(self, "idle_sec_label", None) is not None:
+            self.idle_sec_label.setText(
                 QtCore.QCoreApplication.translate("MainWindow", "Idle sec:")
             )
 
