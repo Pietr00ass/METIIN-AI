@@ -12,3 +12,5 @@ keyboard==0.13.5
 pywin32>=306; sys_platform == 'win32'
 pydantic==1.10.15
 pyyaml==6.0.2
+gymnasium==1.2.0
+stable-baselines3==2.7.0
