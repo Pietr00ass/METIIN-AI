@@ -25,7 +25,29 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--algo", choices=ALGORITHMS.keys(), default="dqn")
     ap.add_argument("--total-timesteps", type=int, default=10000, help="liczba kroków")
     ap.add_argument("--learning-rate", type=float, default=1e-3)
-    ap.add_argument("--buffer-size", type=int, default=100000)
+    ap.add_argument(
+        "--buffer-size",
+        type=int,
+        default=10000,
+        help=
+        "Replay buffer capacity (transitions). Memory usage scales roughly as "
+        "buffer_size × frame_pixels bytes; default 10000 with 84×84×3 frames "
+        "uses about 210 MB.",
+    )
+    ap.add_argument(
+        "--frame-shape",
+        type=int,
+        nargs=2,
+        metavar=("H", "W"),
+        default=(84, 84),
+        help="Resize captured frames to this height and width.",
+    )
+    ap.add_argument(
+        "--memory-limit",
+        type=int,
+        default=512,
+        help="Maximum allowed replay buffer memory in MB.",
+    )
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--exploration-initial-eps", type=float, default=1.0)
     ap.add_argument("--exploration-final-eps", type=float, default=0.05)
@@ -34,7 +56,18 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--target-update-interval", type=int, default=1000)
     ap.add_argument("--tensorboard-log", default="runs/rl", help="log dir")
     ap.add_argument("--save-name", default="metin2_rl_agent")
-    return ap.parse_args()
+
+    args = ap.parse_args()
+    h, w = args.frame_shape
+    frame_pixels = h * w * 3
+    required = args.buffer_size * frame_pixels
+    if required > args.memory_limit * 1024 * 1024:
+        ap.error(
+            f"buffer_size × frame_pixels requires {required / (1024 * 1024):.1f} MB, "
+            f"exceeding --memory-limit {args.memory_limit} MB",
+        )
+    args.frame_shape = (h, w)
+    return args
 
 
 def main() -> None:
@@ -48,7 +81,7 @@ def main() -> None:
     run_dir = Path(args.tensorboard_log) / f"{args.algo}_{datetime.now():%Y%m%d_%H%M%S}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    env = Metin2Env()
+    env = Metin2Env(frame_shape=(*args.frame_shape, 3))
 
     kwargs = dict(learning_rate=args.learning_rate, tensorboard_log=str(run_dir))
     if args.algo == "dqn":
