@@ -86,10 +86,10 @@ def main() -> None:
         raise RuntimeError("stable_baselines3 is required for this script")
 
     try:  # pragma: no cover - optional dependency for tests
-        import tensorboard  # type: ignore  # noqa: F401
+        from torch.utils.tensorboard import SummaryWriter  # type: ignore  # noqa: F401
         tb_available = True
     except Exception:  # pragma: no cover - allow running without tensorboard
-        logging.warning('TensorBoard is not installed; proceeding without logging.')
+        logging.warning("TensorBoard is not installed; proceeding without logging.")
         tb_available = False
 
     run_dir = Path(args.tensorboard_log) / f"{args.algo}_{datetime.now():%Y%m%d_%H%M%S}"

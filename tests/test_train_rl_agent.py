@@ -62,3 +62,54 @@ def test_env_closed_on_training_exception(monkeypatch, tmp_path):
         train_rl_agent.main()
 
     assert env_holder["env"].closed is True
+
+
+def test_tensorboard_skipped_when_unavailable(monkeypatch, tmp_path):
+    captured = {}
+
+    class DummyEnv:
+        def __init__(self, frame_shape):
+            pass
+
+        def close(self):
+            pass
+
+    def fake_env(frame_shape):
+        return DummyEnv(frame_shape)
+
+    class DummyModel:
+        def __init__(self, policy, env, **kwargs):
+            captured.update(kwargs)
+
+        def learn(self, total_timesteps):
+            pass
+
+        def save(self, path):
+            pass
+
+    args = types.SimpleNamespace(
+        algo="dqn",
+        total_timesteps=1,
+        learning_rate=0.001,
+        buffer_size=1,
+        frame_shape=(1, 1),
+        batch_size=1,
+        exploration_initial_eps=1.0,
+        exploration_final_eps=0.05,
+        exploration_fraction=0.1,
+        gamma=0.99,
+        target_update_interval=1,
+        tensorboard_log=str(tmp_path),
+        save_name="test_model",
+    )
+
+    monkeypatch.setattr(train_rl_agent, "parse_args", lambda: args)
+    monkeypatch.setattr(train_rl_agent, "Metin2Env", fake_env)
+    monkeypatch.setitem(train_rl_agent.ALGORITHMS, "dqn", DummyModel)
+
+    # Ensure importing torch.utils.tensorboard fails
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace())
+
+    train_rl_agent.main()
+
+    assert captured["tensorboard_log"] is None
