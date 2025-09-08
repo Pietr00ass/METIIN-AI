@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
@@ -114,7 +115,7 @@ class CycleFarm:
         return bool(dets)
 
     # ---- logika pojedynczego slotu ----
-    def _process_slot(self, ch, slot, page_label, per_spot_sec, clear_sec):
+    async def _process_slot(self, ch, slot, page_label, per_spot_sec, clear_sec):
         """Handle teleportation and hunting on a single slot.
 
         PL: Obsłuż teleportację i polowanie na pojedynczym slocie.
@@ -130,9 +131,9 @@ class CycleFarm:
         logger.info("Teleportuję na slot %s (ch%s)", slot, ch)
         try:
             if hasattr(self.tp, "teleport_slot"):
-                self.tp.teleport_slot(slot, page_label)
+                await asyncio.to_thread(self.tp.teleport_slot, slot, page_label)
             else:
-                self.tp.teleport(slot, page_label)
+                await asyncio.to_thread(self.tp.teleport, slot, page_label)
         except Exception:
             logger.warning(
                 "Teleportacja na slot %s kanału %s nie powiodła się", slot, ch
@@ -142,7 +143,7 @@ class CycleFarm:
 
         if self.scanner and not self._any_target_seen():
             logger.debug("Brak celu po teleportacji – skanuję otoczenie")
-            self.scanner.scan()
+            await self.scanner.scan_async()
 
         if not self._any_target_seen() or self._stop:
             logger.info("Brak celu na slocie %s kanału %s", slot, ch)
@@ -153,14 +154,14 @@ class CycleFarm:
         t_end = time.time() + float(per_spot_sec)
         last_seen = time.time()
         while time.time() < t_end and not self._stop:
-            self.agent.step()
+            await asyncio.to_thread(self.agent.step)
             if self._any_target_seen():
                 last_seen = time.time()
             elif time.time() - last_seen > float(clear_sec):
                 if self.scanner:
-                    self.scanner.scan()
+                    await self.scanner.scan_async()
                 if not self._any_target_seen():
-                    self.ch.cycle_until_target_seen(
+                    await self.ch.cycle_until_target_seen_async(
                         check_fn=self._any_target_seen,
                         settle=self.ch_settle,
                         timeout_per_ch=self.ch_check,
@@ -170,11 +171,12 @@ class CycleFarm:
                     logger.debug("Pole czyste – przechodzę dalej")
                     break
                 last_seen = time.time()
+            await asyncio.sleep(0)
 
         self.cooldown[key] = time.time()
 
     # ---- główna pętla cyklu ----
-    def run(
+    async def run(
         self,
         page_label,
         ch_from,
@@ -235,13 +237,13 @@ class CycleFarm:
             if ch != current_ch:
                 logger.info("Przechodzę na kanał %s", ch)
                 try:
-                    self.ch.switch(ch, post_wait=self.ch_settle)
+                    await asyncio.to_thread(self.ch.switch, ch, post_wait=self.ch_settle)
                 except Exception:
                     logger.warning("Nie udało się zmienić kanału na %s", ch)
                 current_ch = ch
             if self._stop:
                 break
-            self._process_slot(ch, slot, page_label, per_spot_sec, clear_sec)
+            await self._process_slot(ch, slot, page_label, per_spot_sec, clear_sec)
 
         self.win.close()
         return

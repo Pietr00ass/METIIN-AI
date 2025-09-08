@@ -14,8 +14,8 @@ The ``--roi`` argument specifies the region of interest in pixels relative to
 the Metin2 window, while ``--name`` determines the output filename.
 """
 
-import logging
 import argparse
+import logging
 from pathlib import Path
 
 import cv2
@@ -34,9 +34,13 @@ def main() -> None:
         type=int,
         metavar=("X", "Y", "W", "H"),
         default=[1000, 80, 90, 30],
-        help="współrzędne regionu okna Metin2",
+        help="coordinates of the Metin2 window region (współrzędne regionu okna Metin2)",
     )
-    parser.add_argument("--name", default="wczytaj", help="nazwa pliku wyjściowego")
+    parser.add_argument(
+        "--name",
+        default="wczytaj",
+        help="output file name (nazwa pliku wyjściowego)",
+    )
     args = parser.parse_args()
 
     out = Path("assets/templates")
@@ -45,15 +49,18 @@ def main() -> None:
     try:
         with WindowCapture("Metin2") as wc:  # fragment tytułu
             if not wc.locate(timeout=5):
-                raise RuntimeError("Nie znaleziono okna")
+                raise RuntimeError("Window not found (Nie znaleziono okna)")
             frame = np.array(wc.grab())[:, :, :3]
 
         x, y, w, h = args.roi
         out_path = out / f"{args.name}.png"
         cv2.imwrite(str(out_path), frame[y : y + h, x : x + w])
-        logging.info("Zapisano szablon: %s", out_path)
+        logging.info("Saved template: %s (Zapisano szablon)", out_path)
     except Exception as exc:
-        logging.error("Błąd podczas przechwytywania szablonu: %s", exc)
+        logging.error(
+            "Template capture failed: %s (Błąd podczas przechwytywania szablonu)",
+            exc,
+        )
 
 
 if __name__ == "__main__":
