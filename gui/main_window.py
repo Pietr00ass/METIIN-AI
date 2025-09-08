@@ -22,6 +22,7 @@ from agent.teleport import Teleporter, TeleportResult
 from agent.wasd import KeyHold
 from gui.preview import PreviewWorker
 from gui.teleport_config_dialog import TeleportConfigDialog
+from gui.widgets import AgentPanel, ScanPanel, SettingsPanel
 from recorder.window_capture import WindowCapture
 
 logging.basicConfig(
@@ -406,144 +407,33 @@ class MainWindow(QtWidgets.QMainWindow):
         left.addLayout(lang_row)
 
         # settings group
-        self.settings_box = QtWidgets.QGroupBox()
-        settings_form = QtWidgets.QFormLayout(self.settings_box)
-        self.title_edit = QtWidgets.QLineEdit()
-        self.title_edit.setPlaceholderText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Fragment tytułu okna (np. Metin2)"
-            )
-        )
-        settings_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Tytuł okna:"),
-            self.title_edit,
-        )
-        self.model_path = QtWidgets.QLineEdit("runs/detect/train/weights/best.pt")
-        settings_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Ścieżka modelu YOLO:"),
-            self.model_path,
-        )
-        self.classes_edit = QtWidgets.QLineEdit("metin,boss,potwory")
-        settings_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Klasy obiektów:"),
-            self.classes_edit,
-        )
-        tmpl_widget = QtWidgets.QWidget()
-        tmpl_layout = QtWidgets.QHBoxLayout(tmpl_widget)
-        tmpl_layout.setContentsMargins(0, 0, 0, 0)
-        self.templates_dir_edit = QtWidgets.QLineEdit("assets/templates")
-        self.btn_templates_dir = QtWidgets.QPushButton(
-            QtCore.QCoreApplication.translate("MainWindow", "Wybierz…")
-        )
-        tmpl_layout.addWidget(self.templates_dir_edit)
-        tmpl_layout.addWidget(self.btn_templates_dir)
-        self.templates_widget = tmpl_widget
-        settings_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Katalog szablonów:"),
-            self.templates_widget,
-        )
-        self.btn_templates_dir.clicked.connect(self.browse_templates_dir)
-        left.addWidget(self.settings_box)
+        self.settings_panel = SettingsPanel()
+        left.addWidget(self.settings_panel)
+        # expose sub-widgets for backward compatibility
+        self.title_edit = self.settings_panel.title_edit
+        self.model_path = self.settings_panel.model_path
+        self.classes_edit = self.settings_panel.classes_edit
+        self.templates_dir_edit = self.settings_panel.templates_dir_edit
 
         # agent parameters group
-        self.agent_box = QtWidgets.QGroupBox()
-        agent_layout = QtWidgets.QVBoxLayout(self.agent_box)
-        self.prio_label = QtWidgets.QLabel(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Priorytety (przeciągnij aby zmienić):"
-            )
-        )
-        agent_layout.addWidget(self.prio_label)
-        self.prio_list = QtWidgets.QListWidget()
-        self.prio_list.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
-        for name in ["boss", "metin", "potwory"]:
-            self.prio_list.addItem(QtWidgets.QListWidgetItem(name))
-        agent_layout.addWidget(self.prio_list)
-        policy_form = QtWidgets.QFormLayout()
-        self.deadzone = QtWidgets.QDoubleSpinBox()
-        self.deadzone.setRange(0.0, 0.5)
-        self.deadzone.setSingleStep(0.01)
-        self.deadzone.setValue(0.05)
-
-        self.desired_w = QtWidgets.QDoubleSpinBox()
-        self.desired_w.setRange(0.02, 1.0)
-        self.desired_w.setSingleStep(0.01)
-        self.desired_w.setValue(0.12)
-
-        self.desired_w_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
-        self.desired_w_slider.setRange(2, 100)
-        self.desired_w_slider.setValue(int(self.desired_w.value() * 100))
-        self.desired_w_slider.valueChanged.connect(
-            lambda val: self.desired_w.setValue(val / 100)
-        )
-        self.desired_w.valueChanged.connect(
-            lambda val: self.desired_w_slider.setValue(int(val * 100))
-        )
-        self.desired_w_widget = QtWidgets.QWidget()
-        self.desired_w_layout = QtWidgets.QHBoxLayout()
-        self.desired_w_layout.setContentsMargins(0, 0, 0, 0)
-        self.desired_w_layout.addWidget(self.desired_w_slider)
-        self.desired_w_layout.addWidget(self.desired_w)
-        self.desired_w_widget.setLayout(self.desired_w_layout)
-
-        policy_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:"),
-            self.deadzone,
-        )
-        policy_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Desired box W:"),
-            self.desired_w_widget,
-        )
-        agent_layout.addLayout(policy_form)
-        self.overlay_chk = QtWidgets.QCheckBox(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Overlay YOLO na podglądzie"
-            )
-        )
-        self.overlay_chk.setChecked(True)
-        agent_layout.addWidget(self.overlay_chk)
-        self.dry_run_chk = QtWidgets.QCheckBox(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Dry run (bez klików/klawiszy)"
-            )
-        )
-        self.dry_run_chk.setChecked(False)
-        agent_layout.addWidget(self.dry_run_chk)
-        self.movement_chk = QtWidgets.QCheckBox(
-            QtCore.QCoreApplication.translate("MainWindow", "Movement włączony")
-        )
-        self.movement_chk.setChecked(True)
-        agent_layout.addWidget(self.movement_chk)
-        self.rotate_chk = QtWidgets.QCheckBox(
-            QtCore.QCoreApplication.translate("MainWindow", "Obrót (E) włączony")
-        )
-        self.rotate_chk.setChecked(True)
-        agent_layout.addWidget(self.rotate_chk)
-        left.addWidget(self.agent_box)
+        self.agent_panel = AgentPanel()
+        left.addWidget(self.agent_panel)
+        self.prio_list = self.agent_panel.prio_list
+        self.deadzone = self.agent_panel.deadzone
+        self.desired_w = self.agent_panel.desired_w
+        self.desired_w_slider = self.agent_panel.desired_w_slider
+        self.desired_w_widget = self.agent_panel.desired_w_widget
+        self.overlay_chk = self.agent_panel.overlay_chk
+        self.dry_run_chk = self.agent_panel.dry_run_chk
+        self.movement_chk = self.agent_panel.movement_chk
+        self.rotate_chk = self.agent_panel.rotate_chk
 
         # scan parameters
-        self.scan_box = QtWidgets.QGroupBox()
-        scan_form = QtWidgets.QFormLayout(self.scan_box)
-        self.sweeps = QtWidgets.QSpinBox()
-        self.sweeps.setRange(1, 20)
-        self.sweeps.setValue(8)
-        self.sweep_ms = QtWidgets.QSpinBox()
-        self.sweep_ms.setRange(50, 1000)
-        self.sweep_ms.setValue(250)
-        self.idle_sec = QtWidgets.QDoubleSpinBox()
-        self.idle_sec.setRange(0.5, 5.0)
-        self.idle_sec.setSingleStep(0.1)
-        self.idle_sec.setValue(1.5)
-        scan_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Skan sweeps:"), self.sweeps
-        )
-        scan_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Sweep ms:"), self.sweep_ms
-        )
-        scan_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Idle sec:"), self.idle_sec
-        )
-        left.addWidget(self.scan_box)
+        self.scan_panel = ScanPanel()
+        left.addWidget(self.scan_panel)
+        self.sweeps = self.scan_panel.sweeps
+        self.sweep_ms = self.scan_panel.sweep_ms
+        self.idle_sec = self.scan_panel.idle_sec
 
         # teleportation controls
         self.tp_box = QtWidgets.QGroupBox()
@@ -855,83 +745,10 @@ class MainWindow(QtWidgets.QMainWindow):
             1, QtCore.QCoreApplication.translate("MainWindow", "English")
         )
 
-        # settings
-        self.settings_box.setTitle(
-            QtCore.QCoreApplication.translate("MainWindow", "Ustawienia")
-        )
-        settings_form = self.settings_box.layout()
-        if isinstance(settings_form, QtWidgets.QFormLayout):
-            settings_form.labelForField(self.title_edit).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Tytuł okna:")
-            )
-            settings_form.labelForField(self.model_path).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Ścieżka modelu YOLO:")
-            )
-            settings_form.labelForField(self.classes_edit).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Klasy obiektów:")
-            )
-            settings_form.labelForField(self.templates_widget).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Katalog szablonów:")
-            )
-        self.title_edit.setPlaceholderText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Fragment tytułu okna (np. Metin2)"
-            )
-        )
-
-        # agent box
-        self.agent_box.setTitle(
-            QtCore.QCoreApplication.translate("MainWindow", "Parametry agenta")
-        )
-        policy_form = self.agent_box.findChild(QtWidgets.QFormLayout)
-        if policy_form:
-            label = policy_form.labelForField(self.deadzone)
-            if label:
-                label.setText(
-                    QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:")
-                )
-            label = policy_form.labelForField(self.desired_w_widget)
-            if label:
-                label.setText(
-                    QtCore.QCoreApplication.translate("MainWindow", "Desired box W:")
-                )
-        self.prio_label.setText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Priorytety (przeciągnij aby zmienić):"
-            )
-        )
-        self.overlay_chk.setText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Overlay YOLO na podglądzie"
-            )
-        )
-        self.dry_run_chk.setText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Dry run (bez klików/klawiszy)"
-            )
-        )
-        self.movement_chk.setText(
-            QtCore.QCoreApplication.translate("MainWindow", "Movement włączony")
-        )
-        self.rotate_chk.setText(
-            QtCore.QCoreApplication.translate("MainWindow", "Obrót (E) włączony")
-        )
-
-        # scan box
-        self.scan_box.setTitle(
-            QtCore.QCoreApplication.translate("MainWindow", "Parametry skanu (obrót E)")
-        )
-        scan_form = self.scan_box.findChild(QtWidgets.QFormLayout)
-        if scan_form:
-            scan_form.labelForField(self.sweeps).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Skan sweeps:")
-            )
-            scan_form.labelForField(self.sweep_ms).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Sweep ms:")
-            )
-            scan_form.labelForField(self.idle_sec).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Idle sec:")
-            )
+        # settings and agent sections handled by dedicated widgets
+        self.settings_panel.retranslate_ui()
+        self.agent_panel.retranslate_ui()
+        self.scan_panel.retranslate_ui()
 
         # teleport box
         self.tp_box.setTitle(
@@ -1098,17 +915,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if row >= 0:
             self.seq_table.removeRow(row)
 
-    def browse_templates_dir(self) -> None:
-        path = QtWidgets.QFileDialog.getExistingDirectory(
-            self,
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Wybierz katalog z szablonami"
-            ),
-            self.templates_dir_edit.text(),
-        )
-        if path:
-            self.templates_dir_edit.setText(path)
-
     def open_teleport_config(self) -> None:
         dlg = TeleportConfigDialog(self)
         dlg.exec()
@@ -1208,64 +1014,29 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # ---------- configuration ----------
     def build_cfg(self) -> dict:
-        title = self.title_edit.text().strip()
-        classes = [c.strip() for c in self.classes_edit.text().split(",") if c.strip()]
-        prio = self.current_priority()
+        cfg = {}
+        cfg.update(self.settings_panel.get_config())
+        cfg.update(self.agent_panel.get_config())
+        cfg.update(self.scan_panel.get_config(self.rotate_chk.isChecked()))
         hotkeys = {
-            i: self.ch_key_edits[i].text().strip() or f"numpad{i}"
-            for i in range(1, 9)
+            i: self.ch_key_edits[i].text().strip() or f"numpad{i}" for i in range(1, 9)
         }
-        cfg = {
-            "window": {"title_substr": title},
-            "paths": {
-                "templates_dir": self.templates_dir_edit.text().strip(),
-                "model": self.model_path.text().strip(),
-            },
-            "controls": {
-                "keys": {
-                    "forward": "w",
-                    "left": "a",
-                    "back": "s",
-                    "right": "d",
-                    "rotate": "e",
+        cfg.update(
+            {
+                "stuck": {
+                    "flow_window": 0.8,
+                    "min_flow_mag": 0.7,
+                    "rotate_ms_on_stuck": 250,
                 },
-                "movement": self.movement_chk.isChecked(),
-                "key_repeat_ms": 60,
-                "mouse_pause": 0.02,
-            },
-            "detector": {
-                "classes": classes,
-                "conf_thr": 0.5,
-                "iou_thr": 0.45,
-            },
-            "policy": {
-                "deadzone_x": float(self.deadzone.value()),
-                "desired_box_w": float(self.desired_w_slider.value() / 100),
-            },
-            "stuck": {
-                "flow_window": 0.8,
-                "min_flow_mag": 0.7,
-                "rotate_ms_on_stuck": 250,
-            },
-            "priority": prio,
-            "dry_run": self.dry_run_chk.isChecked(),
-            "scan": {
-                "enabled": self.rotate_chk.isChecked(),
-                "key": "e",
-                "sweeps": int(self.sweeps.value()),
-                "sweep_ms": int(self.sweep_ms.value()),
-                "idle_sec": float(self.idle_sec.value()),
-                "period": 0.066,
-                "pause": 0.12,
-            },
-            "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
-            "channel": {
-                "settle_sec": 5.0,
-                "timeout_per_ch": 2.5,
-                "hotkeys": hotkeys,
-            },
-            "ui": {"scale": float(self.scale_spin.value())},
-        }
+                "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
+                "channel": {
+                    "settle_sec": 5.0,
+                    "timeout_per_ch": 2.5,
+                    "hotkeys": hotkeys,
+                },
+                "ui": {"scale": float(self.scale_spin.value())},
+            }
+        )
 
         sequence: list[dict[str, int]] = []
         for row in range(self.seq_table.rowCount()):
