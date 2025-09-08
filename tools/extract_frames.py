@@ -21,16 +21,20 @@ logging.basicConfig(level=logging.INFO)
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--rec-dir", default="data/recordings", help="folder z nagraniami"
+        "--rec-dir",
+        default="data/recordings",
+        help="recordings folder (folder z nagraniami)",
     )
     parser.add_argument(
-        "--out-dir", default="datasets/mt2/images/train", help="folder zapisu klatek"
+        "--out-dir",
+        default="datasets/mt2/images/train",
+        help="output frames folder (folder zapisu klatek)",
     )
     parser.add_argument(
         "--step",
         type=int,
         default=15,
-        help="co ile klatek zapisać (przy 15 FPS → 1 kl/s)",
+        help="save every Nth frame (co ile klatek zapisać; przy 15 FPS → 1 kl/s)",
     )
     args = parser.parse_args()
 
@@ -42,19 +46,31 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if not rec_dir.exists():
-        parser.error(f"Nie znaleziono katalogu {rec_dir}")
+        parser.error(
+            f"Directory not found: {rec_dir} (Nie znaleziono katalogu {rec_dir})"
+        )
     videos = sorted(rec_dir.glob("*.mp4"))
     if not videos:
-        logging.warning("Katalog %s nie zawiera plików .mp4", rec_dir)
+        logging.warning(
+            "Directory %s contains no .mp4 files (Katalog %s nie zawiera plików .mp4)",
+            rec_dir,
+            rec_dir,
+        )
         return
 
-    logging.info("Znaleziono %d nagrań…", len(videos))
+    logging.info(
+        "Found %d recordings (Znaleziono %d nagrań…)", len(videos), len(videos)
+    )
     for vid in videos:
-        logging.info("Przetwarzam: %s", vid)
+        logging.info("Processing %s (Przetwarzam)", vid)
         try:
             cap = cv2.VideoCapture(str(vid))
             if not cap.isOpened():
-                logging.error("Nie można otworzyć pliku %s, pomijam", vid)
+                logging.error(
+                    "Cannot open file %s, skipping (Nie można otworzyć pliku %s, pomijam)",
+                    vid,
+                    vid,
+                )
                 continue
             i = 0
             saved = 0
@@ -68,10 +84,16 @@ def main() -> None:
                     saved += 1
                 i += 1
             cap.release()
-            logging.info(" zapisano %d klatek", saved)
+            logging.info("Saved %d frames (zapisano %d klatek)", saved, saved)
         except Exception as exc:
-            logging.error("Błąd podczas przetwarzania %s: %s", vid, exc)
-    logging.info("Gotowe.")
+            logging.error(
+                "Error processing %s: %s (Błąd podczas przetwarzania %s: %s)",
+                vid,
+                exc,
+                vid,
+                exc,
+            )
+    logging.info("Done. (Gotowe.)")
 
 
 if __name__ == "__main__":

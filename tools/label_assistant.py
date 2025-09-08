@@ -45,16 +45,31 @@ def _iter_images(dir_path: Path) -> Iterable[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True, help="ścieżka do wag YOLO")
-    parser.add_argument("--images", required=True, help="folder z obrazami")
     parser.add_argument(
-        "--labels", required=True, help="folder zapisu etykiet (.txt)"
+        "--model",
+        required=True,
+        help="path to YOLO weights (ścieżka do wag YOLO)",
     )
     parser.add_argument(
-        "--confidence", type=float, default=0.25, help="próg ufności"
+        "--images",
+        required=True,
+        help="images folder (folder z obrazami)",
     )
     parser.add_argument(
-        "--interactive", action="store_true", help="podgląd i akceptacja"
+        "--labels",
+        required=True,
+        help="labels output folder (.txt) (folder zapisu etykiet (.txt))",
+    )
+    parser.add_argument(
+        "--confidence",
+        type=float,
+        default=0.25,
+        help="confidence threshold (próg ufności)",
+    )
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="preview and accept (podgląd i akceptacja)",
     )
     args = parser.parse_args()
 
@@ -63,23 +78,37 @@ def main() -> None:
     lbl_dir.mkdir(parents=True, exist_ok=True)
 
     if not img_dir.exists():
-        parser.error(f"Nie znaleziono katalogu {img_dir}")
+        parser.error(
+            f"Directory not found: {img_dir} (Nie znaleziono katalogu {img_dir})"
+        )
 
     try:
         model = YOLO(args.model)
     except Exception as exc:
-        parser.error(f"Nie można załadować modelu: {exc}")
+        parser.error(f"Cannot load model: {exc} (Nie można załadować modelu: {exc})")
 
     images = list(_iter_images(img_dir))
     if not images:
-        logging.warning("Katalog %s nie zawiera obrazów", img_dir)
+        logging.warning(
+            "Directory %s contains no images (Katalog %s nie zawiera obrazów)",
+            img_dir,
+            img_dir,
+        )
         return
 
-    logging.info("Przetwarzam %d obrazów…", len(images))
+    logging.info(
+        "Processing %d images… (Przetwarzam %d obrazów…)",
+        len(images),
+        len(images),
+    )
     for img_path in images:
         img = cv2.imread(str(img_path))
         if img is None:
-            logging.error("Nie można odczytać %s, pomijam", img_path)
+            logging.error(
+                "Cannot read %s, skipping (Nie można odczytać %s, pomijam)",
+                img_path,
+                img_path,
+            )
             continue
         result = model(img, conf=args.confidence, verbose=False)[0]
         boxes = _to_yolo_format(result, img.shape[1], img.shape[0])
@@ -90,15 +119,21 @@ def main() -> None:
             key = cv2.waitKey(0)
             cv2.destroyAllWindows()
             if key not in (ord("y"), ord("Y"), 13, 32):
-                logging.info("Pominięto %s", img_path.name)
+                logging.info("Skipped %s (Pominięto)", img_path.name)
                 continue
 
         label_path = lbl_dir / f"{img_path.stem}.txt"
         with label_path.open("w", encoding="utf-8") as f:
             for c, cx, cy, w, h in boxes:
                 f.write(f"{c} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
-        logging.info("Zapisano %s (%d boxów)", label_path, len(boxes))
-    logging.info("Gotowe.")
+        logging.info(
+            "Saved %s (%d boxes) (Zapisano %s (%d boxów))",
+            label_path,
+            len(boxes),
+            label_path,
+            len(boxes),
+        )
+    logging.info("Done. (Gotowe.)")
 
 
 if __name__ == "__main__":
