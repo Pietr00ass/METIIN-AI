@@ -55,3 +55,11 @@ def test_context_manager_closes(monkeypatch, platform):
     with wc.WindowCapture("foo") as cap:
         assert isinstance(cap.sct, DummySct)
     assert cap.sct.closed
+
+
+def test_locate_returns_false_when_window_missing(monkeypatch):
+    """WindowCapture.locate should return ``False`` if no window is found."""
+
+    wc = _import_wc(monkeypatch, "linux")
+    cap = wc.WindowCapture("does-not-exist", poll_sec=0)
+    assert cap.locate(timeout=0.01) is False
