@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import threading
 import time
 from typing import Callable, Optional
@@ -81,6 +82,17 @@ class AreaScanner:
         self._stop.clear()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
+
+    async def scan_async(
+        self, progress_cb: Optional[Callable[[float], None]] = None
+    ) -> None:
+        """Asynchronous scan using ``asyncio`` for cooperative waits."""
+
+        if self.is_scanning():
+            return
+        self.scan(progress_cb)
+        while self.is_scanning():
+            await asyncio.sleep(self.pause)
 
     def cancel(self) -> None:
         """Cancel the running scan if any."""

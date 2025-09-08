@@ -1,3 +1,4 @@
+import asyncio
 import numpy as np
 
 
@@ -101,14 +102,16 @@ def test_cycle_sequence(monkeypatch):
         {"ch": 2, "slot": 4},
         {"ch": 1, "slot": 2},
     ]
-    cf.run(
-        page_label="P",
-        ch_from=1,
-        ch_to=2,
-        slots=[1, 2],
-        per_spot_sec=0,
-        clear_sec=0,
-        sequence=seq,
+    asyncio.run(
+        cf.run(
+            page_label="P",
+            ch_from=1,
+            ch_to=2,
+            slots=[1, 2],
+            per_spot_sec=0,
+            clear_sec=0,
+            sequence=seq,
+        )
     )
 
     switches = [c[1] for c in calls if c[0] == "ch"]

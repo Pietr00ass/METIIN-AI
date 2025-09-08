@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import asyncio
 import time
 from typing import Callable, Optional, Tuple
 
@@ -233,6 +234,44 @@ class ChannelSwitcher:
                 if time.time() >= t_end:
                     break
                 time.sleep(0.1)
+            if current == start_ch:
+                rounds += 1
+        return False
+
+    async def cycle_until_target_seen_async(
+        self,
+        check_fn: Callable[[], bool],
+        *,
+        settle: float = 5.0,
+        timeout_per_ch: float = 5.0,
+        max_rounds: int = 1,
+    ) -> bool:
+        """Asynchronous variant of :meth:`cycle_until_target_seen`.
+
+        Uses ``asyncio.sleep`` for cooperative waiting so the event loop
+        can schedule other tasks (e.g. detector inference) while cycling
+        through channels.
+        """
+
+        current = self.current_channel_guess() or 1
+        start_ch = current
+        rounds = 0
+
+        if check_fn():
+            return True
+
+        while rounds < max_rounds:
+            current = self.next(current)
+            # ``switch`` is a blocking call; run it in a thread to avoid
+            # stalling the event loop.
+            await asyncio.to_thread(self.switch, current, post_wait=settle)
+            t_end = time.time() + timeout_per_ch
+            while True:
+                if check_fn():
+                    return True
+                if time.time() >= t_end:
+                    break
+                await asyncio.sleep(0.1)
             if current == start_ch:
                 rounds += 1
         return False

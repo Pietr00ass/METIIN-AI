@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import time
+import asyncio
 
 import cv2
 import numpy as np
@@ -248,14 +249,16 @@ class CycleThread(QtCore.QThread):
         try:
             cf = CycleFarm(cfg)
             self.cycle_agent = cf
-            cf.run(
-                page_label=self.page,
-                ch_from=cycle_cfg.get("ch_from", 1),
-                ch_to=cycle_cfg.get("ch_to", 8),
-                slots=cycle_cfg.get("slots", list(range(1, 9))),
-                per_spot_sec=cycle_cfg.get("per_spot_sec", 90),
-                clear_sec=cycle_cfg.get("clear_sec", 6),
-                sequence=cycle_cfg.get("sequence"),
+            asyncio.run(
+                cf.run(
+                    page_label=self.page,
+                    ch_from=cycle_cfg.get("ch_from", 1),
+                    ch_to=cycle_cfg.get("ch_to", 8),
+                    slots=cycle_cfg.get("slots", list(range(1, 9))),
+                    per_spot_sec=cycle_cfg.get("per_spot_sec", 90),
+                    clear_sec=cycle_cfg.get("clear_sec", 6),
+                    sequence=cycle_cfg.get("sequence"),
+                )
             )
             self.status.emit(
                 QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 zakończony.")
