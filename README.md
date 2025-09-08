@@ -71,7 +71,9 @@ Use the sample configuration and run a basic WASD agent:
 ```bash
 python - <<'PY'
 import yaml
+
 from agent.infer_wasd import WasdVisionAgent
+
 cfg = yaml.safe_load(open('config/agent.yaml'))
 WasdVisionAgent(cfg).run()
 PY
@@ -106,6 +108,24 @@ keyboard listener relies on a low‑level hook provided by the
   permissions.
 
 If the hook cannot be installed only mouse clicks will be recorded.
+
+## Standalone Executable
+
+PyInstaller can bundle the GUI into a single file so users do not need a separate Python installation.
+
+1. Install development requirements (includes PyInstaller):
+
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+2. Build the executable:
+
+   ```bash
+   python tools/build_gui.py
+   ```
+
+The resulting file will be located in the `dist/` directory and can be distributed to end users.
 
 ## Contributing
 
