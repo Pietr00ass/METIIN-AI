@@ -23,7 +23,8 @@ class AgentPanel(QtWidgets.QGroupBox):
         self.deadzone.setRange(0.0, 0.5)
         self.deadzone.setSingleStep(0.01)
         self.deadzone.setValue(0.05)
-        self.policy_form.addRow("", self.deadzone)  # placeholder, set in retranslate
+        self.deadzone_label = QtWidgets.QLabel()
+        self.policy_form.addRow(self.deadzone_label, self.deadzone)
 
         self.desired_w = QtWidgets.QDoubleSpinBox()
         self.desired_w.setRange(0.02, 1.0)
@@ -44,7 +45,8 @@ class AgentPanel(QtWidgets.QGroupBox):
         self.desired_w_layout.addWidget(self.desired_w)
         self.desired_w_widget = QtWidgets.QWidget()
         self.desired_w_widget.setLayout(self.desired_w_layout)
-        self.policy_form.addRow("", self.desired_w_widget)  # placeholder
+        self.desired_w_label = QtWidgets.QLabel()
+        self.policy_form.addRow(self.desired_w_label, self.desired_w_widget)
         layout.addLayout(self.policy_form)
 
         self.overlay_chk = QtWidgets.QCheckBox()
@@ -74,10 +76,10 @@ class AgentPanel(QtWidgets.QGroupBox):
                 "MainWindow", "Priorytety (przeciągnij aby zmienić):"
             )
         )
-        self.policy_form.labelForField(self.deadzone).setText(
+        self.deadzone_label.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Deadzone X:")
         )
-        self.policy_form.labelForField(self.desired_w_widget).setText(
+        self.desired_w_label.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Desired box W:")
         )
         self.overlay_chk.setText(
