@@ -78,12 +78,19 @@ def main() -> None:
     if algo_cls is None:
         raise RuntimeError("stable_baselines3 is required for this script")
 
+    try:  # pragma: no cover - optional dependency for tests
+        import tensorboard  # type: ignore  # noqa: F401
+        tb_available = True
+    except Exception:  # pragma: no cover - allow running without tensorboard
+        logging.warning('TensorBoard is not installed; proceeding without logging.')
+        tb_available = False
+
     run_dir = Path(args.tensorboard_log) / f"{args.algo}_{datetime.now():%Y%m%d_%H%M%S}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     env = Metin2Env(frame_shape=(*args.frame_shape, 3))
 
-    kwargs = dict(learning_rate=args.learning_rate, tensorboard_log=str(run_dir))
+    kwargs = dict(learning_rate=args.learning_rate, tensorboard_log=str(run_dir) if tb_available else None)
     if args.algo == "dqn":
         kwargs.update(
             buffer_size=args.buffer_size,

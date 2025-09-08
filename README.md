@@ -55,6 +55,8 @@ Rewards combine monster defeats, HP loss and a small time penalty, e.g.:
 -0.01 every step
 ```
 
+Install [TensorBoard](https://www.tensorflow.org/tensorboard) to monitor training; it is optional but recommended.
+
 Train an agent with [stable-baselines3](https://stable-baselines3.readthedocs.io/):
 
 ```bash
