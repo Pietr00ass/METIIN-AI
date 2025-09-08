@@ -35,6 +35,26 @@ python training/train_yolo.py --data path/to/data.yaml --model yolov8n.pt --epoc
 ```
 The script saves results under `runs/detect/train` by default. Adjust epochs, image size or device as needed.
 
+## Dataset Tools
+Utilities in the [`tools/`](tools) folder help build training datasets.
+
+### Extract Frames
+Save every ``n``‑th frame from gameplay recordings:
+```bash
+python tools/extract_frames.py --rec-dir data/recordings --out-dir datasets/mt2/images/train --step 15
+```
+
+### Label Assistant
+Generate YOLO labels from model predictions.  In interactive mode press ``Y`` or ``Space`` to accept detections for an image, any other key skips it:
+```bash
+python tools/label_assistant.py \
+  --model runs/detect/train/weights/best.pt \
+  --images datasets/mt2/images/train \
+  --labels datasets/mt2/labels/train \
+  --confidence 0.3 \
+  --interactive
+```
+
 ## Running
 ### GUI
 Launch the control panel with real‑time preview and training utilities:
