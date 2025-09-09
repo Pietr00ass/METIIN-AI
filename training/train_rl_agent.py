@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import argparse
 import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
 
 import psutil
-import shutil
 
 from agent_rl import Metin2Env
 
 try:  # pragma: no cover - optional dependency for tests
     from stable_baselines3 import A2C, DQN, PPO
+    from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 except Exception:  # pragma: no cover - allow importing without sb3 installed
-    A2C = DQN = PPO = None  # type: ignore
+    A2C = DQN = PPO = DummyVecEnv = VecTransposeImage = None  # type: ignore
 
 
 ALGORITHMS = {
@@ -88,9 +89,11 @@ def main() -> None:
 
     try:  # pragma: no cover - optional dependency for tests
         import torch  # type: ignore
+
         if not hasattr(torch, "utils"):
             raise ImportError
         from torch.utils.tensorboard import SummaryWriter  # type: ignore  # noqa: F401
+
         tb_available = shutil.which("tensorboard") is not None
     except Exception:  # pragma: no cover - allow running without tensorboard
         logging.warning("TensorBoard is not installed; proceeding without logging.")
@@ -99,9 +102,19 @@ def main() -> None:
     run_dir = Path(args.tensorboard_log) / f"{args.algo}_{datetime.now():%Y%m%d_%H%M%S}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    env = Metin2Env(frame_shape=(*args.frame_shape, 3))
+    env_obj = Metin2Env(frame_shape=(*args.frame_shape, 3))
+    try:
+        env = DummyVecEnv([lambda: env_obj])
+        env = VecTransposeImage(env)
+    except (
+        Exception
+    ):  # pragma: no cover - fallback when vec env wrappers are unavailable
+        env = env_obj
 
-    kwargs = dict(learning_rate=args.learning_rate, tensorboard_log=str(run_dir) if tb_available else None)
+    kwargs = dict(
+        learning_rate=args.learning_rate,
+        tensorboard_log=str(run_dir) if tb_available else None,
+    )
     if args.algo == "dqn":
         kwargs.update(
             buffer_size=args.buffer_size,
