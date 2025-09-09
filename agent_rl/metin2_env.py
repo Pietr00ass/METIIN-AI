@@ -12,9 +12,10 @@ from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
 
 try:  # ``ObjectDetector`` uses ``ultralytics`` which might be unavailable in tests
-    from agent.detector import ObjectDetector
+    from agent.detector import ObjectDetector, Detection
 except Exception:  # pragma: no cover - fallback for minimal environments
     ObjectDetector = None  # type: ignore
+    Detection = dict  # type: ignore
 
 
 class Metin2Env(gym.Env):
@@ -53,7 +54,7 @@ class Metin2Env(gym.Env):
         )
         if detector_model and self.detector is None:
             warnings.warn("Detector initialization failed; proceeding without it")
-        self._last_dets: list[dict] = []
+        self._last_dets: list[Detection] = []
         self._last_hp = 1.0
         # Region of the HP bar within the frame. Defaults assume top-left bar
         self.hp_bar = hp_bar or (slice(0, 20), slice(0, 200))
@@ -73,7 +74,7 @@ class Metin2Env(gym.Env):
         return frame, info
 
     # --- helpers ---------------------------------------------------------
-    def _detect_monsters(self, frame: np.ndarray) -> list[dict]:
+    def _detect_monsters(self, frame: np.ndarray) -> list[Detection]:
         """Run the configured detector on the frame and return detections.
 
         Returns an empty list when no detector is available. The frame is

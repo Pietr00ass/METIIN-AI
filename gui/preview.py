@@ -61,16 +61,16 @@ class PreviewWorker(QtCore.QThread):
                         try:
                             dets = self._det.infer(frame)
                             for d in dets:
-                                x1, y1, x2, y2 = map(int, d["bbox"])
+                                x1, y1, x2, y2 = map(int, d.bbox)
                                 color = (0, 0, 255)
-                                if d["name"] == "boss":
+                                if d.name == "boss":
                                     color = (0, 215, 255)
-                                elif d["name"] == "potwory":
+                                elif d.name == "potwory":
                                     color = (255, 128, 0)
                                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                                 cv2.putText(
                                     frame,
-                                    f"{d['name']} {d['conf']:.2f}",
+                                    f"{d.name} {d.conf:.2f}",
                                     (x1, max(12, y1 - 6)),
                                     cv2.FONT_HERSHEY_SIMPLEX,
                                     0.5,

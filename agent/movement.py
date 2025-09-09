@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from .wasd import KeyHold
+from .detector import Detection
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +20,14 @@ class MovementController:
         self.enabled = enabled
 
     def move(
-        self, tgt: dict | None, steer: str | None, frame_size: tuple[int, int]
+        self, tgt: Detection | None, steer: str | None, frame_size: tuple[int, int]
     ):
         """Update pressed keys to move towards the target and avoid obstacles.
 
         Parameters
         ----------
-        tgt: dict or None
-            Target detection dictionary with ``bbox``.
+        tgt: Detection or None
+            Target detection with ``bbox``.
         steer: str or None
             Direction suggested by the obstacle avoidance system (``"left"`` or
             ``"right"``).
@@ -45,7 +46,7 @@ class MovementController:
         bw = None
         if not self.enabled:
             if tgt:
-                x1, _, x2, _ = tgt["bbox"]
+                x1, _, x2, _ = tgt.bbox
                 bw = (x2 - x1) / W
             self.keys.release_all()
             return bw
@@ -59,7 +60,7 @@ class MovementController:
 
         bw = None
         if tgt:
-            x1, y1, x2, y2 = tgt["bbox"]
+            x1, y1, x2, y2 = tgt.bbox
             cx = (x1 + x2) / 2 / W
             bw = (x2 - x1) / W
             if abs(cx - 0.5) > self.deadzone:

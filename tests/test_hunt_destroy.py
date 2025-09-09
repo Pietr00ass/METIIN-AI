@@ -77,6 +77,7 @@ channel_mod.ChannelSwitcher = _DummyChannelSwitcher
 sys.modules["agent.channel"] = channel_mod
 
 import agent.hunt_destroy as hd
+from agent.detector import Detection
 
 
 class _StubKeyHold:
@@ -118,7 +119,7 @@ class _DummyDetector:
         else:
             bbox = (30, 40, 40, 60)
         self.calls += 1
-        return [{"name": "enemy", "bbox": bbox}]
+        return [Detection(name="enemy", bbox=list(bbox), conf=0.0)]
 
 
 class _DummyAvoid:
@@ -258,7 +259,7 @@ def test_scan_interrupt_on_target(monkeypatch):
             self.calls += 1
             if self.calls < 3:
                 return []
-            return [{"name": "enemy", "bbox": (10, 10, 20, 20)}]
+            return [Detection(name="enemy", bbox=[10, 10, 20, 20], conf=0.0)]
 
     monkeypatch.setattr(hd, "ObjectDetector", _Detector)
 

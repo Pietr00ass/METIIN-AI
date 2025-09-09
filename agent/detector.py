@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Dict, List
+from dataclasses import dataclass
 
 import cv2
 import numpy as np
@@ -11,6 +11,13 @@ from ultralytics import YOLO
 # particularly Windows, this can lead to high CPU usage or instability.
 # The thread count can now be controlled via ``ObjectDetector``.  By
 # default we leave OpenCV's configuration untouched.
+
+
+@dataclass
+class Detection:
+    name: str
+    bbox: list[float]
+    conf: float
 
 
 class ObjectDetector:
@@ -52,13 +59,13 @@ class ObjectDetector:
         # limit detekcji do ``max_fps`` razy na sekundę
         self.max_fps = max_fps
         self._last_infer_time = 0.0
-        self._last_result: List[Dict] = []
+        self._last_result: list[Detection] = []
         # dynamiczne skalowanie rozdzielczości
         self.dynamic_resize = dynamic_resize
         self.min_scale = min_scale
         self.scale = 1.0
 
-    def infer(self, frame_bgr: np.ndarray) -> List[Dict]:
+    def infer(self, frame_bgr: np.ndarray) -> list[Detection]:
         now = time.time()
         if self.max_fps:
             min_interval = 1.0 / self.max_fps
@@ -83,7 +90,7 @@ class ObjectDetector:
         )[0]
         infer_time = time.time() - start
 
-        out: List[Dict] = []
+        out: list[Detection] = []
         names = res.names
         for box in res.boxes:
             cls_id = int(box.cls)
@@ -98,11 +105,11 @@ class ObjectDetector:
                 x2 /= self.scale
                 y2 /= self.scale
             out.append(
-                {
-                    "name": name,
-                    "bbox": [x1, y1, x2, y2],
-                    "conf": float(box.conf.cpu().numpy()),
-                }
+                Detection(
+                    name=name,
+                    bbox=[x1, y1, x2, y2],
+                    conf=float(box.conf.cpu().numpy()),
+                )
             )
 
         self._last_result = out
