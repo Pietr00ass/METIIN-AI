@@ -137,7 +137,7 @@ class TeleportHuntThread(QtCore.QThread):
     status = QtCore.Signal(str)
     finished = QtCore.Signal()
 
-    def __init__(self, cfg: dict, point: str, side: str, minutes: int):
+    def __init__(self, cfg: dict, point: int, side: str, minutes: int):
         super().__init__()
         self.cfg = cfg
         self.point = point
@@ -1321,11 +1321,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_tp_hunt.setText("Teleportuj i poluj")
             self.set_status("Przerwano 'Teleportuj i poluj'.")
             return
-        point = self.tp_point.text().strip()
+        point_text = self.tp_point.text().strip()
         side = self.tp_side.text().strip()
         minutes = int(self.tp_minutes.value())
-        if not point or not side:
+        if not point_text or not side:
             self.set_status("Uzupełnij punkt i stronę teleportacji.")
+            self.btn_tp_hunt.setChecked(False)
+            return
+        try:
+            point = int(point_text)
+        except ValueError:
+            self.set_status("Nieprawidłowy punkt teleportacji.")
             self.btn_tp_hunt.setChecked(False)
             return
         cfg = self.build_cfg()
