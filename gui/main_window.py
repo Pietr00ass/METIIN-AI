@@ -412,6 +412,7 @@ class RLTrainThread(QtCore.QThread):
             if shutil.which("tensorboard"):
                 tb_proc = subprocess.Popen(["tensorboard", "--logdir", str(run_dir)])
                 try:
+                    time.sleep(5)  # wait for TensorBoard to initialize
                     webbrowser.open("http://localhost:6006")
                 except Exception:
                     pass
