@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import time
-import asyncio
 
 import cv2
 import numpy as np
@@ -15,11 +15,9 @@ from pynput import keyboard as pynput_keyboard
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QSettings
 
-import agent.teleport_config as tc
 from agent.channel import ChannelSwitcher
 from agent.cycle import CycleFarm
 from agent.strategy import load_strategy
-from agent.teleport import Teleporter, TeleportResult
 from agent.wasd import KeyHold
 from gui.preview import PreviewWorker
 from gui.teleport_config_dialog import TeleportConfigDialog
@@ -126,97 +124,6 @@ class AgentThread(QtCore.QThread):
             self.status.emit(
                 QtCore.QCoreApplication.translate(
                     "MainWindow", "Błąd agenta: {exc}"
-                ).format(exc=exc)
-            )
-        finally:
-            win.close()
-            self.finished.emit()
-
-
-class TeleportHuntThread(QtCore.QThread):
-    status = QtCore.Signal(str)
-    finished = QtCore.Signal()
-
-    def __init__(self, cfg: dict, point: str, side: str, minutes: int):
-        super().__init__()
-        self.cfg = cfg
-        self.point = point
-        self.side = side
-        self.minutes = minutes
-        self._stop = False
-
-    def stop(self) -> None:
-        self._stop = True
-
-    def run(self) -> None:  # pragma: no cover - GUI thread
-        win = WindowCapture(self.cfg["window"]["title_substr"])
-        try:
-            if not win.locate(timeout=5):
-                self.status.emit(
-                    QtCore.QCoreApplication.translate(
-                        "MainWindow", "Nie znaleziono okna."
-                    )
-                )
-                return
-            try:
-                test_img = pyautogui.screenshot()
-                logger.info(
-                    "Zrzut ekranu zakończony powodzeniem (%dx%d)",
-                    test_img.width,
-                    test_img.height,
-                )
-            except Exception as e:  # pragma: no cover - UI feedback
-                logger.error("Błąd przy robieniu zrzutu ekranu: %s", e)
-                self.status.emit(
-                    QtCore.QCoreApplication.translate(
-                        "MainWindow", "Błąd przechwytywania ekranu: {e}"
-                    ).format(e=e)
-                )
-                return
-            tp = Teleporter(win, self.cfg["paths"]["templates_dir"], use_ocr=True)
-            res = tp.teleport(self.point, self.side)
-            if res is not TeleportResult.OK:
-                msg_map = {
-                    TeleportResult.TEMPLATE_NOT_FOUND: QtCore.QCoreApplication.translate(
-                        "MainWindow", "Nie znaleziono szablonu w panelu teleportu."
-                    ),
-                    TeleportResult.OCR_MISS: QtCore.QCoreApplication.translate(
-                        "MainWindow", "Nie rozpoznano wskazanego slotu (OCR)."
-                    ),
-                    TeleportResult.WINDOW_NOT_FOREGROUND: QtCore.QCoreApplication.translate(
-                        "MainWindow", "Okno gry nie jest aktywne."
-                    ),
-                }
-                self.status.emit(
-                    msg_map.get(
-                        res,
-                        QtCore.QCoreApplication.translate(
-                            "MainWindow", "Teleportacja nie powiodła się."
-                        ),
-                    )
-                )
-            hd = load_strategy(self.cfg, win)
-            t_end = time.time() + self.minutes * 60
-            period = self.cfg.get("scan", {}).get("period", 1 / 15)
-            while time.time() < t_end and not self._stop:
-                hd.step()
-                time.sleep(period)
-            self.status.emit(
-                QtCore.QCoreApplication.translate(
-                    "MainWindow", "Zakończono 'Teleportuj i poluj'."
-                )
-            )
-        except RuntimeError as exc:  # pragma: no cover - UI feedback
-            self.status.emit(
-                QtCore.QCoreApplication.translate(
-                    "MainWindow",
-                    "Błąd przechwytywania ekranu: {exc}. Czy okno gry jest poza ekranem lub zminimalizowane?",
-                ).format(exc=exc)
-            )
-        except Exception as exc:  # pragma: no cover - UI feedback
-            self.status.emit(
-                QtCore.QCoreApplication.translate(
-                    "MainWindow", "Błąd teleport+poluj: {exc}"
                 ).format(exc=exc)
             )
         finally:
@@ -383,18 +290,17 @@ class RLTrainThread(QtCore.QThread):
         tb_proc = None
         try:
             self.status.emit(
-                QtCore.QCoreApplication.translate(
-                    "MainWindow", "Trening RL – start…"
-                )
+                QtCore.QCoreApplication.translate("MainWindow", "Trening RL – start…")
             )
+            import shutil
+            import subprocess
+            import webbrowser
             from datetime import datetime
             from pathlib import Path
-            import subprocess
-            import shutil
-            import webbrowser
+
+            from stable_baselines3 import A2C, DQN, PPO
 
             from agent_rl import Metin2Env
-            from stable_baselines3 import A2C, DQN, PPO
 
             algos = {"dqn": DQN, "ppo": PPO, "a2c": A2C}
             algo_cls = algos.get(self.algo)
@@ -422,9 +328,7 @@ class RLTrainThread(QtCore.QThread):
             model.learn(total_timesteps=self.timesteps)
             model.save(str(run_dir / "metin2_rl_agent"))
             self.status.emit(
-                QtCore.QCoreApplication.translate(
-                    "MainWindow", "Zakończono trening RL"
-                )
+                QtCore.QCoreApplication.translate("MainWindow", "Zakończono trening RL")
             )
         except Exception as exc:  # pragma: no cover - UI feedback
             self.status.emit(
@@ -463,13 +367,12 @@ class RLAgentThread(QtCore.QThread):
     def run(self) -> None:  # pragma: no cover - GUI thread
         env = None
         try:
-            from agent_rl import Metin2Env
             from stable_baselines3 import DQN
 
+            from agent_rl import Metin2Env
+
             self.status.emit(
-                QtCore.QCoreApplication.translate(
-                    "MainWindow", "Start RL agent…"
-                )
+                QtCore.QCoreApplication.translate("MainWindow", "Start RL agent…")
             )
             env = Metin2Env(dry=False)
             model = DQN.load(self.model_path)
@@ -480,9 +383,7 @@ class RLAgentThread(QtCore.QThread):
                 if terminated or truncated:
                     obs, _ = env.reset()
             self.status.emit(
-                QtCore.QCoreApplication.translate(
-                    "MainWindow", "RL agent zatrzymany."
-                )
+                QtCore.QCoreApplication.translate("MainWindow", "RL agent zatrzymany.")
             )
         except Exception as exc:  # pragma: no cover - UI feedback
             self.status.emit(
@@ -571,36 +472,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sweep_ms = self.scan_panel.sweep_ms
         self.idle_sec = self.scan_panel.idle_sec
 
-        # teleportation controls
-        self.tp_box = QtWidgets.QGroupBox()
-        tp_form = QtWidgets.QFormLayout(self.tp_box)
-        self.tp_point = QtWidgets.QLineEdit()
-        self.tp_point.setPlaceholderText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Nazwa punktu (OCR lub template)"
-            )
-        )
-        self.tp_side = QtWidgets.QLineEdit()
-        self.tp_side.setPlaceholderText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Strona/mapa (np. Strona I)"
-            )
-        )
-        self.tp_minutes = QtWidgets.QSpinBox()
-        self.tp_minutes.setRange(1, 180)
-        self.tp_minutes.setValue(10)
-        tp_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Punkt:"), self.tp_point
-        )
-        tp_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Strona:"), self.tp_side
-        )
-        tp_form.addRow(
-            QtCore.QCoreApplication.translate("MainWindow", "Czas (min):"),
-            self.tp_minutes,
-        )
-        left.addWidget(self.tp_box)
-
         # channels and cooldown
         self.ch_box = QtWidgets.QGroupBox()
         ch_layout = QtWidgets.QVBoxLayout(self.ch_box)
@@ -668,10 +539,6 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         )
         self.btn_agent.setCheckable(True)
-        self.btn_tp_hunt = QtWidgets.QPushButton(
-            QtCore.QCoreApplication.translate("MainWindow", "Teleportuj i poluj")
-        )
-        self.btn_tp_hunt.setCheckable(True)
         self.btn_cycle = QtWidgets.QPushButton(
             QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
         )
@@ -699,7 +566,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_preview,
             self.btn_record,
             self.btn_agent,
-            self.btn_tp_hunt,
             self.btn_cycle,
             self.btn_ch,
             self.btn_stop,
@@ -826,7 +692,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_preview.toggled.connect(self.toggle_preview)
         self.btn_record.toggled.connect(self.record_data)
         self.btn_agent.toggled.connect(self.start_agent)
-        self.btn_tp_hunt.toggled.connect(self.start_tp_and_hunt)
         self.btn_cycle.toggled.connect(self.start_cycle)
         self.btn_ch.toggled.connect(self.change_channel)
         self.btn_stop.clicked.connect(self.stop_all)
@@ -903,32 +768,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.agent_panel.retranslate_ui()
         self.scan_panel.retranslate_ui()
 
-        # teleport box
-        self.tp_box.setTitle(
-            QtCore.QCoreApplication.translate("MainWindow", "Teleportacja")
-        )
-        tp_form = self.tp_box.findChild(QtWidgets.QFormLayout)
-        if tp_form:
-            tp_form.labelForField(self.tp_point).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Punkt:")
-            )
-            tp_form.labelForField(self.tp_side).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Strona:")
-            )
-            tp_form.labelForField(self.tp_minutes).setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Czas (min):")
-            )
-        self.tp_point.setPlaceholderText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Nazwa punktu (OCR lub template)"
-            )
-        )
-        self.tp_side.setPlaceholderText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Strona/mapa (np. Strona I)"
-            )
-        )
-
         # channels box
         self.ch_box.setTitle(
             QtCore.QCoreApplication.translate("MainWindow", "Kanały i cooldown")
@@ -973,9 +812,6 @@ class MainWindow(QtWidgets.QMainWindow):
             QtCore.QCoreApplication.translate(
                 "MainWindow", "Start agenta (YOLO + WASD)"
             )
-        )
-        self.btn_tp_hunt.setText(
-            QtCore.QCoreApplication.translate("MainWindow", "Teleportuj i poluj")
         )
         self.btn_cycle.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
@@ -1217,11 +1053,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def save_config(self) -> None:
         cfg = self.build_cfg()
-        cfg["teleport"] = {
-            "point": self.tp_point.text().strip(),
-            "side": self.tp_side.text().strip(),
-            "minutes": int(self.tp_minutes.value()),
-        }
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Zapisz konfigurację", "config.json", "JSON (*.json)"
         )
@@ -1271,10 +1102,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.prio_list.clear()
         for name in cfg.get("priority", []):
             self.prio_list.addItem(QtWidgets.QListWidgetItem(name))
-        tp = cfg.get("teleport", {})
-        self.tp_point.setText(tp.get("point", ""))
-        self.tp_side.setText(tp.get("side", ""))
-        self.tp_minutes.setValue(int(tp.get("minutes", 10)))
         ch_hot = cfg.get("channel", {}).get("hotkeys", {})
         for i in range(1, 9):
             key = ch_hot.get(str(i)) or ch_hot.get(i) or f"numpad{i}"
@@ -1312,40 +1139,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_agent.setText("Stop agenta")
         self.set_status("Agent YOLO+WASD uruchomiony.")
 
-    def start_tp_and_hunt(self, checked: bool) -> None:
-        if not checked:
-            if self.agent_thread:
-                self.agent_thread.stop()
-                self.agent_thread.wait()
-                self.agent_thread = None
-            self.btn_tp_hunt.setText("Teleportuj i poluj")
-            self.set_status("Przerwano 'Teleportuj i poluj'.")
-            return
-        point = self.tp_point.text().strip()
-        side = self.tp_side.text().strip()
-        minutes = int(self.tp_minutes.value())
-        if not point or not side:
-            self.set_status("Uzupełnij punkt i stronę teleportacji.")
-            self.btn_tp_hunt.setChecked(False)
-            return
-        cfg = self.build_cfg()
-
-        self.agent_thread = TeleportHuntThread(cfg, point, side, minutes)
-        self.agent_thread.status.connect(self.set_status)
-        self.agent_thread.finished.connect(lambda: self.btn_tp_hunt.setChecked(False))
-        self.agent_thread.finished.connect(
-            lambda: self.btn_tp_hunt.setText(
-                QtCore.QCoreApplication.translate("MainWindow", "Teleportuj i poluj")
-            )
-        )
-        self.agent_thread.start()
-        self.btn_tp_hunt.setText(
-            QtCore.QCoreApplication.translate("MainWindow", "Stop 'Teleportuj i poluj'")
-        )
-        self.set_status(
-            QtCore.QCoreApplication.translate("MainWindow", "Teleportuję i poluję…")
-        )
-
     def start_cycle(self, checked: bool) -> None:
         if not checked:
             if self.agent_thread:
@@ -1361,9 +1154,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtCore.QCoreApplication.translate("MainWindow", "Cykl zatrzymany.")
             )
             return
-        page = self.tp_side.text().strip() or None
         cfg = self.build_cfg()
-        self.agent_thread = CycleThread(cfg, page)
+        self.agent_thread = CycleThread(cfg, None)
         self.agent_thread.status.connect(self.set_status)
         self.agent_thread.finished.connect(lambda: self.btn_cycle.setChecked(False))
         self.agent_thread.finished.connect(
@@ -1444,7 +1236,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_preview,
             self.btn_record,
             self.btn_agent,
-            self.btn_tp_hunt,
             self.btn_cycle,
             self.btn_ch,
             self.btn_run_rl,
@@ -1471,9 +1262,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtCore.QCoreApplication.translate("MainWindow", "Start RL")
             )
             self.set_status(
-                QtCore.QCoreApplication.translate(
-                    "MainWindow", "Agent RL zatrzymany."
-                )
+                QtCore.QCoreApplication.translate("MainWindow", "Agent RL zatrzymany.")
             )
             return
         model_path = self.rl_model_path.text().strip()
@@ -1487,9 +1276,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.rl_agent_thread = RLAgentThread(model_path)
         self.rl_agent_thread.status.connect(self.set_status)
-        self.rl_agent_thread.finished.connect(
-            lambda: self.btn_run_rl.setChecked(False)
-        )
+        self.rl_agent_thread.finished.connect(lambda: self.btn_run_rl.setChecked(False))
         self.rl_agent_thread.finished.connect(
             lambda: self.btn_run_rl.setText(
                 QtCore.QCoreApplication.translate("MainWindow", "Start RL")
@@ -1503,9 +1290,7 @@ class MainWindow(QtWidgets.QMainWindow):
             QtCore.QCoreApplication.translate("MainWindow", "Stop RL")
         )
         self.set_status(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Uruchomiono agenta RL."
-            )
+            QtCore.QCoreApplication.translate("MainWindow", "Uruchomiono agenta RL.")
         )
 
     def train_rl_agent(self, checked: bool) -> None:
@@ -1525,9 +1310,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.rl_thread.start()
         self.btn_train_rl.setText(
-            QtCore.QCoreApplication.translate(
-                "MainWindow", "Trwa trening RL…"
-            )
+            QtCore.QCoreApplication.translate("MainWindow", "Trwa trening RL…")
         )
 
     def train_yolo_api(self, checked: bool) -> None:
