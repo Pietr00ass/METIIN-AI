@@ -130,7 +130,6 @@ class AgentThread(QtCore.QThread):
             win.close()
             self.finished.emit()
 
-
 class CycleThread(QtCore.QThread):
     status = QtCore.Signal(str)
     finished = QtCore.Signal()
