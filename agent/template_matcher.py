@@ -39,7 +39,17 @@ class TemplateMatcher:
         self.cache[name] = img
         return img
 
-    def _prep(self, frame_bgr, roi):
+    def _prep(
+        self, frame_bgr: np.ndarray, roi: tuple[int, int, int, int] | None
+    ) -> tuple[np.ndarray, int, int]:
+        """Convert the frame to grayscale and crop by ROI.
+
+        PL: Konwertuje klatkę do skali szarości i przycina według ROI.
+
+        ROI must be a tuple ``(x, y, w, h)`` or ``None``. Raises ``ValueError``
+        when the crop is empty or the input frame has zero size.
+        """
+
         if roi is not None:
             x, y, w, h = roi
             crop = frame_bgr[y : y + h, x : x + w]
@@ -59,10 +69,18 @@ class TemplateMatcher:
         frame_bgr: np.ndarray,
         name: str,
         thresh=0.82,
-        roi=None,
+        roi: tuple[int, int, int, int] | None = None,
         multi_scale=False,
         scales=(1.0, 0.9, 1.1),
-    ):
+    ) -> TemplateMatch | None:
+        """Find the best template match within a frame.
+
+        PL: Zwraca najlepsze dopasowanie szablonu w klatce.
+
+        ROI is a tuple ``(x, y, w, h)`` or ``None``. Raises ``ValueError`` if the
+        ROI is invalid or the frame is empty.
+        """
+
         gray, offx, offy = self._prep(frame_bgr, roi)
         tpl0 = self.load(name)
         best: TemplateMatch | None = None
