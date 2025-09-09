@@ -28,23 +28,11 @@ _pydantic.BaseModel = _BaseModel
 _pydantic.Field = _Field
 sys.modules.setdefault("pydantic", _pydantic)
 
-# Stub easyocr to avoid heavy import
-sys.modules.setdefault("easyocr", types.SimpleNamespace(Reader=lambda *a, **k: None))
-
-# Provide a minimal numpy stub for imports
-sys.modules.setdefault("numpy", types.ModuleType("numpy"))
-
-# Stub PIL.Image used for saving screenshots
-PIL_stub = types.ModuleType("PIL")
-PIL_stub.Image = types.SimpleNamespace()
-sys.modules.setdefault("PIL", PIL_stub)
-
 # Stub pyautogui to avoid real key presses
 pyautogui_stub = types.SimpleNamespace(
     moveTo=lambda *a, **k: None,
     click=lambda *a, **k: None,
     press=lambda *a, **k: None,
-    locateOnScreen=lambda *a, **k: None,
     PAUSE=0,
 )
 sys.modules.setdefault("pyautogui", pyautogui_stub)
@@ -61,16 +49,6 @@ wc_mod.WindowCapture = WindowCapture
 recorder_pkg.window_capture = wc_mod
 sys.modules.setdefault("recorder", recorder_pkg)
 sys.modules.setdefault("recorder.window_capture", wc_mod)
-
-# Stub agent.template_matcher used during import
-tm_stub = types.ModuleType("agent.template_matcher")
-
-class _TM:
-    def __init__(self, *a, **k):
-        pass
-
-tm_stub.TemplateMatcher = _TM
-sys.modules.setdefault("agent.template_matcher", tm_stub)
 
 sys.modules.pop("agent.teleport", None)
 from agent.teleport import Teleporter
