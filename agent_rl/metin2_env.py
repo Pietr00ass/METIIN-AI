@@ -39,10 +39,12 @@ class Metin2Env(gym.Env):
         kill_reward: float = 1.0,
         damage_penalty: float = 1.0,
         time_penalty: float = 0.01,
+        reset_actions: list[list[str]] | None = None,
     ) -> None:
         super().__init__()
         self.title = title
-        self.key_map = key_map or [["w"], ["a"], ["s"], ["d"], ["space"], []]
+        # default action map now includes camera rotation keys ``q`` and ``e``
+        self.key_map = key_map or [["w"], ["a"], ["s"], ["d"], ["space"], [], ["q"], ["e"]]
         self.action_space = spaces.Discrete(len(self.key_map))
         self.frame_shape = frame_shape
         self.observation_space = spaces.Box(
@@ -62,6 +64,8 @@ class Metin2Env(gym.Env):
         self.kill_reward = kill_reward
         self.damage_penalty = damage_penalty
         self.time_penalty = time_penalty
+        # optional keyboard sequences executed on environment reset (e.g. teleport)
+        self.reset_actions = reset_actions or []
         # Region of the HP bar within the frame. Defaults assume top-left bar
         self.hp_bar = hp_bar or (slice(0, 20), slice(0, 200))
 
@@ -71,6 +75,14 @@ class Metin2Env(gym.Env):
             self.wincap.close()
         self.wincap = WindowCapture(self.title)
         self.wincap.locate()
+        # perform optional reset actions to place the player at a known start
+        for combo in self.reset_actions:
+            if not combo:
+                continue
+            if len(combo) == 1:
+                self.kb.tap(combo[0])
+            else:
+                self.kb.hotkey(combo)
         img = self.wincap.grab()
         frame = self._preprocess(
             np.frombuffer(img.rgb, dtype=np.uint8).reshape(img.height, img.width, 3)

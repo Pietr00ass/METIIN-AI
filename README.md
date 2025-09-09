@@ -43,9 +43,12 @@ The script saves results under `runs/detect/train` by default. Adjust epochs, im
 The [`agent_rl`](agent_rl) package exposes Metin2 as a minimal Gym environment.
 `Metin2Env` wraps the game window and provides:
 
-- **Action space** – discrete actions mapped to key combinations (WASD, jump, etc.).
+- **Action space** – discrete actions mapped to key combinations. The default set now
+  includes camera rotation with ``q``/``e`` in addition to basic WASD movement.
 - **Observation space** – raw RGBA frames captured from the window.
 - **Info dict** – helper metrics such as current HP ratio and number of detected monsters.
+- **Dynamic reset** – optional keyboard sequences can be executed at reset to
+  teleport the player to a consistent starting location.
 
 Rewards combine monster defeats, HP loss and a small time penalty, e.g.:
 
@@ -72,6 +75,21 @@ python training/train_rl_agent.py --algo dqn --total-timesteps 10000 --buffer-si
 ```
 
 TensorBoard logs and the final model are stored under `runs/rl/<algo_timestamp>/`.
+The training script supports additional options:
+
+```bash
+python training/train_rl_agent.py --algo dqn --frame-stack 4 --dueling-dqn
+```
+
+`--frame-stack` wraps the environment with a frame stack for temporal context
+and `--dueling-dqn` enables the dueling architecture for SB3's DQN.
+
+For supervised pretraining from recorded sessions, a simple behaviour cloning
+utility is available:
+
+```bash
+python training/train_bc.py --dataset path/to/demos.npz --epochs 10
+```
 
 Each environment step yields `(observation, reward, done, info)` where:
 
