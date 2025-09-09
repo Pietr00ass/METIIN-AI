@@ -12,10 +12,11 @@ from agent_rl import Metin2Env
 
 try:  # pragma: no cover - optional dependency for tests
     from stable_baselines3 import A2C, DQN, PPO
-    from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
+    from stable_baselines3.common.env_util import make_vec_env
+    from stable_baselines3.common.vec_env import VecTransposeImage
     from stable_baselines3.common.callbacks import EvalCallback
 except Exception:  # pragma: no cover - allow importing without sb3 installed
-    A2C = DQN = PPO = DummyVecEnv = VecTransposeImage = EvalCallback = None  # type: ignore
+    A2C = DQN = PPO = make_vec_env = VecTransposeImage = EvalCallback = None  # type: ignore
 
 
 ALGORITHMS = {
@@ -60,6 +61,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--kill-reward", type=float, default=1.0)
     ap.add_argument("--damage-penalty", type=float, default=1.0)
     ap.add_argument("--time-penalty", type=float, default=0.01)
+    ap.add_argument("--num-envs", type=int, default=1, help="number of parallel environments")
 
     args = ap.parse_args()
     h, w = args.frame_shape
@@ -107,42 +109,44 @@ def main() -> None:
     run_dir = Path(args.tensorboard_log) / f"{args.algo}_{datetime.now():%Y%m%d_%H%M%S}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
+    def _make_env() -> Metin2Env:
+        try:
+            return Metin2Env(
+                frame_shape=(*args.frame_shape, 3),
+                kill_reward=getattr(args, "kill_reward", 1.0),
+                damage_penalty=getattr(args, "damage_penalty", 1.0),
+                time_penalty=getattr(args, "time_penalty", 0.01),
+            )
+        except TypeError:  # pragma: no cover - fallback for test stubs
+            return Metin2Env(frame_shape=(*args.frame_shape, 3))
+
     try:
-        env_obj = Metin2Env(
-            frame_shape=(*args.frame_shape, 3),
-            kill_reward=getattr(args, "kill_reward", 1.0),
-            damage_penalty=getattr(args, "damage_penalty", 1.0),
-            time_penalty=getattr(args, "time_penalty", 0.01),
-        )
-    except TypeError:  # pragma: no cover - fallback for test stubs
-        env_obj = Metin2Env(frame_shape=(*args.frame_shape, 3))
-    try:
-        env = DummyVecEnv([lambda: env_obj])
+        env = make_vec_env(_make_env, n_envs=args.num_envs)
         env = VecTransposeImage(env)
-    except (
-        Exception
-    ):  # pragma: no cover - fallback when vec env wrappers are unavailable
-        env = env_obj
+    except Exception:  # pragma: no cover - fallback when vec env wrappers are unavailable
+        env = _make_env()
 
     eval_env = None
     eval_callback = None
     eval_freq = getattr(args, "eval_freq", 10000)
     if EvalCallback is not None:
         try:
+            def _make_eval_env() -> Metin2Env:
+                try:
+                    return Metin2Env(
+                        frame_shape=(*args.frame_shape, 3),
+                        kill_reward=getattr(args, "kill_reward", 1.0),
+                        damage_penalty=getattr(args, "damage_penalty", 1.0),
+                        time_penalty=getattr(args, "time_penalty", 0.01),
+                    )
+                except TypeError:  # pragma: no cover - fallback for test stubs
+                    return Metin2Env(frame_shape=(*args.frame_shape, 3))
+
             try:
-                eval_env_obj = Metin2Env(
-                    frame_shape=(*args.frame_shape, 3),
-                    kill_reward=getattr(args, "kill_reward", 1.0),
-                    damage_penalty=getattr(args, "damage_penalty", 1.0),
-                    time_penalty=getattr(args, "time_penalty", 0.01),
-                )
-            except TypeError:  # pragma: no cover - fallback for test stubs
-                eval_env_obj = Metin2Env(frame_shape=(*args.frame_shape, 3))
-            try:
-                eval_env = DummyVecEnv([lambda: eval_env_obj])
+                eval_env = make_vec_env(_make_eval_env, n_envs=1)
                 eval_env = VecTransposeImage(eval_env)
             except Exception:  # pragma: no cover - fallback when vec env wrappers are unavailable
-                eval_env = eval_env_obj
+                eval_env = _make_eval_env()
 
             eval_callback = EvalCallback(
                 eval_env,
