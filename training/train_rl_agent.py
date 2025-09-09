@@ -37,10 +37,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=10000,
         help=(
-            "Replay buffer capacity (transitions). Memory usage scales as "
-            "buffer_size × frame_bytes × 2 where frame_bytes = H × W × 3 × dtype."
-            " 84×84×3 uint8 frames require ~42 KB per transition (~420 MB for 10k)."
-            " Reduce this with a smaller value if RAM is limited, e.g. --buffer-size 50000."
+            "Replay buffer capacity (number of transitions). Each transition stores the "
+            "current and next observation as raw uint8 frames. Memory therefore scales as "
+            "buffer_size × H × W × 3 × 2 bytes. An 84×84×3 frame uses about 21 KB so one "
+            "transition is ~42 KB (≈420 MB for 10k). Frames are converted to float32 "
+            "on-the-fly when sampled for training. Decrease this value if RAM is limited."
         ),
     )
     ap.add_argument(
@@ -72,9 +73,17 @@ def parse_args() -> argparse.Namespace:
         obs_dtype = Metin2Env(frame_shape=(*args.frame_shape, 3)).observation_space.dtype
     except Exception:
         obs_dtype = np.uint8
+    # SB3's replay buffer stores raw uint8 observations and next observations.
+    # They are cast to float32/0-1 only when sampled for training.
     bytes_per_transition = frame_pixels * np.dtype(obs_dtype).itemsize * 2
     required = args.buffer_size * bytes_per_transition
     available = psutil.virtual_memory().available
+    logging.info(
+        "Replay buffer will use approximately %.1f MB (%d transitions × %.0f bytes)",
+        required / (1024 ** 2),
+        args.buffer_size,
+        bytes_per_transition,
+    )
     if required > available:
         max_transitions = available // bytes_per_transition
         if max_transitions <= 0:
@@ -83,9 +92,11 @@ def parse_args() -> argparse.Namespace:
                 f"but only {available / (1024 ** 2):.1f} MB is available",
             )
         logging.warning(
-            "Reducing buffer_size from %d to %d due to limited RAM",
+            "Reducing buffer_size from %d to %d (%.1f → %.1f MB) due to limited RAM",
             args.buffer_size,
             max_transitions,
+            required / (1024 ** 2),
+            (max_transitions * bytes_per_transition) / (1024 ** 2),
         )
         args.buffer_size = int(max_transitions)
     args.frame_shape = (h, w)
