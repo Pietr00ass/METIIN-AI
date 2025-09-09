@@ -57,6 +57,9 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--tensorboard-log", default="runs/rl", help="log dir")
     ap.add_argument("--save-name", default="metin2_rl_agent")
     ap.add_argument("--eval-freq", type=int, default=10000, help="Evaluation frequency")
+    ap.add_argument("--kill-reward", type=float, default=1.0)
+    ap.add_argument("--damage-penalty", type=float, default=1.0)
+    ap.add_argument("--time-penalty", type=float, default=0.01)
 
     args = ap.parse_args()
     h, w = args.frame_shape
@@ -104,7 +107,15 @@ def main() -> None:
     run_dir = Path(args.tensorboard_log) / f"{args.algo}_{datetime.now():%Y%m%d_%H%M%S}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    env_obj = Metin2Env(frame_shape=(*args.frame_shape, 3))
+    try:
+        env_obj = Metin2Env(
+            frame_shape=(*args.frame_shape, 3),
+            kill_reward=getattr(args, "kill_reward", 1.0),
+            damage_penalty=getattr(args, "damage_penalty", 1.0),
+            time_penalty=getattr(args, "time_penalty", 0.01),
+        )
+    except TypeError:  # pragma: no cover - fallback for test stubs
+        env_obj = Metin2Env(frame_shape=(*args.frame_shape, 3))
     try:
         env = DummyVecEnv([lambda: env_obj])
         env = VecTransposeImage(env)
@@ -118,7 +129,15 @@ def main() -> None:
     eval_freq = getattr(args, "eval_freq", 10000)
     if EvalCallback is not None:
         try:
-            eval_env_obj = Metin2Env(frame_shape=(*args.frame_shape, 3))
+            try:
+                eval_env_obj = Metin2Env(
+                    frame_shape=(*args.frame_shape, 3),
+                    kill_reward=getattr(args, "kill_reward", 1.0),
+                    damage_penalty=getattr(args, "damage_penalty", 1.0),
+                    time_penalty=getattr(args, "time_penalty", 0.01),
+                )
+            except TypeError:  # pragma: no cover - fallback for test stubs
+                eval_env_obj = Metin2Env(frame_shape=(*args.frame_shape, 3))
             try:
                 eval_env = DummyVecEnv([lambda: eval_env_obj])
                 eval_env = VecTransposeImage(eval_env)

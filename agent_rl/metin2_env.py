@@ -36,6 +36,9 @@ class Metin2Env(gym.Env):
         dry: bool = True,
         detector_model: str | None = None,
         hp_bar: tuple[slice, slice] | None = None,
+        kill_reward: float = 1.0,
+        damage_penalty: float = 1.0,
+        time_penalty: float = 0.01,
     ) -> None:
         super().__init__()
         self.title = title
@@ -56,6 +59,9 @@ class Metin2Env(gym.Env):
             warnings.warn("Detector initialization failed; proceeding without it")
         self._last_dets: list[Detection] = []
         self._last_hp = 1.0
+        self.kill_reward = kill_reward
+        self.damage_penalty = damage_penalty
+        self.time_penalty = time_penalty
         # Region of the HP bar within the frame. Defaults assume top-left bar
         self.hp_bar = hp_bar or (slice(0, 20), slice(0, 200))
 
@@ -127,20 +133,20 @@ class Metin2Env(gym.Env):
         prev = len(self._last_dets)
         curr = len(dets)
         if prev and curr < prev:
-            reward += float(prev - curr)
+            reward += self.kill_reward * float(prev - curr)
         self._last_dets = dets
 
         # HP tracking -------------------------------------------------------
         hp = self._read_hp(frame)
         if hp < self._last_hp:
-            reward -= self._last_hp - hp
+            reward -= self.damage_penalty * (self._last_hp - hp)
         if hp <= 0.0:
             terminated = True
-            reward -= 1.0
+            reward -= self.damage_penalty
         self._last_hp = hp
 
         # idle/time penalty -------------------------------------------------
-        reward -= 0.01
+        reward -= self.time_penalty
 
         info: dict = {"hp": hp, "monsters": curr}
         return frame, reward, terminated, truncated, info
