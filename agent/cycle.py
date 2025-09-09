@@ -97,15 +97,22 @@ class CycleFarm:
         self.cooldown_min = int(cfg.cooldowns.slot_min)
 
     def stop(self):
+        """Stop agent components gracefully.
+
+        Only expected errors from the underlying helpers are swallowed. Any
+        such errors are logged for debugging instead of silenced.
+        """
         self._stop = True
+
         try:
             self.keys.stop()
-        except Exception:
-            pass
+        except (RuntimeError, OSError) as exc:
+            logger.exception("Błąd podczas zatrzymywania klawiszy: %s", exc)
+
         try:
             self.win.close()
-        except Exception:
-            pass
+        except (RuntimeError, OSError) as exc:
+            logger.exception("Błąd podczas zamykania okna: %s", exc)
 
     # ---- detekcje ----
     def _any_target_seen(self) -> bool:
