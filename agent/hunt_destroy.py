@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 
 import numpy as np
 
@@ -137,6 +138,13 @@ class HuntDestroy(AgentStrategy):
         self.search.update_last_target()
         if self.scanner and self.scanner.is_scanning():
             self.scanner.cancel()
+            self.keys.release_all()
+            time.sleep(0.2)
+            if not getattr(self.keys, "dry", False):
+                left, top, w, h = self.win.region
+                click_bbox_center(tgt.bbox, (left, top, w, h), win=self.win)
+            self._last_tgt = tgt
+            return
 
         bw = None
         if tgt:
