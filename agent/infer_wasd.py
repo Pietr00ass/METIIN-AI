@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 
 import numpy as np
@@ -8,6 +9,8 @@ from recorder.window_capture import WindowCapture
 
 from . import AgentConfig, TeleportSlot
 from .strategy import load_strategy
+
+logger = logging.getLogger(__name__)
 
 
 class WasdVisionAgent:
@@ -39,6 +42,8 @@ class WasdVisionAgent:
         self.cfg.teleport.slots = list(slots)
 
     def run(self):
+        """Run strategy steps until interrupted and attempt cleanup."""
+
         try:
             if not self.win.locate(timeout=5):
                 raise RuntimeError("Nie znaleziono okna – sprawdź title_substr")
@@ -50,11 +55,11 @@ class WasdVisionAgent:
             if self.hd:
                 try:
                     self.hd.teleporter.close_panel()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Failed to close teleporter panel: %s", exc)
                 try:
                     self.hd.keys.release_all()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Failed to release keys: %s", exc)
         finally:
             self.win.close()
