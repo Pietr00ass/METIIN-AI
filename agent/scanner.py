@@ -51,7 +51,9 @@ class AreaScanner:
             if self._stop.is_set():
                 break
             self.keys.press(self.spin_key)
-            time.sleep(self.sweep_ms / 1000.0)
+            if self._stop.wait(self.sweep_ms / 1000.0):
+                self.keys.release(self.spin_key)
+                break
             self.keys.release(self.spin_key)
             self._progress = (i + 1) / float(self.sweeps)
             if self._progress_cb:
@@ -59,7 +61,8 @@ class AreaScanner:
                     self._progress_cb(self._progress)
                 except Exception:
                     pass
-            time.sleep(self.pause)
+            if self._stop.wait(self.pause):
+                break
         else:
             # loop did not break -> full scan completed
             self._completed = True
@@ -99,7 +102,7 @@ class AreaScanner:
 
         self._stop.set()
         if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=0)
+            self._thread.join()
 
     def is_scanning(self) -> bool:
         return bool(self._thread and self._thread.is_alive())
