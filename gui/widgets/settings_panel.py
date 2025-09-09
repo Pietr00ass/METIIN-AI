@@ -18,6 +18,10 @@ class SettingsPanel(QtWidgets.QGroupBox):
         self.model_path = QtWidgets.QLineEdit("runs/detect/train/weights/best.pt")
         layout.addRow(self.model_label, self.model_path)
 
+        self.rl_model_label = QtWidgets.QLabel()
+        self.rl_model_path = QtWidgets.QLineEdit()
+        layout.addRow(self.rl_model_label, self.rl_model_path)
+
         self.classes_label = QtWidgets.QLabel()
         self.classes_edit = QtWidgets.QLineEdit("metin,boss,potwory")
         layout.addRow(self.classes_label, self.classes_edit)
@@ -43,6 +47,11 @@ class SettingsPanel(QtWidgets.QGroupBox):
         )
         self.model_label.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Ścieżka modelu YOLO:")
+        )
+        self.rl_model_label.setText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Ścieżka modelu RL:"
+            )
         )
         self.classes_label.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Klasy obiektów:")
@@ -78,6 +87,7 @@ class SettingsPanel(QtWidgets.QGroupBox):
             "paths": {
                 "templates_dir": self.templates_dir_edit.text().strip(),
                 "model": self.model_path.text().strip(),
+                "rl_model": self.rl_model_path.text().strip(),
             },
             "detector": {
                 "classes": classes,
