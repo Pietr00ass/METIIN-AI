@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 import psutil
+import numpy as np
 
 from agent_rl import Metin2Env
 
@@ -36,9 +37,10 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=10000,
         help=(
-            "Replay buffer capacity (transitions). Memory usage scales roughly as "
-            "buffer_size × bytes_per_transition; default 10000 with 84×84×3 "
-            "frames requires about 420 MB and will be reduced if RAM is insufficient."
+            "Replay buffer capacity (transitions). Memory usage scales as "
+            "buffer_size × frame_bytes × 2 where frame_bytes = H × W × 3 × dtype."
+            " 84×84×3 uint8 frames require ~42 KB per transition (~420 MB for 10k)."
+            " Reduce this with a smaller value if RAM is limited, e.g. --buffer-size 50000."
         ),
     )
     ap.add_argument(
@@ -66,7 +68,11 @@ def parse_args() -> argparse.Namespace:
     args = ap.parse_args()
     h, w = args.frame_shape
     frame_pixels = h * w * 3
-    bytes_per_transition = frame_pixels * 4 * 2  # obs and next_obs as float32
+    try:
+        obs_dtype = Metin2Env(frame_shape=(*args.frame_shape, 3)).observation_space.dtype
+    except Exception:
+        obs_dtype = np.uint8
+    bytes_per_transition = frame_pixels * np.dtype(obs_dtype).itemsize * 2
     required = args.buffer_size * bytes_per_transition
     available = psutil.virtual_memory().available
     if required > available:
