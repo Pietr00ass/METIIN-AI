@@ -27,3 +27,31 @@ def test_detect_monsters_logs_exception(caplog):
     caplog.set_level(logging.ERROR)
     assert env._detect_monsters(frame) == []
     assert "Detector inference failed" in caplog.text
+
+
+def test_reset_actions(monkeypatch):
+    calls = []
+
+    class DummyWC:
+        def __init__(self, title):
+            pass
+
+        def locate(self):
+            pass
+
+        def grab(self):
+            return types.SimpleNamespace(width=1, height=1, rgb=b"\x00\x00\x00")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr("agent_rl.metin2_env.WindowCapture", DummyWC)
+    env = Metin2Env(dry=True, reset_actions=[["x"], ["y", "z"]])
+
+    monkeypatch.setattr(env.kb, "tap", lambda k: calls.append(("tap", k)))
+    monkeypatch.setattr(env.kb, "hotkey", lambda keys: calls.append(("hotkey", tuple(keys))))
+
+    env.reset()
+
+    assert ("tap", "x") in calls
+    assert ("hotkey", ("y", "z")) in calls
