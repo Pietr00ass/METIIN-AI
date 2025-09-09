@@ -8,7 +8,7 @@ import numpy as np
 from . import AgentConfig, get_config
 from .avoid import CollisionAvoid
 from .channel import ChannelSwitcher
-from .detector import ObjectDetector
+from .detector import ObjectDetector, Detection
 from .interaction import click_bbox_center
 from .movement import MovementController
 from .scanner import AreaScanner
@@ -38,7 +38,7 @@ class HuntDestroy(AgentStrategy):
         self.scanner = None
         self.search = None
         self.movement = None
-        self._last_tgt = None
+        self._last_tgt: Detection | None = None
         self._prev_names: set[str] = set()
         self._grab_lock = threading.Lock()
         if cfg is not None or window_capture is not None:
@@ -108,7 +108,7 @@ class HuntDestroy(AgentStrategy):
         H, W = frame.shape[:2]
         dets = self.det.infer(frame)
         logger.debug("Wykryto %s obiektów", len(dets))
-        cur_names = {d["name"] for d in dets}
+        cur_names = {d.name for d in dets}
         disappeared = self._prev_names - cur_names
         for name in disappeared:
             logger.debug("Obiekt %s zniknął", name)
@@ -117,7 +117,7 @@ class HuntDestroy(AgentStrategy):
         steer = self.avoid.steer(frame)
         tgt = pick_target(dets, (W, H), priority_order=self.priority)
         if tgt is None and self._last_tgt is not None:
-            logger.debug("Cel %s zniknął", self._last_tgt.get("name", "?"))
+            logger.debug("Cel %s zniknął", self._last_tgt.name)
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
             if self.scanner:
@@ -140,7 +140,7 @@ class HuntDestroy(AgentStrategy):
 
         bw = None
         if tgt:
-            x1, y1, x2, y2 = tgt["bbox"]
+            x1, y1, x2, y2 = tgt.bbox
             bw = (x2 - x1) / W
 
         if tgt and bw is not None and bw >= self.desired_w * 0.9:
@@ -149,7 +149,7 @@ class HuntDestroy(AgentStrategy):
             if hasattr(self.keys, "dry") and self.keys.dry:
                 return
             logger.debug("Atakuję cel")
-            click_bbox_center(tgt["bbox"], (left, top, w, h), win=self.win)
+            click_bbox_center(tgt.bbox, (left, top, w, h), win=self.win)
         else:
             self.movement.move(tgt, steer, (W, H))
         self._last_tgt = tgt

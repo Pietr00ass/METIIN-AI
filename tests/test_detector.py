@@ -79,7 +79,9 @@ def test_infer_filters_classes():
         model.predict.return_value = [FakeResult()]
         det = detector.ObjectDetector("model.pt", classes=["boss"])
         out = det.infer(frame)
-    assert out == [{"name": "boss", "bbox": [50.0, 60.0, 70.0, 80.0], "conf": 0.8}]
+    assert out == [
+        detector.Detection(name="boss", bbox=[50.0, 60.0, 70.0, 80.0], conf=0.8)
+    ]
 
 
 def test_infer_rate_limited():
