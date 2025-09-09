@@ -380,6 +380,7 @@ class RLTrainThread(QtCore.QThread):
 
     def run(self) -> None:  # pragma: no cover - GUI thread
         env = None
+        tb_proc = None
         try:
             self.status.emit(
                 QtCore.QCoreApplication.translate(
@@ -388,6 +389,9 @@ class RLTrainThread(QtCore.QThread):
             )
             from datetime import datetime
             from pathlib import Path
+            import subprocess
+            import shutil
+            import webbrowser
 
             from agent_rl import Metin2Env
             from stable_baselines3 import A2C, DQN, PPO
@@ -405,6 +409,13 @@ class RLTrainThread(QtCore.QThread):
             run_dir = Path("runs/rl") / f"{self.algo}_{datetime.now():%Y%m%d_%H%M%S}"
             run_dir.mkdir(parents=True, exist_ok=True)
 
+            if shutil.which("tensorboard"):
+                tb_proc = subprocess.Popen(["tensorboard", "--logdir", str(run_dir)])
+                try:
+                    webbrowser.open("http://localhost:6006")
+                except Exception:
+                    pass
+
             env = Metin2Env()
             model = algo_cls("CnnPolicy", env, tensorboard_log=str(run_dir))
             model.learn(total_timesteps=self.timesteps)
@@ -421,6 +432,11 @@ class RLTrainThread(QtCore.QThread):
                 ).format(exc=exc)
             )
         finally:
+            if tb_proc is not None:
+                try:
+                    tb_proc.terminate()
+                except Exception:
+                    pass
             if env is not None:
                 try:
                     env.close()

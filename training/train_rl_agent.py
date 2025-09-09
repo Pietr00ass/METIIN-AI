@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 import psutil
+import shutil
 
 from agent_rl import Metin2Env
 
@@ -86,8 +87,11 @@ def main() -> None:
         raise RuntimeError("stable_baselines3 is required for this script")
 
     try:  # pragma: no cover - optional dependency for tests
+        import torch  # type: ignore
+        if not hasattr(torch, "utils"):
+            raise ImportError
         from torch.utils.tensorboard import SummaryWriter  # type: ignore  # noqa: F401
-        tb_available = True
+        tb_available = shutil.which("tensorboard") is not None
     except Exception:  # pragma: no cover - allow running without tensorboard
         logging.warning("TensorBoard is not installed; proceeding without logging.")
         tb_available = False
