@@ -124,7 +124,7 @@ def test_switch_sends_hotkey(tmp_path, monkeypatch):
     monkeypatch.setattr(channel, "TemplateMatcher", TM)
 
     hotkey_calls: list[tuple[list[str], float]] = []
-
+    
     class KH:
         def hotkey(self, keys, duration=0.05):
             hotkey_calls.append((keys, duration))
@@ -184,6 +184,23 @@ def test_custom_hotkeys_respected(tmp_path, monkeypatch):
     monkeypatch.setattr(channel, "TemplateMatcher", TM)
 
     hotkey_calls: list[tuple[list[str], float]] = []
+
+    class KH:
+        def hotkey(self, keys, duration=0.05):
+            hotkey_calls.append((keys, duration))
+
+    custom_hotkeys = {1: "f7", 2: "f8"}
+
+    cs = channel.ChannelSwitcher(
+        DummyWin(), str(tmp_path), dry=False, keys=KH(), hotkeys=custom_hotkeys
+    )
+
+    assert cs.hotkeys == custom_hotkeys
+
+    assert cs.switch(1, post_wait=0) is True
+    assert cs.switch(2, post_wait=0) is True
+
+    assert hotkey_calls == [(["f7"], 0.05), (["f8"], 0.05)]
 
 def test_next_wraps(tmp_path):
     _setup_templates(tmp_path)
