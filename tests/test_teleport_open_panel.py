@@ -122,4 +122,3 @@ def test_teleport_slot_uses_configured_coordinates():
     assert calls == [("click", 30, 40), ("tap", "e")]
 
     tc.get_config = orig
-

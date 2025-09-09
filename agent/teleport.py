@@ -130,9 +130,7 @@ class Teleporter:
 
     def teleport(self, slot: int, page_label: str | None = None) -> TeleportResult:
         """Compatibility wrapper named ``teleport``."""
-
         return self.teleport_slot(slot, page_label)
 
 
 __all__ = ["Teleporter", "TeleportResult"]
-
