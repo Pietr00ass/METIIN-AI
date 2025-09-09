@@ -13,8 +13,9 @@ from agent_rl import Metin2Env
 try:  # pragma: no cover - optional dependency for tests
     from stable_baselines3 import A2C, DQN, PPO
     from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
+    from stable_baselines3.common.callbacks import EvalCallback
 except Exception:  # pragma: no cover - allow importing without sb3 installed
-    A2C = DQN = PPO = DummyVecEnv = VecTransposeImage = None  # type: ignore
+    A2C = DQN = PPO = DummyVecEnv = VecTransposeImage = EvalCallback = None  # type: ignore
 
 
 ALGORITHMS = {
@@ -55,6 +56,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--target-update-interval", type=int, default=1000)
     ap.add_argument("--tensorboard-log", default="runs/rl", help="log dir")
     ap.add_argument("--save-name", default="metin2_rl_agent")
+    ap.add_argument("--eval-freq", type=int, default=10000, help="Evaluation frequency")
 
     args = ap.parse_args()
     h, w = args.frame_shape
@@ -111,6 +113,30 @@ def main() -> None:
     ):  # pragma: no cover - fallback when vec env wrappers are unavailable
         env = env_obj
 
+    eval_env = None
+    eval_callback = None
+    eval_freq = getattr(args, "eval_freq", 10000)
+    if EvalCallback is not None:
+        try:
+            eval_env_obj = Metin2Env(frame_shape=(*args.frame_shape, 3))
+            try:
+                eval_env = DummyVecEnv([lambda: eval_env_obj])
+                eval_env = VecTransposeImage(eval_env)
+            except Exception:  # pragma: no cover - fallback when vec env wrappers are unavailable
+                eval_env = eval_env_obj
+
+            eval_callback = EvalCallback(
+                eval_env,
+                best_model_save_path=str(run_dir / "best_model"),
+                log_path=str(run_dir / "logs"),
+                eval_freq=eval_freq,
+            )
+        except Exception:  # pragma: no cover - allow running without eval callback
+            if eval_env is not None:
+                eval_env.close()
+            eval_env = None
+            eval_callback = None
+
     kwargs = dict(
         learning_rate=args.learning_rate,
         tensorboard_log=str(run_dir) if tb_available else None,
@@ -129,13 +155,18 @@ def main() -> None:
     model = algo_cls("CnnPolicy", env, **kwargs)
     logging.info("Starting training for %s steps", args.total_timesteps)
     try:
-        model.learn(total_timesteps=args.total_timesteps)
+        learn_kwargs = {"total_timesteps": args.total_timesteps}
+        if eval_callback is not None:
+            learn_kwargs["callback"] = eval_callback
+        model.learn(**learn_kwargs)
         model_path = run_dir / args.save_name
         model.save(str(model_path))
         logging.info("Model saved to %s", model_path)
     finally:
         # Guarantee cleanup even if training fails
         env.close()
+        if eval_env is not None:
+            eval_env.close()
 
 
 if __name__ == "__main__":
