@@ -33,11 +33,17 @@ def update_repository(repo_dir: Path | None = None) -> bool:
     if repo_dir is None:
         repo_dir = Path(__file__).resolve().parents[1]
 
+    logger.info("Checking for updates from GitHub...")
     try:
-        logger.info("Checking for updates from GitHub...")
         subprocess.check_call(["git", "pull", "--ff-only"], cwd=repo_dir)
-        _notify("Repository is up to date.")
-        return True
+    except FileNotFoundError:
+        message = "'git' executable not found. Please install Git."
+        logger.error(message)
+        _notify(message, level=logging.ERROR)
+        return False
     except subprocess.CalledProcessError:
         _notify("Failed to update repository.", level=logging.ERROR)
         return False
+    else:
+        _notify("Repository is up to date.")
+        return True
