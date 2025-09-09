@@ -1,7 +1,6 @@
 import os
 import sys
 import types
-from pathlib import Path
 
 # Ensure repository root on path and stub optional dependencies
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -14,50 +13,28 @@ sys.modules.setdefault("yaml", yaml_stub)
 # Minimal pydantic stub providing BaseModel and Field
 _pydantic = types.ModuleType("pydantic")
 
-class _BaseModel:
+
+class _BaseModel:  # pragma: no cover - simple stub
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-def _Field(default=None, default_factory=None, **kwargs):
+
+def _Field(default=None, default_factory=None, **kwargs):  # pragma: no cover
     if default_factory is not None:
         return default_factory()
     return default
 
+
 _pydantic.BaseModel = _BaseModel
 _pydantic.Field = _Field
 sys.modules.setdefault("pydantic", _pydantic)
-
-# Stub easyocr to avoid heavy import
-sys.modules.setdefault("easyocr", types.SimpleNamespace(Reader=lambda *a, **k: None))
-
-# Provide a minimal numpy stub for imports
-sys.modules.setdefault("numpy", types.ModuleType("numpy"))
-
-# Stub PIL.Image used for image operations
-class _FakeImage:
-    def __init__(self, size):
-        self.size = size
-
-    def resize(self, size, resample=None):
-        return _FakeImage(size)
-
-
-def _fake_open(path):  # pylint: disable=unused-argument
-    return _FakeImage(_fake_open.size)
-
-
-PIL_stub = types.ModuleType("PIL")
-PIL_stub.Image = types.SimpleNamespace(open=_fake_open, LANCZOS=0)
-sys.modules.setdefault("PIL", PIL_stub)
-_fake_open.size = (10, 10)
 
 # Stub pyautogui to avoid real key presses
 pyautogui_stub = types.SimpleNamespace(
     moveTo=lambda *a, **k: None,
     click=lambda *a, **k: None,
     press=lambda *a, **k: None,
-    locateOnScreen=lambda *a, **k: None,
     PAUSE=0,
 )
 sys.modules.setdefault("pyautogui", pyautogui_stub)
@@ -67,95 +44,82 @@ recorder_pkg = types.ModuleType("recorder")
 recorder_pkg.__path__ = []
 wc_mod = types.ModuleType("recorder.window_capture")
 
-class WindowCapture:
+
+class WindowCapture:  # pragma: no cover - minimal stub
     pass
+
 
 wc_mod.WindowCapture = WindowCapture
 recorder_pkg.window_capture = wc_mod
 sys.modules.setdefault("recorder", recorder_pkg)
 sys.modules.setdefault("recorder.window_capture", wc_mod)
 
-# Stub agent.template_matcher used during import
-tm_stub = types.ModuleType("agent.template_matcher")
-
-class _TM:
-    def __init__(self, *a, **k):
-        pass
-
-tm_stub.TemplateMatcher = _TM
-sys.modules.setdefault("agent.template_matcher", tm_stub)
-
 sys.modules.pop("agent.teleport", None)
-from agent.teleport import Teleporter
+from agent.teleport import Teleporter, TeleportResult
 
 
-def test_open_panel_detects_non_first_page():
+def test_open_panel_sends_hotkey_and_returns_true():
     teleporter = Teleporter.__new__(Teleporter)
     teleporter.dry = False
-    hotkey_calls: list[tuple[list[str], float]] = []
+    calls: list[tuple[list[str], float]] = []
 
     def _hotkey(keys, duration=0.05):
-        hotkey_calls.append((keys, duration))
+        calls.append((keys, duration))
 
     teleporter.keys = types.SimpleNamespace(hotkey=_hotkey)
     teleporter.open_panel_delay = 0
-    teleporter.page_thresh = 0.5
     teleporter.win = types.SimpleNamespace(
         focus=lambda: None,
         is_foreground=lambda: True,
-        region=(0, 0, 100, 100),
     )
-    teleporter._frame = lambda: types.SimpleNamespace(shape=(1, 1, 3))
-
-    call_order = []
-
-    class TM:
-        dir = Path(".")
-
-        def find(self, frame, name, thresh, roi, multi_scale):
-            call_order.append(name)
-            if name == "strona_II":
-                return object()
-            return None
-
-    teleporter.tm = TM()
 
     assert teleporter.open_panel() is True
-    assert hotkey_calls == [(["ctrl", "x"], 0.05)]
-    assert call_order[:2] == ["strona_I", "strona_II"]
+    assert calls == [(["ctrl", "x"], 0.05)]
 
 
-def test_open_panel_scales_large_template():
+def test_open_panel_returns_false_when_not_foreground():
     teleporter = Teleporter.__new__(Teleporter)
     teleporter.dry = False
     teleporter.keys = types.SimpleNamespace(hotkey=lambda *a, **k: None)
     teleporter.open_panel_delay = 0
-    teleporter.page_thresh = 0.5
     teleporter.win = types.SimpleNamespace(
         focus=lambda: None,
-        is_foreground=lambda: True,
-        region=(0, 0, 100, 100),
+        is_foreground=lambda: False,
     )
-    teleporter._frame = lambda: types.SimpleNamespace(shape=(1, 1, 3))
 
-    class TM:
-        dir = Path(".")
+    assert teleporter.open_panel() is False
 
-        def find(self, frame, name, thresh, roi, multi_scale):  # noqa: ARG002
-            return None
 
-    teleporter.tm = TM()
+def test_teleport_slot_uses_configured_coordinates():
+    import agent.teleport_config as tc
 
-    # simulate template larger than search region
-    _fake_open.size = (120, 30)
+    orig = tc.get_config
 
-    calls: list[tuple[tuple[int, int], tuple[int, int, int, int]]] = []
+    class _Cfg:
+        delay_after_panel = 0
+        delay_after_teleport = 0
+        positions = [(10, 20), (30, 40)]
 
-    def _locate(template, region=None, confidence=None):  # noqa: ARG001
-        calls.append((template.size, region))
-        return object()
+    tc.get_config = lambda *a, **k: _Cfg()
 
-    pyautogui_stub.locateOnScreen = _locate
+    teleporter = Teleporter.__new__(Teleporter)
+    teleporter.dry = False
+    teleporter.open_panel_delay = 0
+    teleporter.row_click_delay = 0
+    teleporter.after_load_delay = 0
+    teleporter.open_panel = lambda *a, **k: True
+    calls = []
 
-    assert teleporter.open_panel() is True
-    assert calls == [((80, 20), (0, 80, 100, 20))]
+    def _safe_click(x, y):
+        calls.append(("click", x, y))
+
+    teleporter._safe_click = _safe_click  # type: ignore
+    teleporter.keys = types.SimpleNamespace(tap=lambda k: calls.append(("tap", k)))
+
+    res = teleporter.teleport_slot(2, None)
+
+    assert res is TeleportResult.OK
+    assert calls == [("click", 30, 40), ("tap", "e")]
+
+    tc.get_config = orig
+
