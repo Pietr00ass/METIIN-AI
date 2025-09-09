@@ -34,10 +34,23 @@ sys.modules.setdefault("easyocr", types.SimpleNamespace(Reader=lambda *a, **k: N
 # Provide a minimal numpy stub for imports
 sys.modules.setdefault("numpy", types.ModuleType("numpy"))
 
-# Stub PIL.Image used for saving screenshots
+# Stub PIL.Image used for image operations
+class _FakeImage:
+    def __init__(self, size):
+        self.size = size
+
+    def resize(self, size, resample=None):
+        return _FakeImage(size)
+
+
+def _fake_open(path):  # pylint: disable=unused-argument
+    return _FakeImage(_fake_open.size)
+
+
 PIL_stub = types.ModuleType("PIL")
-PIL_stub.Image = types.SimpleNamespace()
+PIL_stub.Image = types.SimpleNamespace(open=_fake_open, LANCZOS=0)
 sys.modules.setdefault("PIL", PIL_stub)
+_fake_open.size = (10, 10)
 
 # Stub pyautogui to avoid real key presses
 pyautogui_stub = types.SimpleNamespace(
@@ -110,3 +123,39 @@ def test_open_panel_detects_non_first_page():
     assert teleporter.open_panel() is True
     assert hotkey_calls == [(["ctrl", "x"], 0.05)]
     assert call_order[:2] == ["strona_I", "strona_II"]
+
+
+def test_open_panel_scales_large_template():
+    teleporter = Teleporter.__new__(Teleporter)
+    teleporter.dry = False
+    teleporter.keys = types.SimpleNamespace(hotkey=lambda *a, **k: None)
+    teleporter.open_panel_delay = 0
+    teleporter.page_thresh = 0.5
+    teleporter.win = types.SimpleNamespace(
+        focus=lambda: None,
+        is_foreground=lambda: True,
+        region=(0, 0, 100, 100),
+    )
+    teleporter._frame = lambda: types.SimpleNamespace(shape=(1, 1, 3))
+
+    class TM:
+        dir = Path(".")
+
+        def find(self, frame, name, thresh, roi, multi_scale):  # noqa: ARG002
+            return None
+
+    teleporter.tm = TM()
+
+    # simulate template larger than search region
+    _fake_open.size = (120, 30)
+
+    calls: list[tuple[tuple[int, int], tuple[int, int, int, int]]] = []
+
+    def _locate(template, region=None, confidence=None):  # noqa: ARG001
+        calls.append((template.size, region))
+        return object()
+
+    pyautogui_stub.locateOnScreen = _locate
+
+    assert teleporter.open_panel() is True
+    assert calls == [((80, 20), (0, 80, 100, 20))]

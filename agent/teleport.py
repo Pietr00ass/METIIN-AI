@@ -138,10 +138,10 @@ class Teleporter:
 
         L, T, w, h = self.win.region
         roi = (
-            int(w * 0.05),
-            int(h * 0.82),
-            int(w * 0.9),
-            int(h * 0.16),
+            0,
+            int(h * 0.80),
+            w,
+            int(h * 0.20),
         )
         screen_roi = (L + roi[0], T + roi[1], roi[2], roi[3])
         page_refs = [
@@ -196,8 +196,27 @@ class Teleporter:
                     ref_name,
                 )
                 try:
+                    template_img = Image.open(template_path)
+                    tw, th = template_img.size
+                    sr_w, sr_h = screen_roi[2], screen_roi[3]
+                    if tw > sr_w or th > sr_h:
+                        scale = min(sr_w / tw, sr_h / th)
+                        if scale < 1:
+                            new_size = (
+                                max(1, int(tw * scale)),
+                                max(1, int(th * scale)),
+                            )
+                            template_img = template_img.resize(new_size, Image.LANCZOS)
+                            logger.debug(
+                                "Resized template %s from (%d, %d) to %s to fit region %s",
+                                ref_name,
+                                tw,
+                                th,
+                                new_size,
+                                screen_roi,
+                            )
                     found = pyautogui.locateOnScreen(
-                        str(template_path),
+                        template_img,
                         region=screen_roi,
                         confidence=self.page_thresh,
                     )
