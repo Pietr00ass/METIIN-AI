@@ -62,6 +62,14 @@ Train an agent with [stable-baselines3](https://stable-baselines3.readthedocs.io
 ```bash
 python training/train_rl_agent.py --algo dqn --total-timesteps 10000
 ```
+The replay buffer stores both current and next observations, so memory usage is
+approximately `buffer_size × H × W × 3 × dtype × 2`. With `uint8` 84×84 RGB
+frames this is ~42 KB per transition (~420 MB for the default `--buffer-size
+10000`). Reduce the buffer if RAM is limited, e.g.:
+
+```bash
+python training/train_rl_agent.py --algo dqn --total-timesteps 10000 --buffer-size 50000
+```
 
 TensorBoard logs and the final model are stored under `runs/rl/<algo_timestamp>/`.
 
