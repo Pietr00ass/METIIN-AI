@@ -58,7 +58,14 @@ class SearchManager:
                 self.teleporter.teleport_slot(slot, self.tp_page)
                 self._teleports += 1
                 self.location_idx = (self.location_idx + 1) % len(self.tp_slots)
-                if self._teleports % self.channel_every == 0 or self.location_idx == 0:
+                # Change channel only after completing the configured number of
+                # teleports.  Previously the channel was also switched whenever
+                # the teleport slot index wrapped around which caused a channel
+                # change after every cycle of available slots (e.g. after two
+                # teleports when only two slots were configured).  The new logic
+                # matches the requirement to switch channels strictly after the
+                # specified number of position changes.
+                if self._teleports % self.channel_every == 0:
                     if self.channels:
                         ch = self.channels[self.channel_idx % len(self.channels)]
                         try:
