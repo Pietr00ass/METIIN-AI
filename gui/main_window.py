@@ -538,6 +538,10 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         )
         self.btn_agent.setCheckable(True)
+        self.btn_hunt = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Start polowania")
+        )
+        self.btn_hunt.setCheckable(True)
         self.btn_cycle = QtWidgets.QPushButton(
             QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
         )
@@ -565,6 +569,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_preview,
             self.btn_record,
             self.btn_agent,
+            self.btn_hunt,
             self.btn_cycle,
             self.btn_ch,
             self.btn_stop,
@@ -691,6 +696,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_preview.toggled.connect(self.toggle_preview)
         self.btn_record.toggled.connect(self.record_data)
         self.btn_agent.toggled.connect(self.start_agent)
+        self.btn_hunt.toggled.connect(self.start_hunt)
         self.btn_cycle.toggled.connect(self.start_cycle)
         self.btn_ch.toggled.connect(self.change_channel)
         self.btn_stop.clicked.connect(self.stop_all)
@@ -811,6 +817,9 @@ class MainWindow(QtWidgets.QMainWindow):
             QtCore.QCoreApplication.translate(
                 "MainWindow", "Start agenta (YOLO + WASD)"
             )
+        )
+        self.btn_hunt.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Start polowania")
         )
         self.btn_cycle.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Cykl 8×8 (sloty×kanały)")
@@ -1172,6 +1181,31 @@ class MainWindow(QtWidgets.QMainWindow):
             QtCore.QCoreApplication.translate("MainWindow", "Start cyklu 8×8…")
         )
 
+    def start_hunt(self, checked: bool) -> None:
+        if checked:
+            try:
+                if not self.btn_preview.isChecked():
+                    self.btn_preview.setChecked(True)
+                if not self.btn_agent.isChecked():
+                    self.btn_agent.setChecked(True)
+                if not self.btn_cycle.isChecked():
+                    self.btn_cycle.setChecked(True)
+                self.btn_hunt.setText(
+                    QtCore.QCoreApplication.translate(
+                        "MainWindow", "Stop polowania"
+                    )
+                )
+            except Exception:
+                self.btn_hunt.setChecked(False)
+                self.stop_all()
+        else:
+            self.stop_all()
+            self.btn_hunt.setText(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Start polowania"
+                )
+            )
+
     def change_channel(self, checked: bool) -> None:
         if not checked:
             self.btn_ch.setText(
@@ -1235,6 +1269,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_preview,
             self.btn_record,
             self.btn_agent,
+            self.btn_hunt,
             self.btn_cycle,
             self.btn_ch,
             self.btn_run_rl,
