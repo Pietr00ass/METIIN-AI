@@ -446,6 +446,59 @@ class RLTrainThread(QtCore.QThread):
             self.finished.emit()
 
 
+class RLAgentThread(QtCore.QThread):
+    """Thread executing a trained RL policy in the environment."""
+
+    status = QtCore.Signal(str)
+    finished = QtCore.Signal()
+
+    def __init__(self, model_path: str) -> None:
+        super().__init__()
+        self.model_path = model_path
+        self._stop = False
+
+    def stop(self) -> None:
+        self._stop = True
+
+    def run(self) -> None:  # pragma: no cover - GUI thread
+        env = None
+        try:
+            from agent_rl import Metin2Env
+            from stable_baselines3 import DQN
+
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Start RL agent…"
+                )
+            )
+            env = Metin2Env(dry=False)
+            model = DQN.load(self.model_path)
+            obs, _ = env.reset()
+            while not self._stop:
+                action, _state = model.predict(obs)
+                obs, _, terminated, truncated, _ = env.step(int(action))
+                if terminated or truncated:
+                    obs, _ = env.reset()
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "RL agent zatrzymany."
+                )
+            )
+        except Exception as exc:  # pragma: no cover - UI feedback
+            self.status.emit(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Błąd RL: {exc}"
+                ).format(exc=exc)
+            )
+        finally:
+            if env is not None:
+                try:
+                    env.close()
+                except Exception:
+                    pass
+            self.finished.emit()
+
+
 class MainWindow(QtWidgets.QMainWindow):
     """Main GUI window with controls for vision agent automation."""
 
@@ -494,6 +547,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # expose sub-widgets for backward compatibility
         self.title_edit = self.settings_panel.title_edit
         self.model_path = self.settings_panel.model_path
+        self.rl_model_path = self.settings_panel.rl_model_path
         self.classes_edit = self.settings_panel.classes_edit
         self.templates_dir_edit = self.settings_panel.templates_dir_edit
 
@@ -629,6 +683,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_stop = QtWidgets.QPushButton(
             QtCore.QCoreApplication.translate("MainWindow", "STOP (F12)")
         )
+        self.btn_run_rl = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Start RL")
+        )
+        self.btn_run_rl.setCheckable(True)
         self.btn_train_rl = QtWidgets.QPushButton(
             QtCore.QCoreApplication.translate("MainWindow", "Trenuj RL")
         )
@@ -645,6 +703,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_cycle,
             self.btn_ch,
             self.btn_stop,
+            self.btn_run_rl,
             self.btn_train_rl,
             self.btn_train,
         ]:
@@ -760,6 +819,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.channel_thread: QtCore.QThread | None = None
         self.train_thread: QtCore.QThread | None = None
         self.rl_thread: QtCore.QThread | None = None
+        self.rl_agent_thread: QtCore.QThread | None = None
         self._hotkey_listener = None
 
         # connections
@@ -771,6 +831,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_ch.toggled.connect(self.change_channel)
         self.btn_stop.clicked.connect(self.stop_all)
         self.btn_train_rl.toggled.connect(self.train_rl_agent)
+        self.btn_run_rl.toggled.connect(self.run_rl_agent)
         self.btn_train.toggled.connect(self.train_yolo_api)
         self.btn_save_cfg.clicked.connect(self.save_config)
         self.btn_load_cfg.clicked.connect(self.load_config)
@@ -795,6 +856,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.title_edit.setText(self.settings.value("window/title", ""))
         self.model_path.setText(
             self.settings.value("paths/model", self.model_path.text())
+        )
+        self.rl_model_path.setText(
+            self.settings.value("paths/rl_model", self.rl_model_path.text())
         )
         self.templates_dir_edit.setText(
             self.settings.value("paths/templates_dir", self.templates_dir_edit.text())
@@ -921,6 +985,9 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.btn_stop.setText(
             QtCore.QCoreApplication.translate("MainWindow", "STOP (F12)")
+        )
+        self.btn_run_rl.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Start RL")
         )
         self.btn_train_rl.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Trenuj RL")
@@ -1362,6 +1429,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.rl_thread and self.rl_thread.isRunning():
             self.rl_thread.wait()
             self.rl_thread = None
+        if self.rl_agent_thread and self.rl_agent_thread.isRunning():
+            try:
+                self.rl_agent_thread.stop()
+            except Exception:
+                pass
+            self.rl_agent_thread.wait()
+            self.rl_agent_thread = None
         if self.preview_thread and self.preview_thread.isRunning():
             self.preview_thread.stop()
             self.preview_thread.wait()
@@ -1373,6 +1447,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_tp_hunt,
             self.btn_cycle,
             self.btn_ch,
+            self.btn_run_rl,
             self.btn_train,
             self.btn_train_rl,
         ]:
@@ -1380,6 +1455,56 @@ class MainWindow(QtWidgets.QMainWindow):
         self.set_status(
             QtCore.QCoreApplication.translate(
                 "MainWindow", "STOP – wszystkie klawisze zwolnione."
+            )
+        )
+
+    def run_rl_agent(self, checked: bool) -> None:
+        if not checked:
+            if self.rl_agent_thread:
+                try:
+                    self.rl_agent_thread.stop()
+                except Exception:
+                    pass
+                self.rl_agent_thread.wait()
+                self.rl_agent_thread = None
+            self.btn_run_rl.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Start RL")
+            )
+            self.set_status(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Agent RL zatrzymany."
+                )
+            )
+            return
+        model_path = self.rl_model_path.text().strip()
+        if not model_path:
+            self.set_status(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Podaj ścieżkę modelu RL."
+                )
+            )
+            self.btn_run_rl.setChecked(False)
+            return
+        self.rl_agent_thread = RLAgentThread(model_path)
+        self.rl_agent_thread.status.connect(self.set_status)
+        self.rl_agent_thread.finished.connect(
+            lambda: self.btn_run_rl.setChecked(False)
+        )
+        self.rl_agent_thread.finished.connect(
+            lambda: self.btn_run_rl.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Start RL")
+            )
+        )
+        self.rl_agent_thread.finished.connect(
+            lambda: setattr(self, "rl_agent_thread", None)
+        )
+        self.rl_agent_thread.start()
+        self.btn_run_rl.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Stop RL")
+        )
+        self.set_status(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Uruchomiono agenta RL."
             )
         )
 
@@ -1429,6 +1554,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings.setValue("window/geometry", self.saveGeometry())
         self.settings.setValue("window/title", self.title_edit.text())
         self.settings.setValue("paths/model", self.model_path.text())
+        self.settings.setValue("paths/rl_model", self.rl_model_path.text())
         self.settings.setValue("paths/templates_dir", self.templates_dir_edit.text())
         self.settings.setValue("ui/scale", self.scale_spin.value())
         self.settings.sync()
