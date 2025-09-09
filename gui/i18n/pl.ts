@@ -185,23 +185,22 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="252"/>
-        <location filename="../main_window.py" line="491"/>
-        <location filename="../main_window.py" line="936"/>
-        <source>Teleportuj i poluj</source>
+        <location filename="../main_window.py" line="541"/>
+        <location filename="../main_window.py" line="821"/>
+        <source>Start polowania</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="254"/>
-        <location filename="../main_window.py" line="492"/>
+        <location filename="../main_window.py" line="546"/>
+        <location filename="../main_window.py" line="824"/>
         <location filename="../main_window.py" line="956"/>
         <location filename="../main_window.py" line="983"/>
         <source>Cykl 8×8 (sloty×kanały)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main_window.py" line="256"/>
-        <location filename="../main_window.py" line="493"/>
+        <location filename="../main_window.py" line="548"/>
+        <location filename="../main_window.py" line="825"/>
         <location filename="../main_window.py" line="993"/>
         <location filename="../main_window.py" line="1037"/>
         <source>Zmień kanał</source>
@@ -422,7 +421,7 @@
     </message>
     <message>
         <location filename="../main_window.py" line="920"/>
-        <source>Zakończono &apos;Teleportuj i poluj&apos;.</source>
+        <source>Zakończono polowanie.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -432,17 +431,17 @@
     </message>
     <message>
         <location filename="../main_window.py" line="930"/>
-        <source>Błąd teleport+poluj: {exc}</source>
+        <source>Błąd polowania: {exc}</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../main_window.py" line="941"/>
-        <source>Stop &apos;Teleportuj i poluj&apos;</source>
+        <source>Stop polowania</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../main_window.py" line="942"/>
-        <source>Teleportuję i poluję…</source>
+        <source>Rozpoczynam polowanie…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
