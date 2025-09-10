@@ -99,10 +99,21 @@ class CycleFarm:
     def stop(self):
         """Stop agent components gracefully.
 
-        Only expected errors from the underlying helpers are swallowed. Any
-        such errors are logged for debugging instead of silenced.
+        Delegates cleanup to the loaded strategy when it exposes a ``stop``
+        method. Only expected errors from the underlying helpers are
+        swallowed. Any such errors are logged for debugging instead of
+        silenced.
         """
         self._stop = True
+
+        stop_fn = getattr(self.agent, "stop", None)
+        if callable(stop_fn):
+            try:
+                stop_fn()
+            except Exception as exc:  # pragma: no cover - best effort cleanup
+                logger.exception(
+                    "Błąd podczas zatrzymywania strategii: %s", exc
+                )
 
         try:
             self.keys.stop()
