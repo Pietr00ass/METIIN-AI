@@ -140,6 +140,17 @@ WasdVisionAgent(cfg).run()
 PY
 ```
 
+### Strategy Lifecycle
+Custom automation strategies implement three lifecycle hooks:
+
+- `setup(cfg, window_capture)` – initialise resources.
+- `step()` – perform a single iteration of the strategy.
+- `stop()` – release any held resources. This method is called when the
+  agent shuts down and should be safe to invoke multiple times.
+
+Calling `stop()` ensures that windows, keyboard handlers and other helpers are
+cleanly closed.
+
 ## Configuration
 All runtime options live in [`config/agent.yaml`](config/agent.yaml).  Key fields include:
 

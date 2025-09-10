@@ -9,7 +9,7 @@ import numpy as np
 from agent import AgentConfig, get_config
 from agent.channel import ChannelSwitcher
 from agent.detector import ObjectDetector
-from agent.strategy import load_strategy
+from agent.strategy import AgentStrategy, load_strategy
 from agent.scanner import AreaScanner
 from agent.teleport import Teleporter
 from agent.wasd import KeyHold
@@ -55,7 +55,7 @@ class CycleFarm:
             keys=self.keys,
             hotkeys=cfg.channel.hotkeys,
         )
-        self.agent = load_strategy(cfg, self.win)
+        self.agent: AgentStrategy = load_strategy(cfg, self.win)
         self.det = ObjectDetector(
             cfg.paths.model, cfg.detector.classes, cv2_threads=cfg.detector.cv2_threads
         )
@@ -99,21 +99,18 @@ class CycleFarm:
     def stop(self):
         """Stop agent components gracefully.
 
-        Delegates cleanup to the loaded strategy when it exposes a ``stop``
-        method. Only expected errors from the underlying helpers are
-        swallowed. Any such errors are logged for debugging instead of
-        silenced.
+        Delegates cleanup to the loaded strategy. Only expected errors from
+        the underlying helpers are swallowed. Any such errors are logged for
+        debugging instead of silenced.
         """
         self._stop = True
 
-        stop_fn = getattr(self.agent, "stop", None)
-        if callable(stop_fn):
-            try:
-                stop_fn()
-            except Exception as exc:  # pragma: no cover - best effort cleanup
-                logger.exception(
-                    "Błąd podczas zatrzymywania strategii: %s", exc
-                )
+        try:
+            self.agent.stop()
+        except Exception as exc:  # pragma: no cover - best effort cleanup
+            logger.exception(
+                "Błąd podczas zatrzymywania strategii: %s", exc
+            )
 
         try:
             self.keys.stop()

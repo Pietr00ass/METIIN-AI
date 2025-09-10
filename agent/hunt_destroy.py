@@ -162,7 +162,7 @@ class HuntDestroy(AgentStrategy):
             self.movement.move(tgt, steer, (W, H))
         self._last_tgt = tgt
 
-    def stop(self):
+    def stop(self) -> None:
         """Release resources held by the strategy.
 
         The method may be invoked multiple times.  Missing attributes or

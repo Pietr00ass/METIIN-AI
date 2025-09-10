@@ -14,9 +14,9 @@ def test_cycle_sequence(monkeypatch):
     sys.modules.setdefault("pygetwindow", types.SimpleNamespace(getAllWindows=lambda: []))
     sys.modules.setdefault("win32con", types.SimpleNamespace())
     sys.modules.setdefault("win32gui", types.SimpleNamespace())
-    sys.modules.setdefault(
-        "cv2", types.SimpleNamespace(TM_CCOEFF_NORMED=0, setNumThreads=lambda n: None)
-    )
+    sys.modules[
+        "cv2"
+    ] = types.SimpleNamespace(TM_CCOEFF_NORMED=0, setNumThreads=lambda n: None)
     sys.modules.setdefault("easyocr", types.SimpleNamespace())
     pil = types.ModuleType("PIL")
     pil_image = types.ModuleType("PIL.Image")
@@ -71,6 +71,9 @@ def test_cycle_sequence(monkeypatch):
             pass
 
         def step(self):
+            pass
+
+        def stop(self) -> None:
             pass
 
     class DummyDetector:

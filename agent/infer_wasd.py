@@ -8,7 +8,7 @@ import numpy as np
 from recorder.window_capture import WindowCapture
 
 from . import AgentConfig, TeleportSlot
-from .strategy import load_strategy
+from .strategy import AgentStrategy, load_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class WasdVisionAgent:
         self.teleport_slots = list(cfg.teleport.slots)
         self.win = WindowCapture(cfg.window.title_substr)
         self.period = 1 / 15
-        self.hd = None
+        self.hd: AgentStrategy | None = None
 
     # ------------------------------------------------------------------
     # Public mutators allowing user customisation
@@ -52,14 +52,11 @@ class WasdVisionAgent:
                 self.hd.step()
                 time.sleep(self.period)
         except KeyboardInterrupt:
+            logger.info("Agent interrupted by user")
+        finally:
             if self.hd:
                 try:
-                    self.hd.teleporter.close_panel()
-                except Exception as exc:
-                    logger.warning("Failed to close teleporter panel: %s", exc)
-                try:
-                    self.hd.keys.release_all()
-                except Exception as exc:
-                    logger.warning("Failed to release keys: %s", exc)
-        finally:
+                    self.hd.stop()
+                except Exception as exc:  # pragma: no cover - best effort cleanup
+                    logger.warning("Failed to stop strategy: %s", exc)
             self.win.close()
