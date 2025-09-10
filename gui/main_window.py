@@ -691,6 +691,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # thread references
         self.preview_thread: PreviewWorker | None = None
         self.agent_thread: QtCore.QThread | None = None
+        self.cycle_thread: QtCore.QThread | None = None
         self.record_thread: QtCore.QThread | None = None
         self.channel_thread: QtCore.QThread | None = None
         self.train_thread: QtCore.QThread | None = None
@@ -1155,10 +1156,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def start_cycle(self, checked: bool) -> None:
         if not checked:
-            if self.agent_thread:
-                self.agent_thread.stop()
-                self.agent_thread.wait()
-                self.agent_thread = None
+            if self.cycle_thread:
+                try:
+                    self.cycle_thread.stop()
+                except Exception:
+                    pass
+                self.cycle_thread.wait()
+                self.cycle_thread = None
             self.btn_cycle.setText(
                 QtCore.QCoreApplication.translate(
                     "MainWindow", "Cykl 8×8 (sloty×kanały)"
@@ -1169,17 +1173,23 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             return
         cfg = self.build_cfg()
-        self.agent_thread = CycleThread(cfg, None)
-        self.agent_thread.status.connect(self.set_status)
-        self.agent_thread.finished.connect(lambda: self.btn_cycle.setChecked(False))
-        self.agent_thread.finished.connect(
+        if self.cycle_thread and self.cycle_thread.isRunning():
+            try:
+                self.cycle_thread.stop()
+            except Exception:
+                pass
+            self.cycle_thread.wait()
+        self.cycle_thread = CycleThread(cfg, None)
+        self.cycle_thread.status.connect(self.set_status)
+        self.cycle_thread.finished.connect(lambda: self.btn_cycle.setChecked(False))
+        self.cycle_thread.finished.connect(
             lambda: self.btn_cycle.setText(
                 QtCore.QCoreApplication.translate(
                     "MainWindow", "Cykl 8×8 (sloty×kanały)"
                 )
             )
         )
-        self.agent_thread.start()
+        self.cycle_thread.start()
         self.btn_cycle.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Stop cyklu 8×8")
         )
@@ -1190,11 +1200,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def start_hunt(self, checked: bool) -> None:
         if checked:
             try:
-                if not self.btn_preview.isChecked():
+                if not self.preview_thread or not self.preview_thread.isRunning():
                     self.btn_preview.setChecked(True)
-                if not self.btn_agent.isChecked():
+                if not self.agent_thread or not self.agent_thread.isRunning():
                     self.btn_agent.setChecked(True)
-                if not self.btn_cycle.isChecked():
+                if not self.cycle_thread or not self.cycle_thread.isRunning():
                     self.btn_cycle.setChecked(True)
                 self.btn_hunt.setText(
                     QtCore.QCoreApplication.translate(
@@ -1248,6 +1258,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
             self.agent_thread.wait()
             self.agent_thread = None
+        if self.cycle_thread and self.cycle_thread.isRunning():
+            try:
+                self.cycle_thread.stop()
+            except Exception:
+                pass
+            self.cycle_thread.wait()
+            self.cycle_thread = None
         if self.record_thread and self.record_thread.isRunning():
             self.record_thread.wait()
             self.record_thread = None
