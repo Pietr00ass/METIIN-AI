@@ -161,3 +161,41 @@ class HuntDestroy(AgentStrategy):
         else:
             self.movement.move(tgt, steer, (W, H))
         self._last_tgt = tgt
+
+    def stop(self):
+        """Release resources held by the strategy.
+
+        The method may be invoked multiple times.  Missing attributes or
+        errors from underlying helpers are ignored so that ``stop`` can be
+        safely called regardless of partial initialisation.
+        """
+
+        # Key handler used by the strategy itself
+        try:
+            if getattr(self, "keys", None):
+                self.keys.stop()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("Błąd podczas zatrzymywania klawiszy: %s", exc)
+
+        # Teleporter has its own ``KeyHold`` instance
+        try:
+            tp = getattr(self, "teleporter", None)
+            if tp and getattr(tp, "keys", None):
+                tp.keys.stop()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("Błąd podczas zatrzymywania teleportu: %s", exc)
+
+        # Cancel any ongoing area scan
+        try:
+            scanner = getattr(self, "scanner", None)
+            if scanner and hasattr(scanner, "cancel"):
+                scanner.cancel()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("Błąd podczas anulowania skanowania: %s", exc)
+
+        # Close window capture if available
+        try:
+            if getattr(self, "win", None) and hasattr(self.win, "close"):
+                self.win.close()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("Błąd podczas zamykania okna: %s", exc)
