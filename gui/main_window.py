@@ -17,7 +17,7 @@ from PySide6.QtCore import QSettings
 
 from agent.channel import ChannelSwitcher
 from agent.cycle import CycleFarm
-from agent.strategy import load_strategy
+from agent.strategy import AgentStrategy, load_strategy
 from agent.wasd import KeyHold
 from gui.preview import PreviewWorker
 from gui.teleport_config_dialog import TeleportConfigDialog
@@ -107,6 +107,7 @@ class AgentThread(QtCore.QThread):
 
     def run(self) -> None:  # pragma: no cover - GUI thread
         win = WindowCapture(self.cfg["window"]["title_substr"])
+        agent: AgentStrategy | None = None
         try:
             if not win.locate(timeout=5):
                 self.status.emit(
@@ -127,6 +128,11 @@ class AgentThread(QtCore.QThread):
                 ).format(exc=exc)
             )
         finally:
+            if agent is not None:
+                try:
+                    agent.stop()
+                except Exception:  # pragma: no cover - best effort cleanup
+                    pass
             win.close()
             self.finished.emit()
 

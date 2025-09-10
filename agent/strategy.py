@@ -17,6 +17,10 @@ class AgentStrategy(Protocol):
         """Execute a single step of the strategy."""
         ...
 
+    def stop(self) -> None:
+        """Release any resources held by the strategy."""
+        ...
+
 
 _STRATEGIES: Dict[str, Type[AgentStrategy]] = {}
 
