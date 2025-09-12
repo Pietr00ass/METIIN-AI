@@ -268,7 +268,13 @@ def test_scan_interrupt_on_target(monkeypatch):
         "detector": {"classes": [], "conf_thr": 0.5, "iou_thr": 0.5},
         "policy": {"desired_box_w": 0.2, "deadzone_x": 0.1},
         "dry_run": True,
-        "scan": {"enabled": True, "sweep_ms": 1, "sweeps": 50, "idle_sec": 0, "pause": 0.001},
+        "scan": {
+            "enabled": True,
+            "sweep_ms": 1,
+            "sweeps": 50,
+            "idle_sec": 0,
+            "pause": 0.001,
+        },
     }
 
     agent = hd.HuntDestroy(cfg, _DummyWin())
@@ -282,6 +288,7 @@ def test_scan_interrupt_on_target(monkeypatch):
     agent.step()  # target appears
     # wait briefly for scan thread to react to cancellation
     import time as _t
+
     for _ in range(100):
         if not agent.scanner.is_scanning():
             break
@@ -289,3 +296,38 @@ def test_scan_interrupt_on_target(monkeypatch):
     assert not agent.scanner.is_scanning()
     assert agent.search.calls == 1
     assert agent.search.spin_done_values == [False]
+
+
+def test_auto_press(monkeypatch):
+    monkeypatch.setattr(hd, "ObjectDetector", _EmptyDetector)
+    monkeypatch.setattr(hd, "CollisionAvoid", lambda: _DummyAvoid())
+
+    class _TapKeyHold:
+        def __init__(self, dry=False, active_fn=None):
+            self.tapped = []
+
+        def tap(self, key, duration=0.05):
+            self.tapped.append(key)
+
+        def release_all(self):
+            pass
+
+        def stop(self):
+            pass
+
+    monkeypatch.setattr(hd, "KeyHold", _TapKeyHold)
+    monkeypatch.setattr(hd, "SearchManager", _StubSearch)
+
+    cfg = {
+        "paths": {"model": "", "templates_dir": ""},
+        "detector": {"classes": [], "conf_thr": 0.5, "iou_thr": 0.5},
+        "dry_run": True,
+        "scan": {"enabled": False},
+        "auto_press": {"enabled": True, "key": "f", "interval_sec": 0.0},
+    }
+
+    agent = hd.HuntDestroy(cfg, _DummyWin())
+
+    agent.step()
+    agent.step()
+    assert agent.keys.tapped == ["f", "f"]

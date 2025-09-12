@@ -32,6 +32,10 @@ scan:
   pause: 0.12
 cooldowns:
   slot_min: 10
+auto_press:
+  enabled: false
+  key: "i"
+  interval_sec: 60.0
 priority: ["boss","metin","potwory"]
 teleport:
   slots:

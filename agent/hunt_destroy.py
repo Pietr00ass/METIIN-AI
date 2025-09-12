@@ -9,7 +9,7 @@ import numpy as np
 from . import AgentConfig, get_config
 from .avoid import CollisionAvoid
 from .channel import ChannelSwitcher
-from .detector import ObjectDetector, Detection
+from .detector import Detection, ObjectDetector
 from .interaction import click_bbox_center
 from .movement import MovementController
 from .scanner import AreaScanner
@@ -42,6 +42,8 @@ class HuntDestroy(AgentStrategy):
         self._last_tgt: Detection | None = None
         self._prev_names: set[str] = set()
         self._grab_lock = threading.Lock()
+        self.auto_press = None
+        self._next_auto_press = 0.0
         if cfg is not None or window_capture is not None:
             self.setup(cfg, window_capture)
 
@@ -99,10 +101,18 @@ class HuntDestroy(AgentStrategy):
         self.movement = MovementController(
             self.keys, self.desired_w, self.deadzone, enabled=move_enabled
         )
+        self.auto_press = cfg.auto_press
+        self._next_auto_press = time.monotonic() + cfg.auto_press.interval_sec
         self._last_tgt = None
         self._prev_names = set()
 
     def step(self):
+        ap_cfg = self.auto_press
+        if ap_cfg and ap_cfg.enabled:
+            now = time.monotonic()
+            if now >= self._next_auto_press:
+                self.keys.tap(ap_cfg.key)
+                self._next_auto_press = now + ap_cfg.interval_sec
         with self._grab_lock:
             fr = self.win.grab()
         frame = np.array(fr)[:, :, :3].copy()
