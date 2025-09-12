@@ -47,6 +47,22 @@ class AgentPanel(QtWidgets.QGroupBox):
         self.desired_w_widget.setLayout(self.desired_w_layout)
         self.desired_w_label = QtWidgets.QLabel()
         self.policy_form.addRow(self.desired_w_label, self.desired_w_widget)
+
+        self.auto_press_chk = QtWidgets.QCheckBox()
+        self.policy_form.addRow(self.auto_press_chk)
+        self.auto_press_key_label = QtWidgets.QLabel()
+        self.auto_press_key = QtWidgets.QLineEdit()
+        self.auto_press_key.setMaxLength(1)
+        self.policy_form.addRow(self.auto_press_key_label, self.auto_press_key)
+        self.auto_press_interval_label = QtWidgets.QLabel()
+        self.auto_press_interval = QtWidgets.QDoubleSpinBox()
+        self.auto_press_interval.setRange(0.05, 10.0)
+        self.auto_press_interval.setSingleStep(0.05)
+        self.auto_press_interval.setValue(1.0)
+        self.policy_form.addRow(
+            self.auto_press_interval_label, self.auto_press_interval
+        )
+
         layout.addLayout(self.policy_form)
 
         self.overlay_chk = QtWidgets.QCheckBox()
@@ -81,6 +97,17 @@ class AgentPanel(QtWidgets.QGroupBox):
         )
         self.desired_w_label.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Desired box W:")
+        )
+        self.auto_press_chk.setText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Automatyczne klikanie"
+            )
+        )
+        self.auto_press_key_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Klawisz:")
+        )
+        self.auto_press_interval_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Interwał (s):")
         )
         self.overlay_chk.setText(
             QtCore.QCoreApplication.translate(
@@ -122,4 +149,9 @@ class AgentPanel(QtWidgets.QGroupBox):
             },
             "priority": self.current_priority(),
             "dry_run": self.dry_run_chk.isChecked(),
+            "auto_press": {
+                "enabled": self.auto_press_chk.isChecked(),
+                "key": self.auto_press_key.text().strip(),
+                "interval_sec": float(self.auto_press_interval.value()),
+            },
         }
