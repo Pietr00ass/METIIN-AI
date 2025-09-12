@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -62,6 +63,14 @@ class CooldownsConfig(BaseModel):
     slot_min: int = 10
 
 
+class AutoPressConfig(BaseModel):
+    """Configuration for periodic key presses."""
+
+    enabled: bool = False
+    key: str = "i"
+    interval_sec: float = 60.0
+
+
 class TeleportSlot(BaseModel):
     page: str
     slot: int
@@ -108,6 +117,7 @@ class AgentConfig(BaseModel):
     stuck: StuckConfig = Field(default_factory=StuckConfig)
     scan: ScanConfig = Field(default_factory=ScanConfig)
     cooldowns: CooldownsConfig = Field(default_factory=CooldownsConfig)
+    auto_press: AutoPressConfig = Field(default_factory=AutoPressConfig)
     priority: List[str] = Field(default_factory=lambda: ["boss", "metin", "potwory"])
     teleport: TeleportConfig = Field(default_factory=TeleportConfig)
     channels: List[int] = Field(default_factory=lambda: [1, 2, 3, 4, 5, 6, 7, 8])
@@ -126,6 +136,7 @@ __all__ = [
     "StuckConfig",
     "ScanConfig",
     "CooldownsConfig",
+    "AutoPressConfig",
     "TeleportConfig",
     "TeleportSlot",
     "ChannelConfig",
