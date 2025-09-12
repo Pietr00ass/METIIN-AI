@@ -24,7 +24,11 @@ def _rate_limit_ok() -> bool:
 
 
 def click_bbox_center(
-    bbox, region, rate_limit: bool = True, win: WindowCapture | None = None
+    bbox,
+    region,
+    rate_limit: bool = True,
+    win: WindowCapture | None = None,
+    button: str = "left",
 ) -> bool:
     """Click the centre of ``bbox`` within ``region`` if the window is active.
 
@@ -36,6 +40,8 @@ def click_bbox_center(
         Whether to limit the number of clicks per second.
     win: WindowCapture | None
         Optional window instance used to verify focus.
+    button: str
+        Mouse button to use (e.g. ``"left"`` or ``"right"``).
 
     Returns
     -------
@@ -57,17 +63,106 @@ def click_bbox_center(
 
     if not rate_limit or _rate_limit_ok():
         pyautogui.moveTo(cx, cy, duration=0)
-        pyautogui.click()
+        pyautogui.click(button=button)
         return True
     return False
 
 
-def burst_click(bbox, region, n=3, interval=0.08, win: WindowCapture | None = None):
+def burst_click(
+    bbox,
+    region,
+    n: int = 3,
+    interval: float = 0.08,
+    win: WindowCapture | None = None,
+    button: str = "left",
+):
     """Series of clicks within ``bbox`` while ensuring window focus.
+
+    Parameters
+    ----------
+    bbox, region: tuple
+        Target and region coordinates.
+    n: int
+        Number of clicks to perform.
+    interval: float
+        Delay between clicks in seconds.
+    win: WindowCapture | None
+        Optional window instance for focus verification.
+    button: str
+        Mouse button used for the clicks.
 
     PL: Seria kliknięć w ``bbox`` z zachowaniem bezpieczeństwa fokusu.
     """
     for _ in range(n):
-        if not click_bbox_center(bbox, region, rate_limit=False, win=win):
+        if not click_bbox_center(bbox, region, rate_limit=False, win=win, button=button):
             break
         time.sleep(interval)
+
+
+def right_click_bbox_center(
+    bbox,
+    region,
+    rate_limit: bool = True,
+    win: WindowCapture | None = None,
+) -> bool:
+    """Convenience wrapper performing a right click on ``bbox`` centre.
+
+    Parameters mirror :func:`click_bbox_center` but always use the right mouse
+    button.  Returns ``True`` when the click was executed.
+    """
+
+    return click_bbox_center(
+        bbox,
+        region,
+        rate_limit=rate_limit,
+        win=win,
+        button="right",
+    )
+
+
+def detect_and_right_click(
+    detector,
+    frame,
+    region,
+    target_names: list[str] | None = None,
+    win: WindowCapture | None = None,
+    rate_limit: bool = True,
+) -> bool:
+    """Detect objects on ``frame`` and right‑click the first match.
+
+    Parameters
+    ----------
+    detector:
+        Object providing ``infer(frame)`` -> list of detections with ``name`` and
+        ``bbox`` attributes.
+    frame: np.ndarray
+        BGR image captured from the application window.
+    region: tuple
+        ``(left, top, width, height)`` describing window position used for
+        translating detection coordinates to screen space.
+    target_names: list[str] or None
+        Optional list of detection names to look for.  If ``None`` the first
+        detected object is clicked.
+    win: WindowCapture | None
+        Optional window instance for focus verification.
+
+    Returns
+    -------
+    bool
+        ``True`` if a right click was performed on a detected object.
+
+    PL: Wykryj obiekty na klatce i kliknij prawym przyciskiem pierwszy pasujący
+    do ``target_names``.
+    """
+
+    dets = detector.infer(frame)
+    for d in dets:
+        if target_names is None or d.name in target_names:
+            return click_bbox_center(
+                d.bbox,
+                region,
+                rate_limit=rate_limit,
+                win=win,
+                button="right",
+            )
+    return False
