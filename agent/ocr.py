@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import easyocr
 
+from .message_parser import parse_message as _parse_message
+
 
 class Ocr:
     """Wrapper around EasyOCR with a safer language initialisation.
@@ -37,3 +39,7 @@ class Ocr:
                 best = (x1, y1, x2, y2)
                 best_c = conf
         return best, best_c
+
+    def parse_message(self, frame_bgr):
+        """Return OCR text and classified event from ``frame_bgr``."""
+        return _parse_message(frame_bgr)
