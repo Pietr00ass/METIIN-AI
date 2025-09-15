@@ -14,6 +14,7 @@ np = importlib.import_module("numpy")
 
 cv2_stub = types.ModuleType("cv2")
 cv2_stub.setNumThreads = lambda n: None
+cv2_stub.TM_CCOEFF_NORMED = 5
 sys.modules["cv2"] = cv2_stub
 
 ultra_stub = types.ModuleType("ultralytics")
