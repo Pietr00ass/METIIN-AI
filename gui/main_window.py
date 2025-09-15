@@ -44,7 +44,7 @@ def save_agent_config(cfg) -> None:
     """Persist ``cfg`` to the default YAML configuration file."""
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            yaml.safe_dump(cfg.dict(), f, allow_unicode=True)
+            yaml.safe_dump(cfg.model_dump(), f, allow_unicode=True)
     except Exception as exc:  # pragma: no cover - best effort
         logger.warning("saving config failed: %s", exc)
 
