@@ -36,6 +36,9 @@ auto_press:
   enabled: false
   key: "i"
   interval_sec: 60.0
+buffs:
+  - key: "f1"
+    interval_sec: 60.0
 priority: ["boss","metin","potwory"]
 teleport:
   slots:

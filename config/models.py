@@ -71,6 +71,13 @@ class AutoPressConfig(BaseModel):
     interval_sec: float = 60.0
 
 
+class BuffConfig(BaseModel):
+    """Configuration for a single timed buff."""
+
+    key: str
+    interval_sec: float
+
+
 class TeleportSlot(BaseModel):
     page: str
     slot: int
@@ -118,6 +125,7 @@ class AgentConfig(BaseModel):
     scan: ScanConfig = Field(default_factory=ScanConfig)
     cooldowns: CooldownsConfig = Field(default_factory=CooldownsConfig)
     auto_press: AutoPressConfig = Field(default_factory=AutoPressConfig)
+    buffs: List[BuffConfig] = Field(default_factory=list)
     priority: List[str] = Field(default_factory=lambda: ["boss", "metin", "potwory"])
     teleport: TeleportConfig = Field(default_factory=TeleportConfig)
     channels: List[int] = Field(default_factory=lambda: [1, 2, 3, 4, 5, 6, 7, 8])
@@ -137,6 +145,7 @@ __all__ = [
     "ScanConfig",
     "CooldownsConfig",
     "AutoPressConfig",
+    "BuffConfig",
     "TeleportConfig",
     "TeleportSlot",
     "ChannelConfig",
