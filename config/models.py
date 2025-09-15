@@ -117,6 +117,14 @@ class CycleConfig(BaseModel):
     sequence: List[Dict[str, int]] = Field(default_factory=list)
 
 
+class DungeonPolanaConfig(BaseModel):
+    """Configuration for the ``dungeon_polana`` strategy."""
+
+    teleport_slot: int = 1
+    boss_timeout: float = 30.0
+    error_timeout: float = 5.0
+
+
 class AgentConfig(BaseModel):
     strategy: str = "hunt_destroy"
     window: WindowConfig = Field(default_factory=WindowConfig)
@@ -133,6 +141,7 @@ class AgentConfig(BaseModel):
     channels: List[int] = Field(default_factory=lambda: [1, 2, 3, 4, 5, 6, 7, 8])
     channel: ChannelConfig = Field(default_factory=ChannelConfig)
     cycle: CycleConfig = Field(default_factory=CycleConfig)
+    dungeon_polana: DungeonPolanaConfig = Field(default_factory=DungeonPolanaConfig)
     dry_run: bool = False
 
 
@@ -152,4 +161,5 @@ __all__ = [
     "TeleportSlot",
     "ChannelConfig",
     "CycleConfig",
+    "DungeonPolanaConfig",
 ]
