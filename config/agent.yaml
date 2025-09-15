@@ -1,9 +1,11 @@
 window:
   title_substr: "Metin2"
+
 paths:
   templates_dir: "assets/templates"
   model: "runs/detect/train/weights/best.pt"
   log_dir: "logs"
+
 controls:
   keys:
     forward: "w"
@@ -22,43 +24,65 @@ detector:
   iou_thr: 0.45
   policy:
     deadzone_x: 0.05
-    desired_box_w: 0.12 # desired target width fraction (0.02-1.0)
+    desired_box_w: 0.12
+
 stuck:
   window: 0.8
   min_mag: 0.7
   recovery_action: rotate
+
 scan:
+  enabled: true
   period: 0.066
   key: "e"
   sweeps: 8
   sweep_ms: 250
-@@ -39,25 +40,29 @@ auto_press:
+  idle_sec: 0.0
+  pause: 0.0
+
+cooldowns:
+  attack: 0.0
+
+auto_press:
+  enabled: false
+  key: ""
+  interval_sec: 1.0
+
 buffs:
   - key: "f1"
     interval_sec: 60.0
+
 priority: ["boss","metin","potwory"]
+
 teleport:
   slots:
     - {page: "Strona I", slot: 1}
     - {page: "Strona I", slot: 2}
   no_target_sec: 10
   channel_every: 8
+
 channels: [1,2,3,4,5,6,7,8]
+
 channel:
   settle_sec: 5.0
   timeout_per_ch: 5.0
+  hotkeys: {}
+
 cycle:
   ch_from: 1
   ch_to: 8
   slots: [1,2,3,4,5,6,7,8]
   per_spot_sec: 90
   clear_sec: 6
-  # opcjonalna pełna sekwencja (kanał i slot) zastępująca powyższe
-  # zakresy.  Kolejne kroki mogą być podane dowolnej długości.
-  # sequence:
-  #   - {ch: 1, slot: 1}
-  #   - {ch: 2, slot: 3}
+  sequence: []
+
+potions:
+  hp_key: "f2"
+  hp_threshold: 40
+  mp_key: "f3"
+  mp_threshold: 30
 
 logging:
   level: INFO
   retention: "7 days"
+

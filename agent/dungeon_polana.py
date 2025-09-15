@@ -12,6 +12,7 @@ from .message_parser import parse_message
 from .strategy import AgentStrategy, register
 from .teleport import Teleporter
 from .wasd import KeyHold
+from . import minimap
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class DungeonPolana(AgentStrategy):
     * watch for in‑game error messages ("no boss", "dungeon finished", etc.).
     """
 
-    def __init__(self, cfg: AgentConfig | dict | None = None, window_capture: Any | None = None):
+    def __init__(self, cfg: AgentConfig | dict | None = None, window_capture: Any | None = None, use_navigation: bool = False):
         self.cfg: AgentConfig | None = None
         self.win = None
         self.det: ObjectDetector | None = None
@@ -40,6 +41,7 @@ class DungeonPolana(AgentStrategy):
         self.last_event: str | None = None
         if cfg is not None or window_capture is not None:
             self.setup(cfg, window_capture)
+        self.use_navigation = use_navigation
 
     # ------------------------------------------------------------------ setup
     def setup(self, cfg: AgentConfig | dict | None = None, window_capture: Any | None = None) -> None:
@@ -91,6 +93,13 @@ class DungeonPolana(AgentStrategy):
         boss = next((d for d in dets if d.name == "boss"), None)
         if boss:
             logger.debug("Boss detected")
+            if self.use_navigation:
+                cx = int((boss.bbox[0] + boss.bbox[2]) / 2)
+                cy = int((boss.bbox[1] + boss.bbox[3]) / 2)
+                try:
+                    minimap.navigate_to((cx, cy))
+                except Exception:  # pragma: no cover - best effort
+                    logger.warning("navigate_to failed", exc_info=True)
             self.last_boss_time = time.monotonic()
             return
 
