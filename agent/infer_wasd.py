@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import time
 
-import numpy as np
-
 from recorder.window_capture import WindowCapture
 
 from . import AgentConfig, TeleportSlot
