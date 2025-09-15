@@ -58,3 +58,7 @@ cycle:
   # sequence:
   #   - {ch: 1, slot: 1}
   #   - {ch: 2, slot: 3}
+dungeon_polana:
+  teleport_slot: 1
+  boss_timeout: 30
+  error_timeout: 5
