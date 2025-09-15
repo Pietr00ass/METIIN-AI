@@ -22,6 +22,7 @@ from .wasd import KeyHold
 from .game_controller import controller
 from .template_matcher import TemplateMatcher
 from .loot import LootCollector
+from .buff_manager import BuffManager
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ class HuntDestroy(AgentStrategy):
         self._grab_lock = threading.Lock()
         self.auto_press = None
         self._next_auto_press = 0.0
+        self.buff_mgr: BuffManager | None = None
         self.on_inventory_full = on_inventory_full
         if cfg is not None or window_capture is not None:
             self.setup(cfg, window_capture)
@@ -118,6 +120,7 @@ class HuntDestroy(AgentStrategy):
         )
         self.auto_press = cfg.auto_press
         self._next_auto_press = time.monotonic() + cfg.auto_press.interval_sec
+        self.buff_mgr = BuffManager.from_config(cfg, self.keys)
         self._last_tgt = None
         self._prev_names = set()
 
@@ -128,6 +131,8 @@ class HuntDestroy(AgentStrategy):
             if now >= self._next_auto_press:
                 self.keys.tap(ap_cfg.key)
                 self._next_auto_press = now + ap_cfg.interval_sec
+        if self.buff_mgr:
+            self.buff_mgr.step()
         with self._grab_lock:
             fr = self.win.grab()
         frame = np.array(fr)[:, :, :3].copy()
