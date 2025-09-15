@@ -15,7 +15,6 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from gui.main_window import MainWindow
-from utils.requirements_check import check_requirements
 
 
 def main() -> None:
