@@ -10,7 +10,7 @@ from gui.widgets.agent_panel import AgentPanel
 
 
 def test_get_config_autopress():
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     panel = AgentPanel()
     panel.auto_press_chk.setChecked(True)
     panel.auto_press_key.setText("x")
