@@ -44,6 +44,15 @@ easyocr_stub = types.ModuleType("easyocr")
 easyocr_stub.Reader = lambda *a, **k: None
 sys.modules.setdefault("easyocr", easyocr_stub)
 
+sys.modules.setdefault(
+    "spacy", types.SimpleNamespace(load=lambda name: None)
+)
+sys.modules.setdefault(
+    "pytesseract", types.SimpleNamespace(image_to_string=lambda img, lang="pol": "")
+)
+sys.modules.setdefault("mss", types.ModuleType("mss"))
+sys.modules.setdefault("pygetwindow", types.ModuleType("pygetwindow"))
+
 teleport_mod = types.ModuleType("agent.teleport")
 
 
@@ -78,6 +87,8 @@ sys.modules["agent.channel"] = channel_mod
 
 import agent.hunt_destroy as hd
 from agent.detector import Detection
+
+hd.parse_message = lambda frame: ("", None)
 
 
 class _StubKeyHold:
