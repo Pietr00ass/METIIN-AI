@@ -63,3 +63,31 @@ def test_locate_returns_false_when_window_missing(monkeypatch):
     wc = _import_wc(monkeypatch, "linux")
     cap = wc.WindowCapture("does-not-exist", poll_sec=0)
     assert cap.locate(timeout=0.01) is False
+
+
+def test_locate_fallbacks_to_wmctrl(monkeypatch):
+    """When ``pygetwindow`` is unusable, ``wmctrl`` fallback should be used."""
+
+    wc = _import_wc(monkeypatch, "linux")
+    impl = importlib.import_module(wc.WindowCapture.__module__)
+
+    def _raise():
+        raise NotImplementedError
+
+    monkeypatch.setattr(impl.gw, "getAllWindows", _raise)
+
+    fake = types.SimpleNamespace(
+        wid="0x1",
+        title="metin2",
+        left=0,
+        top=0,
+        width=100,
+        height=100,
+        isMinimized=False,
+        restore=lambda: None,
+        activate=lambda: None,
+    )
+    monkeypatch.setattr(impl, "_wmctrl_windows", lambda: [fake])
+
+    cap = wc.WindowCapture("metin2", poll_sec=0)
+    assert cap.locate(timeout=0.01) is True
