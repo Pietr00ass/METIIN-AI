@@ -63,7 +63,7 @@ def test_find_multi_scale(tmp_path):
 
 
 def test_find_roi_outside(tmp_path):
-    tpl = write_template(tmp_path)
+    write_template(tmp_path)
     frame = np.zeros((20, 20, 3), dtype=np.uint8)
     tm = TemplateMatcher(templates_dir=str(tmp_path))
     with pytest.raises(ValueError):
@@ -97,7 +97,7 @@ def test_find_all_multi(tmp_path):
 
 
 def test_find_all_roi_outside(tmp_path):
-    tpl = write_template(tmp_path)
+    write_template(tmp_path)
     frame = np.zeros((20, 20, 3), dtype=np.uint8)
     tm = TemplateMatcher(templates_dir=str(tmp_path))
     with pytest.raises(ValueError):
