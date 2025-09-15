@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Iterable, List, Tuple
 
 import cv2
-import numpy as np
 from ultralytics import YOLO
 from utils.logging_config import logger
 
