@@ -73,7 +73,7 @@ class HuntDestroy(AgentStrategy):
             cfg.detector.classes,
             cfg.detector.conf_thr,
             cfg.detector.iou_thr,
-            cv2_threads=cfg.detector.cv2_threads,
+            cv2_threads=getattr(cfg.detector, "cv2_threads", 0),
         )
         self.avoid = CollisionAvoid()
         dry = cfg.dry_run
@@ -88,7 +88,7 @@ class HuntDestroy(AgentStrategy):
             win=self.win,
             state=state,
         )
-        ch_hotkeys = cfg.channel.hotkeys
+        ch_hotkeys = getattr(cfg.channel, "hotkeys", {})
         self.channel_switcher = ChannelSwitcher(
             self.win, tdir, dry=dry, keys=self.keys, hotkeys=ch_hotkeys
         )
@@ -98,15 +98,15 @@ class HuntDestroy(AgentStrategy):
         scan_cfg = cfg.scan
         self.period = scan_cfg.period
         self.scanner = None
-        if scan_cfg.enabled:
+        if getattr(scan_cfg, "enabled", True):
             rot_key = cfg.controls.keys.rotate or cfg.controls.keys.left
             self.scanner = AreaScanner(
                 self.keys,
                 spin_key=rot_key,
-                sweep_ms=scan_cfg.sweep_ms,
-                sweeps=scan_cfg.sweeps,
-                idle_sec=scan_cfg.idle_sec,
-                pause=scan_cfg.pause,
+                sweep_ms=getattr(scan_cfg, "sweep_ms", 250),
+                sweeps=getattr(scan_cfg, "sweeps", 8),
+                idle_sec=getattr(scan_cfg, "idle_sec", 1.5),
+                pause=getattr(scan_cfg, "pause", 0.12),
             )
 
         tp_cfg = cfg.teleport
@@ -114,7 +114,7 @@ class HuntDestroy(AgentStrategy):
             self.teleporter,
             self.channel_switcher,
             [s.slot for s in tp_cfg.slots],
-            tp_cfg.page or tp_cfg.page_label,
+            getattr(tp_cfg, "page", None) or getattr(tp_cfg, "page_label", None),
             list(cfg.channels),
             tp_cfg.no_target_sec,
             tp_cfg.channel_every,
@@ -275,9 +275,12 @@ class HuntDestroy(AgentStrategy):
 
         # default action: brief rotation
         key = self.cfg.controls.keys.rotate or self.cfg.controls.keys.left
-        self.keys.press(key)
-        time.sleep(0.25)
-        self.keys.release(key)
+        if controller is not None:
+            controller.move_camera_right(0.25)
+        else:
+            self.keys.press(key)
+            time.sleep(0.25)
+            self.keys.release(key)
 
     def stop(self) -> None:
         """Release resources held by the strategy.

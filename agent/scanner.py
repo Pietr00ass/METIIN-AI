@@ -6,6 +6,7 @@ import time
 from typing import Callable, Optional
 
 from .wasd import KeyHold
+from .game_controller import controller
 
 
 class AreaScanner:
@@ -50,11 +51,17 @@ class AreaScanner:
         for i in range(self.sweeps):
             if self._stop.is_set():
                 break
-            self.keys.press(self.spin_key)
-            if self._stop.wait(self.sweep_ms / 1000.0):
+            if controller is not None:
+                move = controller.move_camera_left
+                if self.spin_key.lower() not in {"q", "left"}:
+                    move = controller.move_camera_right
+                move(self.sweep_ms / 1000.0)
+            else:
+                self.keys.press(self.spin_key)
+                if self._stop.wait(self.sweep_ms / 1000.0):
+                    self.keys.release(self.spin_key)
+                    break
                 self.keys.release(self.spin_key)
-                break
-            self.keys.release(self.spin_key)
             self._progress = (i + 1) / float(self.sweeps)
             if self._progress_cb:
                 try:
@@ -66,6 +73,8 @@ class AreaScanner:
         else:
             # loop did not break -> full scan completed
             self._completed = True
+        if controller is not None:
+            controller.calibrate_camera()
 
     def scan(self, progress_cb: Optional[Callable[[float], None]] = None) -> None:
         """Start an asynchronous scan.

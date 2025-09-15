@@ -17,6 +17,7 @@ camera orientation.
 
 from typing import Callable, List, TYPE_CHECKING
 
+import time
 import pyautogui
 
 from recorder.window_capture import WindowCapture
@@ -57,6 +58,8 @@ class GameController:
         self._on_disconnect: List[Callable[[], None]] = []
         self._on_death: List[Callable[[], None]] = []
         self._camera_pos: tuple[int, int] | None = None
+        self._cam_yaw = 0.0
+        self._cam_pitch = 0.0
         self.state = GameState()
         if not self.dry:
             try:
@@ -127,6 +130,72 @@ class GameController:
                 logger.warning("reset_camera failed: inactive window")
                 return
         pyautogui.moveTo(*self._camera_pos, duration=self.cfg.teleport.click_duration)
+
+    def move_camera_left(self, press_time: float) -> None:
+        """Rotate camera left for ``press_time`` seconds."""
+        self._cam_yaw -= press_time
+        if self.dry:
+            return
+        self.focus()
+        pyautogui.keyDown("left")
+        time.sleep(press_time)
+        pyautogui.keyUp("left")
+
+    def move_camera_right(self, press_time: float) -> None:
+        """Rotate camera right for ``press_time`` seconds."""
+        self._cam_yaw += press_time
+        if self.dry:
+            return
+        self.focus()
+        pyautogui.keyDown("right")
+        time.sleep(press_time)
+        pyautogui.keyUp("right")
+
+    def move_camera_up(self, press_time: float) -> None:
+        """Tilt camera up for ``press_time`` seconds."""
+        self._cam_pitch += press_time
+        if self.dry:
+            return
+        self.focus()
+        pyautogui.keyDown("up")
+        time.sleep(press_time)
+        pyautogui.keyUp("up")
+
+    def move_camera_down(self, press_time: float) -> None:
+        """Tilt camera down for ``press_time`` seconds."""
+        self._cam_pitch -= press_time
+        if self.dry:
+            return
+        self.focus()
+        pyautogui.keyDown("down")
+        time.sleep(press_time)
+        pyautogui.keyUp("down")
+
+    def calibrate_camera(self) -> None:
+        """Return camera to the last neutral orientation."""
+        if self.dry:
+            self._cam_yaw = 0.0
+            self._cam_pitch = 0.0
+            return
+        self.focus()
+        if self._cam_yaw > 0:
+            pyautogui.keyDown("left")
+            time.sleep(self._cam_yaw)
+            pyautogui.keyUp("left")
+        elif self._cam_yaw < 0:
+            pyautogui.keyDown("right")
+            time.sleep(-self._cam_yaw)
+            pyautogui.keyUp("right")
+        if self._cam_pitch > 0:
+            pyautogui.keyDown("down")
+            time.sleep(self._cam_pitch)
+            pyautogui.keyUp("down")
+        elif self._cam_pitch < 0:
+            pyautogui.keyDown("up")
+            time.sleep(-self._cam_pitch)
+            pyautogui.keyUp("up")
+        self._cam_yaw = 0.0
+        self._cam_pitch = 0.0
 
     # ------------------------------------------------------------------
     # state helpers
