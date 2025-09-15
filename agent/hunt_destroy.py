@@ -4,6 +4,7 @@ import logging
 import threading
 import time
 
+import cv2
 import numpy as np
 
 from . import AgentConfig, get_config
@@ -17,6 +18,7 @@ from .scanner import AreaScanner
 from .search import SearchManager
 from .strategy import AgentStrategy, register
 from .targets import pick_target
+from .stuck_flow import FlowStuck
 from .teleport import Teleporter
 from .wasd import KeyHold
 from .game_controller import controller
@@ -46,6 +48,8 @@ class HuntDestroy(AgentStrategy):
         self.scanner = None
         self.search = None
         self.movement = None
+        self.flow: FlowStuck | None = None
+        self._recovery_action = "rotate"
         self._last_tgt: Detection | None = None
         self._prev_names: set[str] = set()
         self._grab_lock = threading.Lock()
@@ -123,6 +127,11 @@ class HuntDestroy(AgentStrategy):
         self.buff_mgr = BuffManager.from_config(cfg, self.keys)
         self._last_tgt = None
         self._prev_names = set()
+        fps = int(round(1 / self.period)) if self.period else 15
+        self.flow = FlowStuck(
+            cfg.stuck.window, fps=fps, min_mag=cfg.stuck.min_mag
+        )
+        self._recovery_action = cfg.stuck.recovery_action
 
     def step(self):
         ap_cfg = self.auto_press
@@ -136,6 +145,11 @@ class HuntDestroy(AgentStrategy):
         with self._grab_lock:
             fr = self.win.grab()
         frame = np.array(fr)[:, :, :3].copy()
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if self.flow and self.flow.update(gray):
+            self._recover_from_stuck()
+            self.flow.reset()
+            return
         _, event = parse_message(frame)
         if event:
             logger.info("Wykryto wiadomość: %s", event)
@@ -238,6 +252,28 @@ class HuntDestroy(AgentStrategy):
         else:
             self.movement.move(tgt, steer, (W, H))
         self._last_tgt = tgt
+
+    # ---- helpers ----
+    def _recover_from_stuck(self) -> None:
+        """Attempt to free the agent when no movement is detected."""
+
+        if self._recovery_action == "teleport":
+            try:  # pragma: no cover - best effort
+                slot = (
+                    self.cfg.teleport.slots[0].slot
+                    if self.cfg.teleport.slots
+                    else 1
+                )
+                self.teleporter.teleport_slot(slot)
+            except Exception:
+                logger.warning("Teleport recovery failed", exc_info=True)
+            return
+
+        # default action: brief rotation
+        key = self.cfg.controls.keys.rotate or self.cfg.controls.keys.left
+        self.keys.press(key)
+        time.sleep(0.25)
+        self.keys.release(key)
 
     def stop(self) -> None:
         """Release resources held by the strategy.

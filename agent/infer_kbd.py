@@ -23,9 +23,9 @@ class KbdVisionAgent:
         self.keys = KeyHold()
         self.period = 1 / 15
         self.flow = FlowStuck(
-            cfg.stuck.flow_window,
+            cfg.stuck.window,
             fps=15,
-            min_mag=cfg.stuck.min_flow_mag,
+            min_mag=cfg.stuck.min_mag,
         )
         self.net = KbdPolicy(weights=models.ResNet18_Weights.IMAGENET1K_V1)
         self.net.load_state_dict(

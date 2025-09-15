@@ -44,9 +44,11 @@ class DetectorConfig(BaseModel):
 
 
 class StuckConfig(BaseModel):
-    flow_window: float = 0.8
-    min_flow_mag: float = 0.7
-    rotate_ms_on_stuck: int = 250
+    """Settings for detecting and recovering from movement stalls."""
+
+    window: float = 0.8
+    min_mag: float = 0.7
+    recovery_action: str = "rotate"
 
 
 class ScanConfig(BaseModel):
