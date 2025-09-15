@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 import logging
 import os
 import time
@@ -22,7 +23,8 @@ from agent.strategy import AgentStrategy, load_strategy
 from agent.wasd import KeyHold
 from gui.preview import PreviewWorker
 from gui.teleport_config_dialog import TeleportConfigDialog
-from gui.widgets import AgentPanel, ScanPanel, SettingsPanel
+from gui.widgets import AgentPanel, ScanPanel, SettingsPanel, AdvancedPanel
+import yaml
 from recorder.window_capture import WindowCapture
 
 logging.basicConfig(
@@ -34,6 +36,17 @@ logging.basicConfig(
     ],
 )
 logger = logging.getLogger(__name__)
+
+CONFIG_PATH = Path("config/agent.yaml")
+
+
+def save_agent_config(cfg) -> None:
+    """Persist ``cfg`` to the default YAML configuration file."""
+    try:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            yaml.safe_dump(cfg.dict(), f, allow_unicode=True)
+    except Exception as exc:  # pragma: no cover - best effort
+        logger.warning("saving config failed: %s", exc)
 
 
 # Configure Qt DPI behaviour for Windows to avoid crashes when changing DPI awareness.
@@ -424,7 +437,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # left pane with controls inside a scroll area so all sections remain accessible
         left_widget = QtWidgets.QWidget()
-        left = QtWidgets.QVBoxLayout(left_widget)
+        left_layout = QtWidgets.QVBoxLayout(left_widget)
+        self.tabs = QtWidgets.QTabWidget()
+        basic_tab = QtWidgets.QWidget()
+        left = QtWidgets.QVBoxLayout(basic_tab)
+        self.tabs.addTab(
+            basic_tab, QtCore.QCoreApplication.translate("MainWindow", "Główne")
+        )
+        self.advanced_panel = AdvancedPanel()
+        self.tabs.addTab(
+            self.advanced_panel,
+            QtCore.QCoreApplication.translate("MainWindow", "Zaawansowane"),
+        )
+        left_layout.addWidget(self.tabs)
         left_scroll = QtWidgets.QScrollArea()
         left_scroll.setWidget(left_widget)
         left_scroll.setWidgetResizable(True)
@@ -719,6 +744,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_load_cfg.clicked.connect(self.load_config)
         self.btn_reload_cfg.clicked.connect(self.reload_agent_config)
         self.scale_spin.valueChanged.connect(self.apply_scale)
+        self.cfg = agent.get_config()
+        self.advanced_panel.load_from_config(self.cfg)
+        self.advanced_panel.config_changed.connect(self.on_advanced_config_changed)
         # hotkey F12
         self.start_hotkey_listener()
 
@@ -779,6 +807,13 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.lang_combo.setItemText(
             1, QtCore.QCoreApplication.translate("MainWindow", "English")
+        )
+
+        self.tabs.setTabText(
+            0, QtCore.QCoreApplication.translate("MainWindow", "Główne")
+        )
+        self.tabs.setTabText(
+            1, QtCore.QCoreApplication.translate("MainWindow", "Zaawansowane")
         )
 
         # settings and agent sections handled by dedicated widgets
@@ -1141,6 +1176,15 @@ class MainWindow(QtWidgets.QMainWindow):
             self.seq_table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(ch)))
             self.seq_table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(slot)))
         self.set_status("Wczytano konfigurację.")
+
+    def on_advanced_config_changed(self) -> None:
+        """Handle updates from the advanced settings tab."""
+        try:
+            self.advanced_panel.update_config(self.cfg)
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "Błąd", str(exc))
+            return
+        save_agent_config(self.cfg)
 
     def reload_agent_config(self) -> None:
         """Reload agent configuration and notify running strategies."""
