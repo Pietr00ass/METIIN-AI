@@ -118,8 +118,6 @@ def main() -> None:
 
         if not hasattr(torch, "utils"):
             raise ImportError
-        from torch.utils.tensorboard import SummaryWriter  # type: ignore  # noqa: F401
-
         tb_available = shutil.which("tensorboard") is not None
     except Exception:  # pragma: no cover - allow running without tensorboard
         logging.warning("TensorBoard is not installed; proceeding without logging.")
