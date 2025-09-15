@@ -42,7 +42,7 @@ scan:
   pause: 0.0
 
 cooldowns:
-  attack: 0.0
+  slot_min: 10
 
 auto_press:
   enabled: false

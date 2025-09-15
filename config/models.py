@@ -70,7 +70,7 @@ class ScanConfig(BaseModel):
 
 
 class CooldownsConfig(BaseModel):
-    pass
+    slot_min: int = 10
 
 
 class AutoPressConfig(BaseModel):
