@@ -9,8 +9,6 @@ minimal so that unit tests can construct frames on the fly without relying on
 external assets.
 """
 
-from typing import Iterable
-
 import numpy as np
 
 # Simple 3x3 binary templates.  Values are either 0 or 255 which makes them
