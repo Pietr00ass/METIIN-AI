@@ -8,9 +8,11 @@ provides a safe :meth:`click` method that focuses the window before emitting
 mouse actions. Strategies can register callbacks for disconnection or death
 via :meth:`add_on_disconnect` and :meth:`add_on_death`.
 
-Fail‑safe recovery helpers such as :meth:`teleport` and :meth:`relog` are
-exposed for strategies to reuse. ``relog`` releases all keys, invokes the
-registered callbacks and teleports to the first configured slot.
+Fail‑safe recovery helpers such as :meth:`teleport`, :meth:`login`,
+``reset_camera`` and :meth:`relog` are exposed for strategies to reuse.
+``relog`` releases all keys, invokes the registered callbacks, performs a
+minimal login and teleports to the first configured slot while restoring the
+camera orientation.
 """
 
 from typing import Callable, List, TYPE_CHECKING
@@ -52,6 +54,12 @@ class GameController:
         self._teleporter: Teleporter | None = None
         self._on_disconnect: List[Callable[[], None]] = []
         self._on_death: List[Callable[[], None]] = []
+        self._camera_pos: tuple[int, int] | None = None
+        if not self.dry:
+            try:
+                self._camera_pos = pyautogui.position()
+            except Exception:  # pragma: no cover - best effort
+                self._camera_pos = None
 
     # ------------------------------------------------------------------
     # basic window helpers
@@ -78,6 +86,44 @@ class GameController:
         pyautogui.moveTo(x, y, duration=duration or self.cfg.teleport.click_duration)
         pyautogui.click()
 
+    def login(self) -> None:
+        """Attempt to log into the game after a disconnect.
+
+        The implementation assumes the credentials are persisted by the game and
+        that pressing ``Enter`` on the login screen is sufficient.  It performs
+        best effort window focusing before sending the key press.
+        """
+        if self.dry:
+            return
+        self.focus()
+        if not self.is_foreground():
+            self.focus()
+            if not self.is_foreground():
+                logger.warning("login failed: inactive window")
+                return
+        pyautogui.press("enter")
+
+    def remember_camera(self) -> None:
+        """Record current mouse position as the reference camera angle."""
+        if self.dry:
+            return
+        try:
+            self._camera_pos = pyautogui.position()
+        except Exception:  # pragma: no cover - best effort
+            self._camera_pos = None
+
+    def reset_camera(self) -> None:
+        """Return the camera to the last recorded position if possible."""
+        if self.dry or self._camera_pos is None:
+            return
+        self.focus()
+        if not self.is_foreground():
+            self.focus()
+            if not self.is_foreground():
+                logger.warning("reset_camera failed: inactive window")
+                return
+        pyautogui.moveTo(*self._camera_pos, duration=self.cfg.teleport.click_duration)
+
     # ------------------------------------------------------------------
     # fail‑safe helpers
     # ------------------------------------------------------------------
@@ -100,6 +146,7 @@ class GameController:
                 cb()
             except Exception:  # pragma: no cover - best effort
                 logger.warning("disconnect handler failed", exc_info=True)
+        self.login()
         if self.cfg.teleport.slots:
             self.teleport(self.cfg.teleport.slots[0].slot)
         for cb in list(self._on_death):
