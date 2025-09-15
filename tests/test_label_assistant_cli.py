@@ -1,7 +1,6 @@
 import sys
 import types
 
-import pytest
 from utils.logging_config import logger
 
 
@@ -35,11 +34,9 @@ def test_skip_existing(monkeypatch, tmp_path, caplog):
         ],
     )
 
-    import importlib
-
     handler_id = logger.add(caplog.handler, format="{message}", level="INFO")
-    la = importlib.import_module("tools.label_assistant")
-    la.main()
+    label_assistant = __import__("tools.label_assistant", fromlist=["main"])
+    label_assistant.main()
     logger.remove(handler_id)
 
     assert lbl.read_text() == "orig"
