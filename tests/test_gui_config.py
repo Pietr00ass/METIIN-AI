@@ -41,7 +41,9 @@ def test_auto_loot_binding(monkeypatch):
 
     monkeypatch.setattr(agent, "get_config", lambda: cfg)
     saved: dict = {}
-    monkeypatch.setattr(main_window, "save_agent_config", lambda c: saved.update(c.dict()))
+    monkeypatch.setattr(
+        main_window, "save_agent_config", lambda c: saved.update(c.model_dump())
+    )
 
     mw = main_window.MainWindow()
     assert mw.advanced_panel.auto_loot_chk.isChecked() is False
