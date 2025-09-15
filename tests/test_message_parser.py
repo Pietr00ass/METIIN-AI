@@ -41,3 +41,15 @@ def test_classifies_dungeon_finished():
     _set_ocr("Lochy ukończone")
     _, event = mp.parse_message(None)
     assert event == "dungeon finished"
+
+
+def test_classifies_death():
+    _set_ocr("Zginąłeś")
+    _, event = mp.parse_message(None)
+    assert event == "death"
+
+
+def test_classifies_inventory_full():
+    _set_ocr("Ekwipunek pełny")
+    _, event = mp.parse_message(None)
+    assert event == "inventory full"

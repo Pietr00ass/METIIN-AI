@@ -12,6 +12,7 @@ from .channel import ChannelSwitcher
 from .detector import Detection, ObjectDetector
 from .interaction import click_bbox_center
 from .movement import MovementController
+from .message_parser import parse_message
 from .scanner import AreaScanner
 from .search import SearchManager
 from .strategy import AgentStrategy, register
@@ -116,6 +117,22 @@ class HuntDestroy(AgentStrategy):
         with self._grab_lock:
             fr = self.win.grab()
         frame = np.array(fr)[:, :, :3].copy()
+        _, event = parse_message(frame)
+        if event:
+            logger.info("Wykryto wiadomość: %s", event)
+            if event in {"no boss", "dungeon finished"}:
+                self.search.handle_no_target(True)
+                self._last_tgt = None
+                return
+            if event == "death":
+                self.keys.release_all()
+                self._last_tgt = None
+                return
+            if event == "inventory full":
+                self.keys.release_all()
+                # further handling (e.g. teleport) may be implemented later
+                self._last_tgt = None
+                return
         H, W = frame.shape[:2]
         dets = self.det.infer(frame)
         logger.debug("Wykryto %s obiektów", len(dets))
