@@ -4,8 +4,6 @@ import types
 from dataclasses import dataclass
 from typing import Tuple
 
-import pytest
-
 # Ensure repository root on path and stub optional dependencies
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

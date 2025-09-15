@@ -1,16 +1,13 @@
-import importlib
 import os
 import sys
 import types
-
-import pytest
 
 # Make repository root importable and stub optional heavy dependencies.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.modules.setdefault("yaml", types.ModuleType("yaml"))
 
 sys.modules.pop("numpy", None)
-np = importlib.import_module("numpy")
+np = __import__("numpy")
 
 cv2_stub = types.ModuleType("cv2")
 cv2_stub.setNumThreads = lambda n: None
