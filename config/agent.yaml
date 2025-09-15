@@ -29,14 +29,7 @@ scan:
   key: "e"
   sweeps: 8
   sweep_ms: 250
-  idle_sec: 1.5
-  pause: 0.12
-cooldowns:
-  slot_min: 10
-auto_press:
-  enabled: false
-  key: "i"
-  interval_sec: 60.0
+@@ -39,25 +40,29 @@ auto_press:
 buffs:
   - key: "f1"
     interval_sec: 60.0
@@ -66,3 +59,4 @@ cycle:
 logging:
   level: INFO
   retention: "7 days"
+config/models.py

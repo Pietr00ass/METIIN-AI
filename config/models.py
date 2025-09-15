@@ -45,75 +45,7 @@ class DetectorConfig(BaseModel):
     conf_thr: float = 0.5
     iou_thr: float = 0.45
     policy: DetectorPolicy = Field(default_factory=DetectorPolicy)
-    cv2_threads: Optional[int] = None
-
-
-class StuckConfig(BaseModel):
-    """Settings for detecting and recovering from movement stalls."""
-
-    window: float = 0.8
-    min_mag: float = 0.7
-    recovery_action: str = "rotate"
-
-
-class ScanConfig(BaseModel):
-    enabled: bool = True
-    period: float = 0.066
-    key: str = "e"
-    sweeps: int = 8
-    sweep_ms: int = 250
-    idle_sec: float = 1.5
-    pause: float = 0.12
-
-
-class CooldownsConfig(BaseModel):
-    slot_min: int = 10
-
-
-class AutoPressConfig(BaseModel):
-    """Configuration for periodic key presses."""
-
-    enabled: bool = False
-    key: str = "i"
-    interval_sec: float = 60.0
-
-
-class BuffConfig(BaseModel):
-    """Configuration for a single timed buff."""
-
-    key: str
-    interval_sec: float
-
-
-class TeleportSlot(BaseModel):
-    page: str
-    slot: int
-
-
-class TeleportConfig(BaseModel):
-    slots: List[TeleportSlot] = Field(default_factory=list)
-    no_target_sec: int = 10
-    channel_every: int = 8
-    click_duration: float = 0.05
-    open_panel_delay: float = 0.35
-    page_thresh: float = 0.82
-    after_page_delay: float = 0.25
-    row_click_delay: float = 0.15
-    load_btn_thresh: float = 0.8
-    after_load_delay: float = 0.35
-    page: Optional[str] = None
-    page_label: Optional[str] = None
-
-
-class ChannelConfig(BaseModel):
-    settle_sec: float = 5.0
-    timeout_per_ch: float = 5.0
-    hotkeys: Dict[int, str] = Field(
-        default_factory=lambda: {i: f"numpad{i}" for i in range(1, 9)}
-    )
-
-
-class CycleConfig(BaseModel):
+@@ -112,44 +117,46 @@ class CycleConfig(BaseModel):
     ch_from: int = 1
     ch_to: int = 8
     slots: List[int] = Field(default_factory=lambda: list(range(1, 9)))
