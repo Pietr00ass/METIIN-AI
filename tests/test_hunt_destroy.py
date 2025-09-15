@@ -15,6 +15,8 @@ np = importlib.import_module("numpy")
 cv2_stub = types.ModuleType("cv2")
 cv2_stub.setNumThreads = lambda n: None
 cv2_stub.TM_CCOEFF_NORMED = 5
+cv2_stub.COLOR_BGR2GRAY = 0
+cv2_stub.cvtColor = lambda frame, code: frame[..., 0]
 sys.modules["cv2"] = cv2_stub
 
 ultra_stub = types.ModuleType("ultralytics")
@@ -90,6 +92,7 @@ import agent.hunt_destroy as hd
 from agent.detector import Detection
 
 hd.parse_message = lambda frame: ("", None)
+hd.FlowStuck = lambda *a, **k: types.SimpleNamespace(update=lambda f: False, reset=lambda: None)
 
 
 class _StubKeyHold:

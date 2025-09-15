@@ -1034,9 +1034,9 @@ class MainWindow(QtWidgets.QMainWindow):
         cfg.update(
             {
                 "stuck": {
-                    "flow_window": 0.8,
-                    "min_flow_mag": 0.7,
-                    "rotate_ms_on_stuck": 250,
+                    "window": 0.8,
+                    "min_mag": 0.7,
+                    "recovery_action": "rotate",
                 },
                 "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
                 "channel": {

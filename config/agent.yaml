@@ -20,9 +20,9 @@ detector:
     deadzone_x: 0.05
     desired_box_w: 0.12 # desired target width fraction (0.02-1.0)
 stuck:
-  flow_window: 0.8
-  min_flow_mag: 0.7
-  rotate_ms_on_stuck: 250
+  window: 0.8
+  min_mag: 0.7
+  recovery_action: rotate
 scan:
   period: 0.066
   key: "e"

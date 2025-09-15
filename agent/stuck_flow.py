@@ -23,3 +23,12 @@ class FlowStuck:
         self.buf.append(mag)
         self.prev = frame_gray
         return len(self.buf) == self.buf.maxlen and (np.mean(self.buf) < self.min_mag)
+
+    def reset(self):
+        """Clear stored flow history.
+
+        Resets both the internal buffer and the previous frame reference so
+        that subsequent calls to :meth:`update` start a new sequence.
+        """
+        self.buf.clear()
+        self.prev = None
