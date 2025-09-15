@@ -23,9 +23,9 @@ class ScanPanel(QtWidgets.QGroupBox):
         form.addRow(self.sweep_ms_label, self.sweep_ms)
 
         self.idle_sec = QtWidgets.QDoubleSpinBox()
-        self.idle_sec.setRange(0.5, 5.0)
+        self.idle_sec.setRange(0.0, 5.0)
         self.idle_sec.setSingleStep(0.1)
-        self.idle_sec.setValue(1.5)
+        self.idle_sec.setValue(0.0)
         self.idle_sec_label = QtWidgets.QLabel()
         form.addRow(self.idle_sec_label, self.idle_sec)
 
@@ -57,6 +57,6 @@ class ScanPanel(QtWidgets.QGroupBox):
                 "sweep_ms": int(self.sweep_ms.value()),
                 "idle_sec": float(self.idle_sec.value()),
                 "period": 0.066,
-                "pause": 0.12,
+                "pause": 0.0,
             }
         }

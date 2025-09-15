@@ -11,6 +11,9 @@ try:  # yaml is optional for tests
     import yaml
 except Exception:  # pragma: no cover - provide dummy fallback
     yaml = types.SimpleNamespace(safe_load=lambda f: {})
+else:  # pragma: no cover - provide dummy fallback when incomplete
+    if not hasattr(yaml, "safe_load"):
+        yaml = types.SimpleNamespace(safe_load=lambda f: {})
 
 _cfg: AgentConfig | None = None
 
