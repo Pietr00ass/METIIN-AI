@@ -20,13 +20,15 @@ from .targets import pick_target
 from .teleport import Teleporter
 from .wasd import KeyHold
 from .game_controller import controller
+from .template_matcher import TemplateMatcher
+from .loot import LootCollector
 
 logger = logging.getLogger(__name__)
 
 
 @register("hunt_destroy")
 class HuntDestroy(AgentStrategy):
-    def __init__(self, cfg=None, window_capture=None):
+    def __init__(self, cfg=None, window_capture=None, on_inventory_full=None):
         self.cfg = None
         self.win = None
         self.det = None
@@ -34,6 +36,8 @@ class HuntDestroy(AgentStrategy):
         self.keys = None
         self.teleporter = None
         self.channel_switcher = None
+        self.matcher = None
+        self.loot = None
         self.desired_w = 0.0
         self.deadzone = 0.0
         self.priority = []
@@ -46,6 +50,7 @@ class HuntDestroy(AgentStrategy):
         self._grab_lock = threading.Lock()
         self.auto_press = None
         self._next_auto_press = 0.0
+        self.on_inventory_full = on_inventory_full
         if cfg is not None or window_capture is not None:
             self.setup(cfg, window_capture)
 
@@ -68,6 +73,14 @@ class HuntDestroy(AgentStrategy):
         self.keys = KeyHold(dry=dry, active_fn=getattr(self.win, "is_foreground", None))
         tdir = cfg.paths.templates_dir
         self.teleporter = Teleporter(self.win, tdir, use_ocr=True, dry=dry, cfg=cfg)
+        self.matcher = TemplateMatcher(tdir)
+        state = getattr(controller, "state", None)
+        self.loot = LootCollector(
+            detector=self.det,
+            matcher=self.matcher,
+            win=self.win,
+            state=state,
+        )
         ch_hotkeys = cfg.channel.hotkeys
         self.channel_switcher = ChannelSwitcher(
             self.win, tdir, dry=dry, keys=self.keys, hotkeys=ch_hotkeys
@@ -136,7 +149,23 @@ class HuntDestroy(AgentStrategy):
                 return
             if event == "inventory full":
                 self.keys.release_all()
-                # further handling (e.g. teleport) may be implemented later
+                if self.on_inventory_full:
+                    try:
+                        self.on_inventory_full()
+                    except Exception:  # pragma: no cover - defensive
+                        logger.warning("inventory callback failed", exc_info=True)
+                else:
+                    try:
+                        slot = (
+                            self.cfg.teleport.slots[0].slot
+                            if self.cfg.teleport.slots
+                            else 1
+                        )
+                        self.teleporter.teleport_slot(slot)
+                    except Exception:  # pragma: no cover - defensive
+                        logger.warning(
+                            "Teleport on inventory full failed", exc_info=True
+                        )
                 self._last_tgt = None
                 return
         H, W = frame.shape[:2]
@@ -146,12 +175,22 @@ class HuntDestroy(AgentStrategy):
         disappeared = self._prev_names - cur_names
         for name in disappeared:
             logger.debug("Obiekt %s zniknął", name)
+        if self._last_tgt and self._last_tgt.name in disappeared and self.loot:
+            try:
+                self.loot.collect(frame)
+            except Exception:  # pragma: no cover - best effort
+                logger.warning("loot collect failed", exc_info=True)
         self._prev_names = cur_names
 
         steer = self.avoid.steer(frame)
         tgt = pick_target(dets, (W, H), priority_order=self.priority)
         if tgt is None and self._last_tgt is not None:
             logger.debug("Cel %s zniknął", self._last_tgt.name)
+            if self.loot:
+                try:
+                    self.loot.collect(frame)
+                except Exception:  # pragma: no cover - best effort
+                    logger.warning("loot collect failed", exc_info=True)
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
             if self.scanner:

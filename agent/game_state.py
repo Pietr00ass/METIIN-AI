@@ -15,9 +15,31 @@ class GameState:
     mounted: bool = False
     equipment_open: bool = False
     minimap_open: bool = False
+    inventory_slots: int = 0
+    inventory_occupied: int = 0
 
     def reset(self) -> None:
         """Return all flags to their default values."""
         self.mounted = False
         self.equipment_open = False
         self.minimap_open = False
+        self.inventory_occupied = 0
+
+    # ------------------------------------------------------------------
+    @property
+    def inventory_free(self) -> int:
+        """Number of free slots in the inventory."""
+
+        return max(0, self.inventory_slots - self.inventory_occupied)
+
+    def add_items(self, count: int = 1) -> None:
+        """Increase occupied inventory slots by ``count``."""
+
+        self.inventory_occupied = min(
+            self.inventory_slots, self.inventory_occupied + count
+        )
+
+    def remove_items(self, count: int = 1) -> None:
+        """Decrease occupied inventory slots by ``count``."""
+
+        self.inventory_occupied = max(0, self.inventory_occupied - count)
