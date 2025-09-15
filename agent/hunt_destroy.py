@@ -12,6 +12,7 @@ from .channel import ChannelSwitcher
 from .detector import Detection, ObjectDetector
 from .interaction import click_bbox_center
 from .movement import MovementController
+from . import minimap
 from .message_parser import parse_message
 from .scanner import AreaScanner
 from .search import SearchManager
@@ -30,7 +31,7 @@ from utils.logging_config import logger
 
 @register("hunt_destroy")
 class HuntDestroy(AgentStrategy):
-    def __init__(self, cfg=None, window_capture=None, on_inventory_full=None):
+    def __init__(self, cfg=None, window_capture=None, on_inventory_full=None, use_navigation: bool = False):
         self.cfg = None
         self.win = None
         self.det = None
@@ -56,6 +57,7 @@ class HuntDestroy(AgentStrategy):
         self._next_auto_press = 0.0
         self.buff_mgr: BuffManager | None = None
         self.on_inventory_full = on_inventory_full
+        self.use_navigation = use_navigation
         if cfg is not None or window_capture is not None:
             self.setup(cfg, window_capture)
 
@@ -248,7 +250,15 @@ class HuntDestroy(AgentStrategy):
             logger.debug("Atakuję cel")
             click_bbox_center(tgt.bbox, (left, top, w, h), win=self.win)
         else:
-            self.movement.move(tgt, steer, (W, H))
+            if self.use_navigation:
+                cx = int((tgt.bbox[0] + tgt.bbox[2]) / 2)
+                cy = int((tgt.bbox[1] + tgt.bbox[3]) / 2)
+                try:
+                    minimap.navigate_to((cx, cy))
+                except Exception:  # pragma: no cover - best effort
+                    logger.opt(exception=True).warning("navigate_to failed")
+            else:
+                self.movement.move(tgt, steer, (W, H))
         self._last_tgt = tgt
 
     # ---- helpers ----
