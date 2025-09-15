@@ -55,7 +55,9 @@ class CycleFarm:
         )
         self.agent: AgentStrategy = load_strategy(cfg, self.win)
         self.det = ObjectDetector(
-            cfg.paths.model, cfg.detector.classes, cv2_threads=cfg.detector.cv2_threads
+            cfg.paths.model,
+            cfg.detector.classes,
+            cv2_threads=getattr(cfg.detector, "cv2_threads", None),
         )
         self._stop = False
 

@@ -58,7 +58,7 @@ class DungeonPolana(AgentStrategy):
             cfg.detector.classes,
             cfg.detector.conf_thr,
             cfg.detector.iou_thr,
-            cv2_threads=cfg.detector.cv2_threads,
+            cv2_threads=getattr(cfg.detector, "cv2_threads", None),
         )
         dry = cfg.dry_run
         self.keys = KeyHold(dry=dry, active_fn=getattr(self.win, "is_foreground", None))
