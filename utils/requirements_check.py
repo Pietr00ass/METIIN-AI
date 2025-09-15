@@ -9,6 +9,7 @@ install the needed packages via ``pip``.
 from __future__ import annotations
 
 import logging
+import shutil
 import subprocess
 import sys
 from importlib import metadata
@@ -103,3 +104,47 @@ def check_requirements(requirements_file: Path | None = None) -> bool:
         "Automatic installation failed. Please run 'pip install -r requirements.txt' manually."
     )
     return False
+
+
+def ensure_tesseract_available(pytesseract_module=None) -> None:
+    """Validate that the Tesseract OCR binary can be executed.
+
+    Parameters
+    ----------
+    pytesseract_module:
+        Optional module-like object exposing ``tesseract_cmd``. When ``None`` the
+        real :mod:`pytesseract` package is imported.
+    """
+
+    if pytesseract_module is None:
+        try:
+            import pytesseract as pytesseract_module  # type: ignore
+        except ImportError as exc:  # pragma: no cover - defensive
+            message = (
+                "pytesseract is not installed. Install project dependencies from "
+                "requirements.txt and ensure the package is available."
+            )
+            logger.error(message)
+            raise RuntimeError(message) from exc
+
+    pytesseract_attr = getattr(pytesseract_module, "pytesseract", pytesseract_module)
+
+    # Lightweight guard for tests where a stub replaces pytesseract.
+    if not hasattr(pytesseract_attr, "TesseractNotFoundError"):
+        return
+
+    tesseract_cmd = getattr(pytesseract_attr, "tesseract_cmd", None)
+    if not tesseract_cmd:
+        tesseract_cmd = getattr(pytesseract_module, "tesseract_cmd", None)
+    if not tesseract_cmd:
+        tesseract_cmd = "tesseract"
+
+    if shutil.which(tesseract_cmd):
+        return
+
+    message = (
+        "Tesseract OCR executable not found on the PATH. Install Tesseract and ensure "
+        f"the '{tesseract_cmd}' command is available (run 'tesseract --version' to verify)."
+    )
+    logger.error(message)
+    raise FileNotFoundError(message)
