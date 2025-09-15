@@ -15,7 +15,9 @@ controls:
     rotate: "e"
   key_repeat_ms: 60
   mouse_pause: 0.02
-
+humanizer:
+  pause_jitter: 0.05
+  cursor_jitter: 2.0
 detector:
   classes: ["metin","boss","potwory"]
   conf_thr: 0.5
