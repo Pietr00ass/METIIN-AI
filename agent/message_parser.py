@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
+from typing import Callable
+
 import pytesseract
 import spacy
-from typing import Callable
 
 _nlp = None
 
@@ -40,7 +42,14 @@ _RULES: dict[str, Callable[[set[str]], bool]] = {
 
 def ocr_image(image) -> str:
     """Extract text from ``image`` using Tesseract."""
-    return pytesseract.image_to_string(image, lang="pol")
+
+    try:
+        return pytesseract.image_to_string(image, lang="pol")
+    except pytesseract.TesseractNotFoundError:
+        logging.getLogger(__name__).error(
+            "Tesseract OCR binary not found. Install Tesseract and ensure it is available on the system PATH."
+        )
+        raise
 
 
 def classify_message(text: str) -> str | None:
