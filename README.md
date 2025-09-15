@@ -151,6 +151,15 @@ Custom automation strategies implement three lifecycle hooks:
 Calling `stop()` ensures that windows, keyboard handlers and other helpers are
 cleanly closed.
 
+### Game Controller
+`agent.game_controller` exposes a global ``controller`` instance that
+coordinates window focus and input.  It provides helpers like
+``click(x, y)`` and ``teleport(slot)`` and allows strategies to register
+callbacks for ``on_disconnect`` and ``on_death`` events via
+``add_on_disconnect`` / ``add_on_death``.
+Strategies may import the controller to perform low‑level actions or
+subscribe to these fail‑safe hooks.
+
 ## Configuration
 All runtime options live in [`config/agent.yaml`](config/agent.yaml).  Key fields include:
 
