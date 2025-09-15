@@ -17,6 +17,7 @@ class GameState:
     minimap_open: bool = False
     inventory_slots: int = 0
     inventory_occupied: int = 0
+    player_pos: tuple[int, int] | None = None
 
     def reset(self) -> None:
         """Return all flags to their default values."""
@@ -24,6 +25,7 @@ class GameState:
         self.equipment_open = False
         self.minimap_open = False
         self.inventory_occupied = 0
+        self.player_pos = None
 
     # ------------------------------------------------------------------
     @property
