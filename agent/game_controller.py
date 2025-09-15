@@ -23,6 +23,7 @@ import pyautogui
 from recorder.window_capture import WindowCapture
 
 from . import AgentConfig, get_config
+from .game_state import GameState
 from .wasd import KeyHold
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers only
@@ -55,6 +56,7 @@ class GameController:
         self._on_disconnect: List[Callable[[], None]] = []
         self._on_death: List[Callable[[], None]] = []
         self._camera_pos: tuple[int, int] | None = None
+        self.state = GameState()
         if not self.dry:
             try:
                 self._camera_pos = pyautogui.position()
@@ -123,6 +125,13 @@ class GameController:
                 logger.warning("reset_camera failed: inactive window")
                 return
         pyautogui.moveTo(*self._camera_pos, duration=self.cfg.teleport.click_duration)
+
+    # ------------------------------------------------------------------
+    # state helpers
+    # ------------------------------------------------------------------
+    def reset_state(self) -> None:
+        """Restore :class:`GameState` to its default values."""
+        self.state.reset()
 
     # ------------------------------------------------------------------
     # fail‑safe helpers
