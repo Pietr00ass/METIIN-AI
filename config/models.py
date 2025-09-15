@@ -50,6 +50,7 @@ class DetectorConfig(BaseModel):
     conf_thr: float = 0.5
     iou_thr: float = 0.45
     policy: DetectorPolicy = DetectorPolicy()
+    cv2_threads: int | None = None
 
 
 class StuckConfig(BaseModel):
