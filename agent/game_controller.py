@@ -16,7 +16,6 @@ camera orientation.
 """
 
 from typing import Callable, List, TYPE_CHECKING
-import logging
 
 import pyautogui
 
@@ -25,14 +24,13 @@ from recorder.window_capture import WindowCapture
 from . import AgentConfig, get_config
 from .game_state import GameState
 from .wasd import KeyHold
+from utils.logging_config import logger
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers only
     from .teleport import Teleporter, TeleportResult
 else:  # pragma: no cover - runtime import inside property
     Teleporter = None  # type: ignore
     TeleportResult = None  # type: ignore
-
-logger = logging.getLogger(__name__)
 
 
 class GameController:
@@ -51,7 +49,9 @@ class GameController:
         self.win = win
         self.dry = cfg.dry_run
         pyautogui.PAUSE = cfg.controls.mouse_pause
-        self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))
+        self.keys = KeyHold(
+            dry=self.dry, active_fn=getattr(self.win, "is_foreground", None)
+        )
         self._teleporter: Teleporter | None = None
         self._on_disconnect: List[Callable[[], None]] = []
         self._on_death: List[Callable[[], None]] = []
@@ -139,6 +139,7 @@ class GameController:
     @property
     def teleporter(self) -> "Teleporter":
         from .teleport import Teleporter  # local import to avoid cycle
+
         if self._teleporter is None:
             self._teleporter = Teleporter(self.win, cfg=self.cfg, controller=self)
         return self._teleporter
@@ -154,7 +155,7 @@ class GameController:
             try:
                 cb()
             except Exception:  # pragma: no cover - best effort
-                logger.warning("disconnect handler failed", exc_info=True)
+                logger.opt(exception=True).warning("disconnect handler failed")
         self.login()
         if self.cfg.teleport.slots:
             self.teleport(self.cfg.teleport.slots[0].slot)
@@ -162,7 +163,7 @@ class GameController:
             try:
                 cb()
             except Exception:  # pragma: no cover - best effort
-                logger.warning("death handler failed", exc_info=True)
+                logger.opt(exception=True).warning("death handler failed")
 
     # ------------------------------------------------------------------
     # event hook registration
@@ -179,7 +180,9 @@ class GameController:
 controller: GameController | None = None
 
 
-def create_controller(win: WindowCapture, cfg: AgentConfig | dict | None = None) -> GameController:
+def create_controller(
+    win: WindowCapture, cfg: AgentConfig | dict | None = None
+) -> GameController:
     """Create and store a global :class:`GameController` instance."""
     global controller
     controller = GameController(win, cfg)

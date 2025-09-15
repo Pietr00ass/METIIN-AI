@@ -15,6 +15,11 @@ class PathsConfig(BaseModel):
     log_dir: Optional[str] = None
 
 
+class LoggingConfig(BaseModel):
+    level: str = "INFO"
+    retention: str = "7 days"
+
+
 class KeyBindings(BaseModel):
     forward: str = "w"
     left: str = "a"
@@ -134,6 +139,7 @@ class AgentConfig(BaseModel):
     channel: ChannelConfig = Field(default_factory=ChannelConfig)
     cycle: CycleConfig = Field(default_factory=CycleConfig)
     dry_run: bool = False
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
 
 __all__ = [
@@ -152,4 +158,5 @@ __all__ = [
     "TeleportSlot",
     "ChannelConfig",
     "CycleConfig",
+    "LoggingConfig",
 ]

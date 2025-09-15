@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -10,8 +9,7 @@ from .detector import ObjectDetector
 from .template_matcher import TemplateMatcher
 from .interaction import click_bbox_center
 from .game_state import GameState
-
-logger = logging.getLogger(__name__)
+from utils.logging_config import logger
 
 
 @dataclass

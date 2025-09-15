@@ -1,8 +1,7 @@
-import logging
 import statistics as st
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO)
+from utils.logging_config import logger
 
 root = Path("datasets/mt2")
 sizes: list[float] = []
@@ -14,6 +13,6 @@ for lbl in (root / "labels" / "train").glob("*.txt"):
         counts[int(c)] += 1
         sizes.append(float(w) * float(h))
 
-logging.info("bbox per class: %s", counts)
+logger.info("bbox per class: {}", counts)
 if sizes:
-    logging.info("median bbox area: %s", st.median(sizes))
+    logger.info("median bbox area: {}", st.median(sizes))

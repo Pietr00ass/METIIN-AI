@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import time
 
 import numpy as np
@@ -14,8 +13,7 @@ from agent.scanner import AreaScanner
 from agent.teleport import Teleporter
 from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
-
-logger = logging.getLogger(__name__)
+from utils.logging_config import logger
 
 
 class CycleFarm:
@@ -108,19 +106,17 @@ class CycleFarm:
         try:
             self.agent.stop()
         except Exception as exc:  # pragma: no cover - best effort cleanup
-            logger.exception(
-                "Błąd podczas zatrzymywania strategii: %s", exc
-            )
+            logger.exception("Błąd podczas zatrzymywania strategii: {}", exc)
 
         try:
             self.keys.stop()
         except (RuntimeError, OSError) as exc:
-            logger.exception("Błąd podczas zatrzymywania klawiszy: %s", exc)
+            logger.exception("Błąd podczas zatrzymywania klawiszy: {}", exc)
 
         try:
             self.win.close()
         except (RuntimeError, OSError) as exc:
-            logger.exception("Błąd podczas zamykania okna: %s", exc)
+            logger.exception("Błąd podczas zamykania okna: {}", exc)
 
     # ---- detekcje ----
     def _any_target_seen(self) -> bool:
@@ -140,10 +136,10 @@ class CycleFarm:
         key = (ch, slot)
         last = self.cooldown.get(key, 0)
         if now - last < self.cooldown_min * 60:
-            logger.debug("Pomijam slot %s na kanale %s - cooldown", slot, ch)
+            logger.debug("Pomijam slot {} na kanale {} - cooldown", slot, ch)
             return
 
-        logger.info("Teleportuję na slot %s (ch%s)", slot, ch)
+        logger.info("Teleportuję na slot {} (ch{})", slot, ch)
         try:
             if hasattr(self.tp, "teleport_slot"):
                 await asyncio.to_thread(self.tp.teleport_slot, slot, page_label)
@@ -151,7 +147,7 @@ class CycleFarm:
                 await asyncio.to_thread(self.tp.teleport, slot, page_label)
         except Exception:
             logger.warning(
-                "Teleportacja na slot %s kanału %s nie powiodła się", slot, ch
+                "Teleportacja na slot {} kanału {} nie powiodła się", slot, ch
             )
             self.cooldown[key] = now
             return
@@ -161,11 +157,11 @@ class CycleFarm:
             await self.scanner.scan_async()
 
         if not self._any_target_seen() or self._stop:
-            logger.info("Brak celu na slocie %s kanału %s", slot, ch)
+            logger.info("Brak celu na slocie {} kanału {}", slot, ch)
             self.cooldown[key] = time.time()
             return
 
-        logger.debug("Rozpoczynam polowanie na slocie %s kanału %s", slot, ch)
+        logger.debug("Rozpoczynam polowanie na slocie {} kanału {}", slot, ch)
         t_end = time.time() + float(per_spot_sec)
         last_seen = time.time()
         while time.time() < t_end and not self._stop:
@@ -241,20 +237,20 @@ class CycleFarm:
                     ch, slot = item
                     steps.append((ch, slot))
         else:
-            steps = [
-                (ch, slot) for ch in range(ch_from, ch_to + 1) for slot in slots
-            ]
+            steps = [(ch, slot) for ch in range(ch_from, ch_to + 1) for slot in slots]
 
         current_ch = None
         for ch, slot in steps:
             if self._stop:
                 break
             if ch != current_ch:
-                logger.info("Przechodzę na kanał %s", ch)
+                logger.info("Przechodzę na kanał {}", ch)
                 try:
-                    await asyncio.to_thread(self.ch.switch, ch, post_wait=self.ch_settle)
+                    await asyncio.to_thread(
+                        self.ch.switch, ch, post_wait=self.ch_settle
+                    )
                 except Exception:
-                    logger.warning("Nie udało się zmienić kanału na %s", ch)
+                    logger.warning("Nie udało się zmienić kanału na {}", ch)
                 current_ch = ch
             if self._stop:
                 break

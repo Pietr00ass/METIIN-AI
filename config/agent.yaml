@@ -3,6 +3,7 @@ window:
 paths:
   templates_dir: "assets/templates"
   model: "runs/detect/train/weights/best.pt"
+  log_dir: "logs"
 controls:
   keys:
     forward: "w"
@@ -61,3 +62,7 @@ cycle:
   # sequence:
   #   - {ch: 1, slot: 1}
   #   - {ch: 2, slot: 3}
+
+logging:
+  level: INFO
+  retention: "7 days"

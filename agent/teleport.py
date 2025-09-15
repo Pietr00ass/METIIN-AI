@@ -2,7 +2,6 @@ from __future__ import annotations
 
 """Coordinate based teleporter."""
 
-import logging
 import time
 from enum import Enum
 
@@ -12,6 +11,7 @@ from recorder.window_capture import WindowCapture
 
 from . import AgentConfig, get_config, teleport_config as tc
 from .game_controller import GameController
+from utils.logging_config import logger
 
 try:  # pragma: no cover - prefer pydirectinput if available
     from pydirectinput import KeyHold  # type: ignore
@@ -19,8 +19,6 @@ except Exception:  # pragma: no cover - fallback to local implementation
     from .wasd import KeyHold
 
 CFG = get_config()
-
-logger = logging.getLogger(__name__)
 
 
 class TeleportResult(Enum):
@@ -63,7 +61,9 @@ class Teleporter:
         else:
             self.win = win
             self.dry = dry
-            self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))
+            self.keys = KeyHold(
+                dry=self.dry, active_fn=getattr(self.win, "is_foreground", None)
+            )
 
         tp_cfg = self.cfg.teleport
         self.click_duration = tp_cfg.click_duration
@@ -89,7 +89,9 @@ class Teleporter:
 
         controller = getattr(self, "controller", None)
         focus = controller.focus if controller else self.win.focus
-        is_foreground = controller.is_foreground if controller else self.win.is_foreground
+        is_foreground = (
+            controller.is_foreground if controller else self.win.is_foreground
+        )
 
         focus()
         if not is_foreground():
@@ -97,13 +99,13 @@ class Teleporter:
             return False
 
         for attempt in range(max_attempts):
-            logger.debug("Attempt %d to open teleport panel", attempt + 1)
+            logger.debug("Attempt {} to open teleport panel", attempt + 1)
             if not self.dry:
                 self.keys.hotkey(["ctrl", "x"], duration=0.05)
             time.sleep(self.open_panel_delay)
             if not is_foreground():
                 logger.debug(
-                    "Window lost foreground after keypress on attempt %d", attempt + 1
+                    "Window lost foreground after keypress on attempt {}", attempt + 1
                 )
                 return False
             return True
@@ -124,24 +126,24 @@ class Teleporter:
         Coordinates are loaded from ``config/teleport.yaml``.
         """
 
-        logger.debug("Teleporting to slot %s via coordinates", slot)
+        logger.debug("Teleporting to slot {} via coordinates", slot)
         if not self.open_panel():
             return TeleportResult.WINDOW_NOT_FOREGROUND
 
         cfg = tc.get_config()
         positions = cfg.positions
         if slot < 1 or slot > len(positions):
-            logger.info("Slot %s not configured", slot)
+            logger.info("Slot {} not configured", slot)
             return TeleportResult.TEMPLATE_NOT_FOUND
 
         x, y = positions[slot - 1]
-        logger.debug("Clicking teleport slot at (%d, %d)", x, y)
+        logger.debug("Clicking teleport slot at ({}, {})", x, y)
         self._safe_click(x, y)
         time.sleep(self.row_click_delay)
         if not self.dry:
             self.keys.tap("e")
         time.sleep(self.after_load_delay)
-        logger.info("Teleportation to slot %s successful", slot)
+        logger.info("Teleportation to slot {} successful", slot)
         return TeleportResult.OK
 
     def teleport(self, slot: int, page_label: str | None = None) -> TeleportResult:

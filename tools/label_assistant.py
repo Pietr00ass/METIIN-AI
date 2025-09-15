@@ -4,13 +4,13 @@
 from __future__ import annotations
 
 import argparse
-import logging
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
 import cv2
 import numpy as np
 from ultralytics import YOLO
+from utils.logging_config import logger
 
 # YOLO label (cx, cy, w, h) — wartości znormalizowane do [0, 1]
 Box = Tuple[float, float, float, float]
@@ -31,8 +31,8 @@ def _to_yolo_format(result, width: int, height: int) -> List[Box]:
     # konwersja do (cx, cy, w, h) w pikselach
     cx = (xyxy[:, 0] + xyxy[:, 2]) / 2.0
     cy = (xyxy[:, 1] + xyxy[:, 3]) / 2.0
-    w = (xyxy[:, 2] - xyxy[:, 0])
-    h = (xyxy[:, 3] - xyxy[:, 1])
+    w = xyxy[:, 2] - xyxy[:, 0]
+    h = xyxy[:, 3] - xyxy[:, 1]
 
     # normalizacja do [0,1]
     cx /= float(width)
@@ -40,7 +40,9 @@ def _to_yolo_format(result, width: int, height: int) -> List[Box]:
     w /= float(width)
     h /= float(height)
 
-    boxes.extend([(float(cx[i]), float(cy[i]), float(w[i]), float(h[i])) for i in range(len(cx))])
+    boxes.extend(
+        [(float(cx[i]), float(cy[i]), float(w[i]), float(h[i])) for i in range(len(cx))]
+    )
     return boxes
 
 
@@ -105,21 +107,21 @@ def main() -> None:
 
     images = list(_iter_images(img_dir))
     if not images:
-        logging.warning("Katalog %s nie zawiera obrazów.", img_dir)
+        logger.warning("Katalog {} nie zawiera obrazów.", img_dir)
         return
 
-    logging.info("Przetwarzam %d obrazów…", len(images))
+    logger.info("Przetwarzam {} obrazów…", len(images))
 
     for img_path in images:
         label_path = lbl_dir / f"{img_path.stem}.txt"
 
         if args.skip_existing and label_path.exists():
-            logging.info("Skipping %s", img_path.name)
+            logger.info("Skipping {}", img_path.name)
             continue
 
         img = cv2.imread(str(img_path))
         if img is None:
-            logging.error("Nie można odczytać %s, pomijam.", img_path)
+            logger.error("Nie można odczytać {}, pomijam.", img_path)
             continue
 
         result = model(img, conf=args.confidence, verbose=False)[0]
@@ -129,25 +131,21 @@ def main() -> None:
         if args.interactive:
             preview = result.plot()
             cv2.imshow("label-assistant: podgląd", preview)
-            logging.info("Naciśnij ENTER lub Y, aby zapisać; inny klawisz — pominiecie.")
+            logger.info("Naciśnij ENTER lub Y, aby zapisać; inny klawisz — pominiecie.")
             key = cv2.waitKey(0)
             cv2.destroyAllWindows()
             if key not in (ord("y"), ord("Y"), 13):
-                logging.info("Pominięto: %s", img_path.name)
+                logger.info("Pominięto: {}", img_path.name)
                 continue
 
         # Zapis etykiet
         with open(label_path, "w", encoding="utf-8") as f:
-            for (cx, cy, w, h) in boxes:
+            for cx, cy, w, h in boxes:
                 # Domyślnie klasa 0; w razie potrzeby rozbuduj o mapowanie klas.
                 f.write(f"0 {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
 
-        logging.info("Zapisano %s (liczba bbox: %d)", label_path, len(boxes))
+        logger.info("Zapisano {} (liczba bbox: {})", label_path, len(boxes))
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s: %(message)s",
-    )
     main()

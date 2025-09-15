@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import threading
 import time
 
@@ -25,8 +24,7 @@ from .game_controller import controller
 from .template_matcher import TemplateMatcher
 from .loot import LootCollector
 from .buff_manager import BuffManager
-
-logger = logging.getLogger(__name__)
+from utils.logging_config import logger
 
 
 @register("hunt_destroy")
@@ -128,9 +126,7 @@ class HuntDestroy(AgentStrategy):
         self._last_tgt = None
         self._prev_names = set()
         fps = int(round(1 / self.period)) if self.period else 15
-        self.flow = FlowStuck(
-            cfg.stuck.window, fps=fps, min_mag=cfg.stuck.min_mag
-        )
+        self.flow = FlowStuck(cfg.stuck.window, fps=fps, min_mag=cfg.stuck.min_mag)
         self._recovery_action = cfg.stuck.recovery_action
 
     def step(self):
@@ -152,12 +148,12 @@ class HuntDestroy(AgentStrategy):
             return
         _, event = parse_message(frame)
         if event:
-            logger.info("Wykryto wiadomość: %s", event)
+            logger.info("Wykryto wiadomość: {}", event)
             if controller is not None:
                 try:
                     controller.reset_state()
                 except Exception:  # pragma: no cover - best effort
-                    logger.warning("reset_state failed", exc_info=True)
+                    logger.opt(exception=True).warning("reset_state failed")
             if event in {"no boss", "dungeon finished"}:
                 self.search.handle_no_target(True)
                 self._last_tgt = None
@@ -172,7 +168,7 @@ class HuntDestroy(AgentStrategy):
                     try:
                         self.on_inventory_full()
                     except Exception:  # pragma: no cover - defensive
-                        logger.warning("inventory callback failed", exc_info=True)
+                        logger.opt(exception=True).warning("inventory callback failed")
                 else:
                     try:
                         slot = (
@@ -182,34 +178,34 @@ class HuntDestroy(AgentStrategy):
                         )
                         self.teleporter.teleport_slot(slot)
                     except Exception:  # pragma: no cover - defensive
-                        logger.warning(
-                            "Teleport on inventory full failed", exc_info=True
+                        logger.opt(exception=True).warning(
+                            "Teleport on inventory full failed"
                         )
                 self._last_tgt = None
                 return
         H, W = frame.shape[:2]
         dets = self.det.infer(frame)
-        logger.debug("Wykryto %s obiektów", len(dets))
+        logger.debug("Wykryto {} obiektów", len(dets))
         cur_names = {d.name for d in dets}
         disappeared = self._prev_names - cur_names
         for name in disappeared:
-            logger.debug("Obiekt %s zniknął", name)
+            logger.debug("Obiekt {} zniknął", name)
         if self._last_tgt and self._last_tgt.name in disappeared and self.loot:
             try:
                 self.loot.collect(frame)
             except Exception:  # pragma: no cover - best effort
-                logger.warning("loot collect failed", exc_info=True)
+                logger.opt(exception=True).warning("loot collect failed")
         self._prev_names = cur_names
 
         steer = self.avoid.steer(frame)
         tgt = pick_target(dets, (W, H), priority_order=self.priority)
         if tgt is None and self._last_tgt is not None:
-            logger.debug("Cel %s zniknął", self._last_tgt.name)
+            logger.debug("Cel {} zniknął", self._last_tgt.name)
             if self.loot:
                 try:
                     self.loot.collect(frame)
                 except Exception:  # pragma: no cover - best effort
-                    logger.warning("loot collect failed", exc_info=True)
+                    logger.opt(exception=True).warning("loot collect failed")
         if tgt is None:
             logger.debug("Brak celu w zasięgu")
             if self.scanner:
@@ -259,14 +255,10 @@ class HuntDestroy(AgentStrategy):
 
         if self._recovery_action == "teleport":
             try:  # pragma: no cover - best effort
-                slot = (
-                    self.cfg.teleport.slots[0].slot
-                    if self.cfg.teleport.slots
-                    else 1
-                )
+                slot = self.cfg.teleport.slots[0].slot if self.cfg.teleport.slots else 1
                 self.teleporter.teleport_slot(slot)
             except Exception:
-                logger.warning("Teleport recovery failed", exc_info=True)
+                logger.opt(exception=True).warning("Teleport recovery failed")
             return
 
         # default action: brief rotation
@@ -288,7 +280,7 @@ class HuntDestroy(AgentStrategy):
             if getattr(self, "keys", None):
                 self.keys.stop()
         except Exception as exc:  # pragma: no cover - defensive
-            logger.exception("Błąd podczas zatrzymywania klawiszy: %s", exc)
+            logger.exception("Błąd podczas zatrzymywania klawiszy: {}", exc)
 
         # Teleporter has its own ``KeyHold`` instance
         try:
@@ -296,7 +288,7 @@ class HuntDestroy(AgentStrategy):
             if tp and getattr(tp, "keys", None):
                 tp.keys.stop()
         except Exception as exc:  # pragma: no cover - defensive
-            logger.exception("Błąd podczas zatrzymywania teleportu: %s", exc)
+            logger.exception("Błąd podczas zatrzymywania teleportu: {}", exc)
 
         # Cancel any ongoing area scan
         try:
@@ -304,11 +296,11 @@ class HuntDestroy(AgentStrategy):
             if scanner and hasattr(scanner, "cancel"):
                 scanner.cancel()
         except Exception as exc:  # pragma: no cover - defensive
-            logger.exception("Błąd podczas anulowania skanowania: %s", exc)
+            logger.exception("Błąd podczas anulowania skanowania: {}", exc)
 
         # Close window capture if available
         try:
             if getattr(self, "win", None) and hasattr(self.win, "close"):
                 self.win.close()
         except Exception as exc:  # pragma: no cover - defensive
-            logger.exception("Błąd podczas zamykania okna: %s", exc)
+            logger.exception("Błąd podczas zamykania okna: {}", exc)
