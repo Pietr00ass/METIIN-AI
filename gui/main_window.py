@@ -15,6 +15,7 @@ from pynput import keyboard as pynput_keyboard
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QSettings
 
+import agent
 from agent.channel import ChannelSwitcher
 from agent.cycle import CycleFarm
 from agent.strategy import AgentStrategy, load_strategy
@@ -644,8 +645,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_load_cfg = QtWidgets.QPushButton(
             QtCore.QCoreApplication.translate("MainWindow", "Wczytaj konfigurację")
         )
+        self.btn_reload_cfg = QtWidgets.QPushButton(
+            QtCore.QCoreApplication.translate("MainWindow", "Reload config")
+        )
         actions_layout.addWidget(self.btn_save_cfg)
         actions_layout.addWidget(self.btn_load_cfg)
+        actions_layout.addWidget(self.btn_reload_cfg)
         left.addWidget(self.actions_box)
 
         # logs
@@ -712,6 +717,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_train.toggled.connect(self.train_yolo_api)
         self.btn_save_cfg.clicked.connect(self.save_config)
         self.btn_load_cfg.clicked.connect(self.load_config)
+        self.btn_reload_cfg.clicked.connect(self.reload_agent_config)
         self.scale_spin.valueChanged.connect(self.apply_scale)
         # hotkey F12
         self.start_hotkey_listener()
@@ -887,6 +893,9 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.btn_load_cfg.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Wczytaj konfigurację")
+        )
+        self.btn_reload_cfg.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Reload config")
         )
 
         # logs and status
@@ -1132,6 +1141,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.seq_table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(ch)))
             self.seq_table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(slot)))
         self.set_status("Wczytano konfigurację.")
+
+    def reload_agent_config(self) -> None:
+        """Reload agent configuration and notify running strategies."""
+
+        from agent.game_controller import controller as gc
+
+        try:
+            if gc is not None:
+                gc.reload_config()
+            else:
+                agent.reload_config()
+            self.set_status("Konfiguracja przeładowana.")
+        except Exception as exc:  # pragma: no cover - GUI feedback
+            self.set_status(f"Błąd przeładowania: {exc}")
 
     # ---------- agent actions ----------
     def start_agent(self, checked: bool) -> None:

@@ -35,4 +35,12 @@ def get_config(path: str | Path = "config/agent.yaml") -> AgentConfig:
     return _cfg
 
 
-__all__ = ["get_config", "load_config", "AgentConfig", "TeleportSlot"]
+def reload_config(path: str | Path = "config/agent.yaml") -> AgentConfig:
+    """Reload configuration file and update the cached instance."""
+
+    global _cfg
+    _cfg = load_config(path)
+    return _cfg
+
+
+__all__ = ["get_config", "load_config", "reload_config", "AgentConfig", "TeleportSlot"]

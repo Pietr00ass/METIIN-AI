@@ -16,13 +16,14 @@ camera orientation.
 """
 
 from typing import Callable, List, TYPE_CHECKING
+from pathlib import Path
 
 import time
 import pyautogui
 
 from recorder.window_capture import WindowCapture
 
-from . import AgentConfig, get_config
+from . import AgentConfig, get_config, reload_config as _reload_cfg
 from utils.humanizer import random_pause
 from .game_state import GameState
 from .wasd import KeyHold
@@ -30,6 +31,7 @@ from utils.logging_config import logger
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers only
     from .teleport import Teleporter, TeleportResult
+    from .strategy import AgentStrategy
 else:  # pragma: no cover - runtime import inside property
     Teleporter = None  # type: ignore
     TeleportResult = None  # type: ignore
@@ -61,11 +63,36 @@ class GameController:
         self._cam_yaw = 0.0
         self._cam_pitch = 0.0
         self.state = GameState()
+        self._strategies: List["AgentStrategy"] = []
         if not self.dry:
             try:
                 self._camera_pos = pyautogui.position()
             except Exception:  # pragma: no cover - best effort
                 self._camera_pos = None
+
+    # ------------------------------------------------------------------
+    # configuration helpers
+    # ------------------------------------------------------------------
+    def add_strategy(self, strategy: "AgentStrategy") -> None:
+        """Register an active strategy for configuration updates."""
+
+        self._strategies.append(strategy)
+
+    def reload_config(self, path: str | Path = "config/agent.yaml") -> AgentConfig:
+        """Reload configuration and update registered strategies."""
+
+        cfg = _reload_cfg(path)
+        self.cfg = cfg
+        self.dry = cfg.dry_run
+        self.keys.dry = self.dry
+        pyautogui.PAUSE = cfg.controls.mouse_pause
+        self._teleporter = None
+        for strat in list(self._strategies):
+            try:
+                strat.setup(cfg, getattr(strat, "win", self.win))
+            except Exception:  # pragma: no cover - defensive
+                logger.opt(exception=True).warning("strategy reload failed")
+        return cfg
 
     # ------------------------------------------------------------------
     # basic window helpers
