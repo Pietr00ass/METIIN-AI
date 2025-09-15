@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 
 import keyboard
@@ -25,13 +26,30 @@ def _handle_teleport() -> None:
         _teleport_in_progress = False
 
 
-def main() -> None:
-    """Run environment checks then start the GUI application."""
+def main(argv: list[str] | None = None) -> None:
+    """Run environment checks then start the GUI application.
+
+    When ``--multi`` is provided, run the HuntDestroy strategy in
+    multi‑client mode instead of starting the GUI.
+    """
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--multi", type=int, default=0, help="number of clients")
+    args = parser.parse_args(argv)
 
     update_repository()
 
     if not check_requirements():
         sys.exit(1)
+
+    if args.multi:
+        from agent.multi_client import ClientManager
+        from agent.hunt_destroy import HuntDestroy
+
+        titles = [str(i + 1) for i in range(args.multi)]
+        mgr = ClientManager(titles)
+        mgr.run_cycle(HuntDestroy)
+        return
 
     keyboard.add_hotkey("ctrl+x", _handle_teleport)
 
