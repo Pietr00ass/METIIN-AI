@@ -167,6 +167,31 @@ class GameController:
             except Exception:  # pragma: no cover - best effort
                 logger.opt(exception=True).warning("death handler failed")
 
+    # simple recovery helpers -------------------------------------------------
+    def restart_game(self) -> None:
+        """Best effort recovery when the client is logged out.
+
+        The implementation delegates to :meth:`relog`, which releases all
+        pressed keys, performs the minimal login sequence and teleports to the
+        first configured slot.  The routine is intentionally lightweight and
+        suitable for unit tests where the real game client is not available.
+        """
+
+        logger.info("restart_game invoked")
+        try:
+            self.relog()
+        except Exception:  # pragma: no cover - defensive
+            logger.opt(exception=True).warning("relog failed during restart")
+
+    def ensure_logged_in(self) -> None:
+        """Attempt to ensure the account is logged in after a loading screen."""
+
+        logger.debug("ensure_logged_in invoked")
+        try:
+            self.login()
+        except Exception:  # pragma: no cover - defensive
+            logger.opt(exception=True).warning("login failed in ensure_logged_in")
+
     # ------------------------------------------------------------------
     # event hook registration
     # ------------------------------------------------------------------
