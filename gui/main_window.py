@@ -1153,7 +1153,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rotate_chk.setChecked(bool(scan.get("enabled", True)))
         self.sweeps.setValue(int(scan.get("sweeps", 8)))
         self.sweep_ms.setValue(int(scan.get("sweep_ms", 250)))
-        self.idle_sec.setValue(float(scan.get("idle_sec", 1.5)))
+        self.idle_sec.setValue(float(scan.get("idle_sec", 0.0)))
         self.cooldown_spin.setValue(int(cfg.get("cooldowns", {}).get("slot_min", 10)))
         self.templates_dir_edit.setText(paths.get("templates_dir", "assets/templates"))
         ui = cfg.get("ui", {})

@@ -60,10 +60,13 @@ class StuckConfig(BaseModel):
 
 
 class ScanConfig(BaseModel):
+    enabled: bool = True
     period: float = 0.066
     key: str = "e"
     sweeps: int = 8
     sweep_ms: int = 250
+    idle_sec: float = 0.0
+    pause: float = 0.0
 
 
 class CooldownsConfig(BaseModel):
