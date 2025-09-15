@@ -1,9 +1,62 @@
 from __future__ import annotations
 
+import subprocess
 import time
+import types
 
 import mss
-import pygetwindow as gw
+try:  # pragma: no cover - pygetwindow unsupported on Linux
+    import pygetwindow as gw
+except Exception:  # ImportError or NotImplementedError
+    gw = types.SimpleNamespace(
+        getAllWindows=lambda: (_ for _ in ()).throw(NotImplementedError)
+    )
+
+
+def _wmctrl_windows() -> list[types.SimpleNamespace]:
+    """Return a list of window-like objects using the ``wmctrl`` command.
+
+    The returned objects mimic the subset of the ``pygetwindow.Window`` API used
+    by :class:`WindowCapture` (``title``, ``left``, ``top``, ``width``,
+    ``height``, ``restore`` and ``activate`` methods).
+    """
+
+    try:
+        out = subprocess.run(
+            ["wmctrl", "-lpG"], capture_output=True, text=True, check=True
+        ).stdout.splitlines()
+    except Exception:
+        return []
+
+    wins: list[types.SimpleNamespace] = []
+    for line in out:
+        parts = line.split(None, 7)
+        if len(parts) < 8:
+            continue
+        wid, _desk, _pid, x, y, w, h, title = parts
+
+        def _activate(win_id=wid):
+            try:
+                subprocess.run(
+                    ["wmctrl", "-i", "-a", win_id], capture_output=True
+                )
+            except Exception:
+                pass
+
+        wins.append(
+            types.SimpleNamespace(
+                wid=wid,
+                title=title.strip(),
+                left=int(x),
+                top=int(y),
+                width=int(w),
+                height=int(h),
+                isMinimized=False,
+                restore=lambda: None,
+                activate=_activate,
+            )
+        )
+    return wins
 
 
 class WindowCapture:
@@ -50,7 +103,15 @@ class WindowCapture:
         attempts = 0
         while True:
             attempts += 1
-            wins = [w for w in gw.getAllWindows() if needle in (w.title or "").lower()]
+            wins: list[types.SimpleNamespace]
+            try:
+                wins = [
+                    w for w in gw.getAllWindows() if needle in (w.title or "").lower()
+                ]
+            except Exception:
+                wins = [
+                    w for w in _wmctrl_windows() if needle in (w.title or "").lower()
+                ]
             if wins:
                 w = wins[0]
                 try:
@@ -73,6 +134,13 @@ class WindowCapture:
             time.sleep(0.05)
         except Exception:
             pass
+        if hasattr(self.win, "wid"):
+            # Refresh geometry for wmctrl fallback windows
+            for w in _wmctrl_windows():
+                if w.wid == self.win.wid:
+                    self.win.left, self.win.top = w.left, w.top
+                    self.win.width, self.win.height = w.width, w.height
+                    break
         left, top = int(self.win.left), int(self.win.top)
         width, height = int(self.win.width), int(self.win.height)
         if width <= 0 or height <= 0:
