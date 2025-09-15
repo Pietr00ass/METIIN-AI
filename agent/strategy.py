@@ -4,6 +4,7 @@ import importlib
 from typing import Callable, Dict, Protocol, Type
 
 from . import AgentConfig
+from .game_controller import controller as _controller
 
 
 class AgentStrategy(Protocol):
@@ -53,6 +54,11 @@ def load_strategy(cfg: AgentConfig | dict | None = None, window_capture=None) ->
         raise ValueError(f"Unknown strategy '{name}'")
     strategy = cls()
     strategy.setup(cfg, window_capture)
+    if _controller is not None:
+        try:
+            _controller.add_strategy(strategy)
+        except Exception:  # pragma: no cover - defensive
+            pass
     return strategy
 
 

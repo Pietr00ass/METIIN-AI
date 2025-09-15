@@ -25,3 +25,22 @@ def test_load_config_reads_yaml(tmp_path, monkeypatch):
     path.write_text("dummy")
     cfg = agent.load_config(path)
     assert cfg.controls.mouse_pause == 0.1
+
+
+def test_reload_config(tmp_path, monkeypatch):
+    """reload_config should update the cached configuration instance."""
+
+    path = tmp_path / "cfg.yaml"
+    path.write_text("dummy")
+    cfg1 = agent.AgentConfig(controls={"mouse_pause": 0.1})
+    cfg2 = agent.AgentConfig(controls={"mouse_pause": 0.2})
+
+    monkeypatch.setattr(agent, "load_config", lambda p: cfg1)
+    agent._cfg = None
+    cfg = agent.get_config(path)
+    assert cfg.controls.mouse_pause == 0.1
+
+    monkeypatch.setattr(agent, "load_config", lambda p: cfg2)
+    new_cfg = agent.reload_config(path)
+    assert new_cfg.controls.mouse_pause == 0.2
+    assert agent.get_config(path).controls.mouse_pause == 0.2
