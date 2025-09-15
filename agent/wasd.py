@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
+from utils.humanizer import random_pause
 
 try:  # pragma: no cover - optional dependency
     import pydirectinput
@@ -262,6 +263,7 @@ class KeyHold:
         self.press(key)
         time.sleep(duration)
         self.release(key)
+        random_pause(0)
 
     def hotkey(self, keys: list[str], duration: float = 0.05) -> None:
         """Press ``keys`` together and hold for ``duration`` seconds.

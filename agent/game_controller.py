@@ -22,6 +22,7 @@ import pyautogui
 from recorder.window_capture import WindowCapture
 
 from . import AgentConfig, get_config
+from utils.humanizer import random_pause
 from .game_state import GameState
 from .wasd import KeyHold
 from utils.logging_config import logger
@@ -87,6 +88,7 @@ class GameController:
             return
         pyautogui.moveTo(x, y, duration=duration or self.cfg.teleport.click_duration)
         pyautogui.click()
+        random_pause(0)
 
     def login(self) -> None:
         """Attempt to log into the game after a disconnect.

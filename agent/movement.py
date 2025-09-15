@@ -4,6 +4,8 @@ from .wasd import KeyHold
 from .game_controller import GameController
 from .detector import Detection
 from utils.logging_config import logger
+from utils.humanizer import jitter_move
+from . import get_config
 
 
 class MovementController:
@@ -66,7 +68,11 @@ class MovementController:
         bw = None
         if tgt:
             x1, y1, x2, y2 = tgt.bbox
-            cx = (x1 + x2) / 2 / W
+            cx_px = (x1 + x2) / 2
+            cy_px = (y1 + y2) / 2
+            jitter = get_config().humanizer.cursor_jitter
+            cx_px, cy_px = jitter_move(cx_px, cy_px, jitter)
+            cx = cx_px / W
             bw = (x2 - x1) / W
             if abs(cx - 0.5) > self.deadzone:
                 desired.add("d" if cx > 0.5 else "a")
