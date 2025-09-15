@@ -80,6 +80,18 @@ class BuffConfig(BaseModel):
     interval_sec: float = 60.0
 
 
+class PotionsConfig(BaseModel):
+    hp_key: str = "f2"
+    hp_threshold: int = 40
+    mp_key: str = "f3"
+    mp_threshold: int = 30
+
+
+class MultiClientConfig(BaseModel):
+    count: int = 1
+    rotation: List[int] = []
+
+
 class TeleportSlot(BaseModel):
     page: str = "Strona I"
     slot: int = 1
@@ -121,11 +133,16 @@ class AgentConfig(BaseModel):
     cooldowns: CooldownsConfig = CooldownsConfig()
     auto_press: AutoPressConfig = AutoPressConfig()
     buffs: List[BuffConfig] = []
+    auto_loot: bool = False
+    inventory_manager: bool = False
+    potions: PotionsConfig = PotionsConfig()
     priority: List[str] = ["boss", "metin", "potwory"]
     teleport: TeleportConfig = TeleportConfig()
     channels: List[int] = [1, 2, 3, 4, 5, 6, 7, 8]
     channel: ChannelConfig = ChannelConfig()
     cycle: CycleConfig = CycleConfig()
+    pathfinding: bool = False
+    multi_client: MultiClientConfig = MultiClientConfig()
     dry_run: bool = False
     logging: LoggingConfig = LoggingConfig()
 
@@ -143,9 +160,11 @@ __all__ = [
     "CooldownsConfig",
     "AutoPressConfig",
     "BuffConfig",
+    "PotionsConfig",
     "TeleportConfig",
     "TeleportSlot",
     "ChannelConfig",
     "CycleConfig",
+    "MultiClientConfig",
     "LoggingConfig",
 ]
