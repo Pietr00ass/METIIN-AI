@@ -24,6 +24,7 @@ from .game_controller import controller
 from .template_matcher import TemplateMatcher
 from .loot import LootCollector
 from .buff_manager import BuffManager
+from . import potion_manager
 from utils.logging_config import logger
 
 
@@ -141,6 +142,7 @@ class HuntDestroy(AgentStrategy):
         with self._grab_lock:
             fr = self.win.grab()
         frame = np.array(fr)[:, :, :3].copy()
+        potion_manager.check_and_use(frame)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         if self.flow and self.flow.update(gray):
             self._recover_from_stuck()
