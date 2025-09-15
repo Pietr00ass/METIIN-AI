@@ -12,7 +12,6 @@ The resulting files are placed under the ``dist/`` directory.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 try:
