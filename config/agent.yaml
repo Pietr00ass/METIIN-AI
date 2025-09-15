@@ -66,7 +66,15 @@ channels: [1,2,3,4,5,6,7,8]
 channel:
   settle_sec: 5.0
   timeout_per_ch: 5.0
-  hotkeys: {}
+  hotkeys:
+    1: numpad1
+    2: numpad2
+    3: numpad3
+    4: numpad4
+    5: numpad5
+    6: numpad6
+    7: numpad7
+    8: numpad8
 
 cycle:
   ch_from: 1

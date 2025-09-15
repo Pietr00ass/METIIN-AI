@@ -21,6 +21,7 @@ from agent.channel import ChannelSwitcher
 from agent.cycle import CycleFarm
 from agent.strategy import AgentStrategy, load_strategy
 from agent.wasd import KeyHold
+from config.models import ChannelConfig
 from gui.preview import PreviewWorker
 from gui.teleport_config_dialog import TeleportConfigDialog
 from gui.widgets import AgentPanel, ScanPanel, SettingsPanel, AdvancedPanel
@@ -1072,9 +1073,14 @@ class MainWindow(QtWidgets.QMainWindow):
         cfg.update(self.settings_panel.get_config())
         cfg.update(self.agent_panel.get_config())
         cfg.update(self.scan_panel.get_config(self.rotate_chk.isChecked()))
+        default_hotkeys = ChannelConfig().hotkeys
         hotkeys = {
-            i: self.ch_key_edits[i].text().strip() or f"numpad{i}" for i in range(1, 9)
+            i: self.ch_key_edits[i].text().strip() or default_hotkeys[i]
+            for i in range(1, 9)
         }
+        ch_cfg = ChannelConfig(
+            settle_sec=5.0, timeout_per_ch=2.5, hotkeys=hotkeys
+        )
         cfg.update(
             {
                 "stuck": {
@@ -1083,11 +1089,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     "recovery_action": "rotate",
                 },
                 "cooldowns": {"slot_min": int(self.cooldown_spin.value())},
-                "channel": {
-                    "settle_sec": 5.0,
-                    "timeout_per_ch": 2.5,
-                    "hotkeys": hotkeys,
-                },
+                "channel": ch_cfg.dict(),
                 "ui": {"scale": float(self.scale_spin.value())},
             }
         )
@@ -1162,8 +1164,9 @@ class MainWindow(QtWidgets.QMainWindow):
         for name in cfg.get("priority", []):
             self.prio_list.addItem(QtWidgets.QListWidgetItem(name))
         ch_hot = cfg.get("channel", {}).get("hotkeys", {})
+        default_hotkeys = ChannelConfig().hotkeys
         for i in range(1, 9):
-            key = ch_hot.get(str(i)) or ch_hot.get(i) or f"numpad{i}"
+            key = ch_hot.get(str(i)) or ch_hot.get(i) or default_hotkeys[i]
             self.ch_key_edits[i].setText(key)
 
         seq = cfg.get("cycle", {}).get("sequence", [])
