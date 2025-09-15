@@ -12,6 +12,23 @@ METIIN-AI provides vision-based automation for the Metin2 game. It captures the 
 - Python 3.10+
 - ``pip`` for dependency management
 - [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) installed and available on the system ``PATH``
+  - Windows (PowerShell via [Chocolatey](https://chocolatey.org/)):
+
+    ```powershell
+    choco install tesseract
+    ```
+
+  - Linux (Debian/Ubuntu):
+
+    ```bash
+    sudo apt-get update && sudo apt-get install tesseract-ocr
+    ```
+
+  - Verify the installation:
+
+    ```bash
+    tesseract --version
+    ```
 - On Windows the [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) are required by the ``pywin32`` package.
 
 ## Dependency Installation

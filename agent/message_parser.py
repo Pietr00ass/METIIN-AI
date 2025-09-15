@@ -1,10 +1,29 @@
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from typing import Callable
 
-import pytesseract
+from utils.requirements_check import ensure_tesseract_available
+
+try:  # pragma: no cover - import guard for descriptive error handling
+    import pytesseract as _pytesseract
+except ImportError as exc:  # pragma: no cover - handled lazily by ensure_ocr_ready
+    _PYTESSERACT_IMPORT_ERROR = exc
+    pytesseract = None  # type: ignore[assignment]
+else:
+    _PYTESSERACT_IMPORT_ERROR = None
+    pytesseract = _pytesseract
+
 import spacy
+
+_logger = logging.getLogger(__name__)
+
+_TESSERACT_NOT_FOUND_ERROR = (
+    getattr(pytesseract, "TesseractNotFoundError", RuntimeError)
+    if pytesseract is not None
+    else RuntimeError
+)
 
 _nlp = None
 
@@ -39,14 +58,33 @@ _RULES: dict[str, Callable[[set[str]], bool]] = {
     ),
 }
 
+@lru_cache(maxsize=1)
+def ensure_ocr_ready() -> None:
+    """Ensure that pytesseract and the Tesseract binary are available."""
+
+    if pytesseract is None:
+        message = (
+            "pytesseract is required for OCR but is not installed. Install the project "
+            "dependencies from requirements.txt to enable message parsing."
+        )
+        _logger.error(message)
+        raise RuntimeError(message) from _PYTESSERACT_IMPORT_ERROR
+
+    ensure_tesseract_available(pytesseract)
+
 
 def ocr_image(image) -> str:
     """Extract text from ``image`` using Tesseract."""
 
+    ensure_ocr_ready()
+
+    if pytesseract is None:  # pragma: no cover - defensive
+        raise RuntimeError("pytesseract became unavailable after initialisation")
+
     try:
         return pytesseract.image_to_string(image, lang="pol")
-    except pytesseract.TesseractNotFoundError:
-        logging.getLogger(__name__).error(
+    except _TESSERACT_NOT_FOUND_ERROR:
+        _logger.error(
             "Tesseract OCR binary not found. Install Tesseract and ensure it is available on the system PATH."
         )
         raise
@@ -78,4 +116,4 @@ def parse_message(image) -> tuple[str, str | None]:
     return text, event
 
 
-__all__ = ["parse_message", "ocr_image", "classify_message"]
+__all__ = ["parse_message", "ocr_image", "classify_message", "ensure_ocr_ready"]
