@@ -19,6 +19,7 @@ from .strategy import AgentStrategy, register
 from .targets import pick_target
 from .teleport import Teleporter
 from .wasd import KeyHold
+from .game_controller import controller
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +121,11 @@ class HuntDestroy(AgentStrategy):
         _, event = parse_message(frame)
         if event:
             logger.info("Wykryto wiadomość: %s", event)
+            if controller is not None:
+                try:
+                    controller.reset_state()
+                except Exception:  # pragma: no cover - best effort
+                    logger.warning("reset_state failed", exc_info=True)
             if event in {"no boss", "dungeon finished"}:
                 self.search.handle_no_target(True)
                 self._last_tgt = None
