@@ -74,7 +74,7 @@ class HuntDestroy(AgentStrategy):
             cfg.detector.classes,
             cfg.detector.conf_thr,
             cfg.detector.iou_thr,
-            cv2_threads=getattr(cfg.detector, "cv2_threads", 0),
+            cv2_threads=cfg.detector.cv2_threads,
         )
         self.avoid = CollisionAvoid()
         dry = cfg.dry_run
