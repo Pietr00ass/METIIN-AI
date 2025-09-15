@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import logging
 import time
 
 from .channel import ChannelSwitcher
 from .teleport import Teleporter
-
-logger = logging.getLogger(__name__)
+from utils.logging_config import logger
 
 
 class SearchManager:
@@ -71,10 +69,10 @@ class SearchManager:
                         try:
                             self.channel_switcher.switch(ch)
                         except Exception:
-                            logger.warning("Nie udało si zmienić kanału na %s", ch)
+                            logger.warning("Nie udało si zmienić kanału na {}", ch)
                         self.channel_idx = (self.channel_idx + 1) % len(self.channels)
             else:
                 logger.debug("Lista slotów teleportu jest pusta")
         except Exception:
-            logger.warning("Teleportacja na slot %s nie powiodła się", slot)
+            logger.warning("Teleportacja na slot {} nie powiodła się", slot)
         self.last_target_time = now

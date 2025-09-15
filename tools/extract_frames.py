@@ -10,12 +10,11 @@ process.
 from __future__ import annotations
 
 import argparse
-import logging
 from pathlib import Path
 
 import cv2
 
-logging.basicConfig(level=logging.INFO)
+from utils.logging_config import logger
 
 
 def main() -> None:
@@ -51,23 +50,21 @@ def main() -> None:
         )
     videos = sorted(rec_dir.glob("*.mp4"))
     if not videos:
-        logging.warning(
-            "Directory %s contains no .mp4 files (Katalog %s nie zawiera plików .mp4)",
+        logger.warning(
+            "Directory {} contains no .mp4 files (Katalog {} nie zawiera plików .mp4)",
             rec_dir,
             rec_dir,
         )
         return
 
-    logging.info(
-        "Found %d recordings (Znaleziono %d nagrań…)", len(videos), len(videos)
-    )
+    logger.info("Found {} recordings (Znaleziono {} nagrań…)", len(videos), len(videos))
     for vid in videos:
-        logging.info("Processing %s (Przetwarzam)", vid)
+        logger.info("Processing {} (Przetwarzam)", vid)
         try:
             cap = cv2.VideoCapture(str(vid))
             if not cap.isOpened():
-                logging.error(
-                    "Cannot open file %s, skipping (Nie można otworzyć pliku %s, pomijam)",
+                logger.error(
+                    "Cannot open file {}, skipping (Nie można otworzyć pliku {}, pomijam)",
                     vid,
                     vid,
                 )
@@ -84,16 +81,16 @@ def main() -> None:
                     saved += 1
                 i += 1
             cap.release()
-            logging.info("Saved %d frames (zapisano %d klatek)", saved, saved)
+            logger.info("Saved {} frames (zapisano {} klatek)", saved, saved)
         except Exception as exc:
-            logging.error(
-                "Error processing %s: %s (Błąd podczas przetwarzania %s: %s)",
+            logger.error(
+                "Error processing {}: {} (Błąd podczas przetwarzania {}: {})",
                 vid,
                 exc,
                 vid,
                 exc,
             )
-    logging.info("Done. (Gotowe.)")
+    logger.info("Done. (Gotowe.)")
 
 
 if __name__ == "__main__":

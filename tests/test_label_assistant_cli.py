@@ -1,8 +1,8 @@
-import logging
 import sys
 import types
 
 import pytest
+from utils.logging_config import logger
 
 
 def test_skip_existing(monkeypatch, tmp_path, caplog):
@@ -37,9 +37,10 @@ def test_skip_existing(monkeypatch, tmp_path, caplog):
 
     import importlib
 
-    with caplog.at_level(logging.INFO):
-        la = importlib.import_module("tools.label_assistant")
-        la.main()
+    handler_id = logger.add(caplog.handler, format="{message}", level="INFO")
+    la = importlib.import_module("tools.label_assistant")
+    la.main()
+    logger.remove(handler_id)
 
     assert lbl.read_text() == "orig"
     assert "Skipping test.jpg" in caplog.text

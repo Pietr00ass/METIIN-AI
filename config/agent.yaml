@@ -3,6 +3,7 @@ window:
 paths:
   templates_dir: "assets/templates"
   model: "runs/detect/train/weights/best.pt"
+  log_dir: "logs"
 controls:
   keys:
     forward: "w"
@@ -28,14 +29,7 @@ scan:
   key: "e"
   sweeps: 8
   sweep_ms: 250
-  idle_sec: 1.5
-  pause: 0.12
-cooldowns:
-  slot_min: 10
-auto_press:
-  enabled: false
-  key: "i"
-  interval_sec: 60.0
+@@ -39,25 +40,29 @@ auto_press:
 buffs:
   - key: "f1"
     interval_sec: 60.0
@@ -61,7 +55,8 @@ cycle:
   # sequence:
   #   - {ch: 1, slot: 1}
   #   - {ch: 2, slot: 3}
-dungeon_polana:
-  teleport_slot: 1
-  boss_timeout: 30
-  error_timeout: 5
+
+logging:
+  level: INFO
+  retention: "7 days"
+config/models.py

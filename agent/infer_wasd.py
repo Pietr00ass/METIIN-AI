@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import time
 
 import numpy as np
@@ -10,8 +9,7 @@ from recorder.window_capture import WindowCapture
 from . import AgentConfig, TeleportSlot
 from .strategy import AgentStrategy, load_strategy
 from .game_controller import create_controller
-
-logger = logging.getLogger(__name__)
+from utils.logging_config import logger
 
 
 class WasdVisionAgent:
@@ -60,5 +58,5 @@ class WasdVisionAgent:
                 try:
                     self.hd.stop()
                 except Exception as exc:  # pragma: no cover - best effort cleanup
-                    logger.warning("Failed to stop strategy: %s", exc)
+                    logger.warning("Failed to stop strategy: {}", exc)
             self.win.close()

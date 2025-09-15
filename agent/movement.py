@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import logging
-
 from .wasd import KeyHold
 from .game_controller import GameController
 from .detector import Detection
-
-logger = logging.getLogger(__name__)
+from utils.logging_config import logger
 
 
 class MovementController:

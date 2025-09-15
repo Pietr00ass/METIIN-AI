@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import threading
 import time
 
@@ -12,7 +11,7 @@ try:  # pragma: no cover - optional dependency
 except Exception:  # pragma: no cover - gracefully handle missing module
     pydirectinput = None
 
-logger = logging.getLogger(__name__)
+from utils.logging_config import logger
 
 # ``_user32`` is kept for backward compatibility but is unused when relying
 # solely on ``pydirectinput``.
@@ -31,17 +30,17 @@ def _send_scan(scan: int, keyup: bool = False, extended: bool = False) -> None:
 
     key = REVERSE_SCANCODES.get(scan)
     if not key:
-        logger.warning("Unknown scancode %r", scan)
+        logger.warning("Unknown scancode {!r}", scan)
         return
 
     func = pydirectinput.keyUp if keyup else pydirectinput.keyDown
     try:
         result = func(key, _pause=False)
         if result is False:
-            logger.warning("pydirectinput.%s returned False for %r", func.__name__, key)
+            logger.warning("pydirectinput.{} returned False for {}", func.__name__, key)
     except Exception:  # pragma: no cover - log but do not raise
-        logger.warning(
-            "pydirectinput.%s failed for %r", func.__name__, key, exc_info=True
+        logger.opt(exception=True).warning(
+            "pydirectinput.{} failed for {}", func.__name__, key
         )
 
 
@@ -241,7 +240,7 @@ class KeyHold:
         key = key.lower()
         with self.lock:
             if key not in self.down:
-                logger.debug("Naciśnięto klawisz %s", key)
+                logger.debug("Naciśnięto klawisz {}", key)
                 self._down(key)
                 self.down.add(key)
 
@@ -249,7 +248,7 @@ class KeyHold:
         key = key.lower()
         with self.lock:
             if key in self.down:
-                logger.debug("Zwolniono klawisz %s", key)
+                logger.debug("Zwolniono klawisz {}", key)
                 self._up(key)
                 self.down.remove(key)
 
@@ -280,7 +279,7 @@ class KeyHold:
     def release_all(self):
         with self.lock:
             if self.down:
-                logger.debug("Zwolniono wszystkie klawisze: %s", list(self.down))
+                logger.debug("Zwolniono wszystkie klawisze: {}", list(self.down))
             for k in list(self.down):
                 self._up(k)
             self.down.clear()

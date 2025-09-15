@@ -15,15 +15,13 @@ the Metin2 window, while ``--name`` determines the output filename.
 """
 
 import argparse
-import logging
 from pathlib import Path
 
 import cv2
 import numpy as np
 
 from recorder.window_capture import WindowCapture
-
-logging.basicConfig(level=logging.INFO)
+from utils.logging_config import logger
 
 
 def main() -> None:
@@ -55,10 +53,10 @@ def main() -> None:
         x, y, w, h = args.roi
         out_path = out / f"{args.name}.png"
         cv2.imwrite(str(out_path), frame[y : y + h, x : x + w])
-        logging.info("Saved template: %s (Zapisano szablon)", out_path)
+        logger.info("Saved template: {} (Zapisano szablon)", out_path)
     except Exception as exc:
-        logging.error(
-            "Template capture failed: %s (Błąd podczas przechwytywania szablonu)",
+        logger.error(
+            "Template capture failed: {} (Błąd podczas przechwytywania szablonu)",
             exc,
         )
 
