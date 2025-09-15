@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 
 import pyautogui
+import numpy as np
 
 try:  # avoid circular import during tests
     from recorder.window_capture import WindowCapture
@@ -122,47 +123,69 @@ def right_click_bbox_center(
 
 def detect_and_right_click(
     detector,
-    frame,
     region,
+    *,
+    frame=None,
     target_names: list[str] | None = None,
     win: WindowCapture | None = None,
     rate_limit: bool = True,
+    click_all: bool = False,
 ) -> bool:
-    """Detect objects on ``frame`` and right‑click the first match.
+    """Detect objects and right-click matching ones.
+
+    The frame to analyse can be provided explicitly via ``frame``.  If omitted
+    the function grabs the current window contents using ``win``.  Detection
+    results are iterated in the order returned by ``detector.infer`` and each
+    matching object is right-clicked.  Set ``click_all`` to ``True`` to interact
+    with all matches instead of stopping after the first click.
 
     Parameters
     ----------
     detector:
-        Object providing ``infer(frame)`` -> list of detections with ``name`` and
-        ``bbox`` attributes.
-    frame: np.ndarray
-        BGR image captured from the application window.
+        Object with ``infer(frame)`` -> list of detections exposing ``name`` and
+        ``bbox``.
     region: tuple
-        ``(left, top, width, height)`` describing window position used for
-        translating detection coordinates to screen space.
-    target_names: list[str] or None
-        Optional list of detection names to look for.  If ``None`` the first
-        detected object is clicked.
+        ``(left, top, width, height)`` used to translate detection coordinates to
+        screen space.
+    frame: np.ndarray or ``None``
+        Optional BGR image; if ``None`` and ``win`` is provided the image will be
+        captured from the window.
+    target_names: list[str] or ``None``
+        Detection names to click.  ``None`` matches all objects.
     win: WindowCapture | None
-        Optional window instance for focus verification.
+        Optional window instance for capture and focus verification.
+    rate_limit: bool
+        Forwarded to :func:`click_bbox_center`.
+    click_all: bool
+        Whether to click all matching detections.
 
     Returns
     -------
     bool
-        ``True`` if a right click was performed on a detected object.
+        ``True`` if at least one click was performed.
 
-    PL: Wykryj obiekty na klatce i kliknij prawym przyciskiem pierwszy pasujący
-    do ``target_names``.
+    PL: Wykryj obiekty na klatce i kliknij prawym przyciskiem wszystkie pasujące
+    do ``target_names`` (domyślnie pierwszy znaleziony obiekt).
     """
 
+    if frame is None:
+        if win is None:
+            raise ValueError("frame or win must be provided")
+        fr = win.grab()
+        frame = np.array(fr)[:, :, :3].copy()
+
     dets = detector.infer(frame)
+    clicked = False
     for d in dets:
         if target_names is None or d.name in target_names:
-            return click_bbox_center(
+            ok = click_bbox_center(
                 d.bbox,
                 region,
                 rate_limit=rate_limit,
                 win=win,
                 button="right",
             )
-    return False
+            clicked = clicked or ok
+            if ok and not click_all:
+                break
+    return clicked
