@@ -26,6 +26,7 @@ from .template_matcher import TemplateMatcher
 from .loot import LootCollector
 from .buff_manager import BuffManager
 from . import potion_manager
+from . import vision
 from utils.logging_config import logger
 
 
@@ -144,6 +145,20 @@ class HuntDestroy(AgentStrategy):
         with self._grab_lock:
             fr = self.win.grab()
         frame = np.array(fr)[:, :, :3].copy()
+        if vision.is_logged_out(frame):
+            if controller is not None:
+                try:
+                    controller.restart_game()
+                except Exception:  # pragma: no cover - defensive
+                    logger.opt(exception=True).warning("restart_game failed")
+            return
+        if vision.is_loading(frame):
+            if controller is not None:
+                try:
+                    controller.ensure_logged_in()
+                except Exception:  # pragma: no cover - defensive
+                    logger.opt(exception=True).warning("ensure_logged_in failed")
+            return
         potion_manager.check_and_use(frame)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         if self.flow and self.flow.update(gray):

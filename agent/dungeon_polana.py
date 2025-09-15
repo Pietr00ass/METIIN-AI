@@ -13,6 +13,8 @@ from .strategy import AgentStrategy, register
 from .teleport import Teleporter
 from .wasd import KeyHold
 from . import minimap
+from .game_controller import controller
+from . import vision
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +76,20 @@ class DungeonPolana(AgentStrategy):
     def step(self) -> None:
         fr = self.win.grab()
         frame = np.array(fr)[:, :, :3].copy()
+        if vision.is_logged_out(frame):
+            if controller is not None:
+                try:
+                    controller.restart_game()
+                except Exception:  # pragma: no cover - defensive
+                    logger.warning("restart_game failed", exc_info=True)
+            return
+        if vision.is_loading(frame):
+            if controller is not None:
+                try:
+                    controller.ensure_logged_in()
+                except Exception:  # pragma: no cover - defensive
+                    logger.warning("ensure_logged_in failed", exc_info=True)
+            return
 
         # check for overlay messages first
         _, event = parse_message(frame)
