@@ -11,6 +11,7 @@ import pyautogui
 from recorder.window_capture import WindowCapture
 
 from . import AgentConfig, get_config, teleport_config as tc
+from .game_controller import GameController
 
 try:  # pragma: no cover - prefer pydirectinput if available
     from pydirectinput import KeyHold  # type: ignore
@@ -46,6 +47,7 @@ class Teleporter:
         use_ocr: bool = False,
         dry: bool = False,
         cfg: AgentConfig | dict | None = None,
+        controller: GameController | None = None,
     ) -> None:
         if cfg is None:
             cfg = CFG
@@ -53,9 +55,15 @@ class Teleporter:
             cfg = AgentConfig(**cfg)
         self.cfg = cfg
         pyautogui.PAUSE = self.cfg.controls.mouse_pause
-        self.win = win
-        self.dry = dry
-        self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))
+        self.controller = controller
+        if controller is not None:
+            self.win = controller.win
+            self.dry = dry or controller.dry
+            self.keys = controller.keys
+        else:
+            self.win = win
+            self.dry = dry
+            self.keys = KeyHold(dry=self.dry, active_fn=getattr(self.win, "is_foreground", None))
 
         tp_cfg = self.cfg.teleport
         self.click_duration = tp_cfg.click_duration
@@ -66,6 +74,10 @@ class Teleporter:
     def _safe_click(self, x: int, y: int) -> None:
         if self.dry:
             return
+        controller = getattr(self, "controller", None)
+        if controller is not None:
+            controller.click(x, y, duration=self.click_duration)
+            return
         self.win.focus()
         if not self.win.is_foreground():
             return
@@ -75,8 +87,12 @@ class Teleporter:
     def open_panel(self, max_attempts: int = 3) -> bool:
         """Open teleport panel using ``Ctrl+X`` without any verification."""
 
-        self.win.focus()
-        if not self.win.is_foreground():
+        controller = getattr(self, "controller", None)
+        focus = controller.focus if controller else self.win.focus
+        is_foreground = controller.is_foreground if controller else self.win.is_foreground
+
+        focus()
+        if not is_foreground():
             logger.debug("Window is not in foreground before opening teleport panel")
             return False
 
@@ -85,7 +101,7 @@ class Teleporter:
             if not self.dry:
                 self.keys.hotkey(["ctrl", "x"], duration=0.05)
             time.sleep(self.open_panel_delay)
-            if not self.win.is_foreground():
+            if not is_foreground():
                 logger.debug(
                     "Window lost foreground after keypress on attempt %d", attempt + 1
                 )

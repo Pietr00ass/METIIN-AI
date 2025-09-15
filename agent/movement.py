@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from .wasd import KeyHold
+from .game_controller import GameController
 from .detector import Detection
 
 logger = logging.getLogger(__name__)
@@ -12,9 +13,16 @@ class MovementController:
     """Handle movement keys based on target position and obstacle steering."""
 
     def __init__(
-        self, keys: KeyHold, desired_w: float, deadzone: float, enabled: bool = True
+        self,
+        controller: GameController | KeyHold,
+        desired_w: float,
+        deadzone: float,
+        enabled: bool = True,
     ):
-        self.keys = keys
+        if isinstance(controller, GameController):
+            self.keys = controller.keys
+        else:
+            self.keys = controller
         self.desired_w = desired_w
         self.deadzone = deadzone
         self.enabled = enabled

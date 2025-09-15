@@ -9,6 +9,7 @@ from recorder.window_capture import WindowCapture
 
 from . import AgentConfig, TeleportSlot
 from .strategy import AgentStrategy, load_strategy
+from .game_controller import create_controller
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class WasdVisionAgent:
         self.channels = list(cfg.channels)
         self.teleport_slots = list(cfg.teleport.slots)
         self.win = WindowCapture(cfg.window.title_substr)
+        self.controller = create_controller(self.win, cfg)
         self.period = 1 / 15
         self.hd: AgentStrategy | None = None
 
