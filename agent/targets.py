@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from utils.classes import TARGET_PRIORITY
+
 from .detector import Detection
 
-DEFAULT_PRIORITY = ["boss", "metin", "potwory"]
+DEFAULT_PRIORITY = list(TARGET_PRIORITY)
 
 
 def _rank(name: str, priority_order: list[str]) -> int:

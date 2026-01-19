@@ -4,6 +4,8 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
+from utils.classes import TARGET_PRIORITY, YOLO_CLASSES
+
 
 class WindowConfig(BaseModel):
     title_substr: str = "Metin2"
@@ -46,7 +48,7 @@ class DetectorPolicy(BaseModel):
 
 
 class DetectorConfig(BaseModel):
-    classes: List[str] = ["metin", "boss", "potwory"]
+    classes: List[str] = list(YOLO_CLASSES)
     conf_thr: float = 0.5
     iou_thr: float = 0.45
     policy: DetectorPolicy = DetectorPolicy()
@@ -141,7 +143,7 @@ class AgentConfig(BaseModel):
     auto_loot: bool = False
     inventory_manager: bool = False
     potions: PotionsConfig = PotionsConfig()
-    priority: List[str] = ["boss", "metin", "potwory"]
+    priority: List[str] = list(TARGET_PRIORITY)
     teleport: TeleportConfig = TeleportConfig()
     channels: List[int] = [1, 2, 3, 4, 5, 6, 7, 8]
     channel: ChannelConfig = ChannelConfig()

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
 
+from utils.classes import TARGET_PRIORITY
+
 
 class AgentPanel(QtWidgets.QGroupBox):
     """Widget with agent configuration options."""
@@ -14,7 +16,7 @@ class AgentPanel(QtWidgets.QGroupBox):
         layout.addWidget(self.prio_label)
         self.prio_list = QtWidgets.QListWidget()
         self.prio_list.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
-        for name in ["boss", "metin", "potwory"]:
+        for name in TARGET_PRIORITY:
             self.prio_list.addItem(QtWidgets.QListWidgetItem(name))
         layout.addWidget(self.prio_list)
 

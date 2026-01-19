@@ -60,13 +60,18 @@ class PreviewWorker(QtCore.QThread):
                     if self._overlay and self._det:
                         try:
                             dets = self._det.infer(frame)
+                            color_map = {
+                                "metin": (0, 0, 255),
+                                "boss": (0, 215, 255),
+                                "mob_aggressive": (0, 128, 255),
+                                "mob_neutral": (0, 255, 128),
+                                "loot_label": (0, 255, 255),
+                                "ore": (255, 0, 255),
+                                "fish": (255, 255, 0),
+                            }
                             for d in dets:
                                 x1, y1, x2, y2 = map(int, d.bbox)
-                                color = (0, 0, 255)
-                                if d.name == "boss":
-                                    color = (0, 215, 255)
-                                elif d.name == "potwory":
-                                    color = (255, 128, 0)
+                                color = color_map.get(d.name, (0, 0, 255))
                                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                                 cv2.putText(
                                     frame,
@@ -93,4 +98,3 @@ class PreviewWorker(QtCore.QThread):
 
 
 __all__ = ["PreviewWorker"]
-

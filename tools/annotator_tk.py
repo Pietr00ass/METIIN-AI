@@ -8,6 +8,8 @@ from tkinter import messagebox, ttk
 
 from PIL import Image, ImageTk
 
+from utils.classes import YOLO_CLASSES
+
 # Ścieżki datasetu
 ROOT = Path(__file__).resolve().parents[1]
 IMG_DIR = ROOT / "datasets" / "mt2" / "images" / "train"
@@ -15,11 +17,11 @@ LBL_DIR = ROOT / "datasets" / "mt2" / "labels" / "train"
 LBL_DIR.mkdir(parents=True, exist_ok=True)
 
 # Kolejność klas MUSI zgadzać się z data.yaml
-CLASSES = ["metin", "boss", "potwory"]
+CLASSES = list(YOLO_CLASSES)
 
-HELP = """Sterowanie:
+HELP = f"""Sterowanie:
 - Lewy przycisk: przeciągnij, aby narysować prostokąt
-- 1/2/3: wybierz klasę (metin/boss/potwory)
+- 1-{len(CLASSES)}: wybierz klasę ({'/'.join(CLASSES)})
 - Delete: usuń zaznaczoną ramkę (z listy po prawej)
 - S: zapisz etykiety
 - A / D: poprzedni / następny obraz
@@ -68,7 +70,7 @@ class Annotator(tk.Tk):
         # Panel boczny
         side = ttk.Frame(main)
         side.grid(row=0, column=1, sticky="nsew", padx=6, pady=6)
-        ttk.Label(side, text="Klasa (1/2/3):").pack(anchor="w")
+        ttk.Label(side, text=f"Klasa (1-{len(CLASSES)}):").pack(anchor="w")
         self.cls_var = tk.StringVar(value=CLASSES[0])
         self.cls_combo = ttk.Combobox(
             side, textvariable=self.cls_var, values=CLASSES, state="readonly"
@@ -166,15 +168,12 @@ class Annotator(tk.Tk):
         self.redraw()
 
     def on_key(self, e):
-        if e.char == "1":
-            self.cls_var.set(CLASSES[0])
-            self.set_status()
-        elif e.char == "2":
-            self.cls_var.set(CLASSES[1])
-            self.set_status()
-        elif e.char == "3":
-            self.cls_var.set(CLASSES[2])
-            self.set_status()
+        if e.char.isdigit():
+            idx = int(e.char) - 1
+            if 0 <= idx < len(CLASSES):
+                self.cls_var.set(CLASSES[idx])
+                self.set_status()
+                return
         elif e.char.lower() == "s":
             self.save_labels()
         elif e.char.lower() == "a":
