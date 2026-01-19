@@ -93,6 +93,13 @@ class PotionsConfig(BaseModel):
     mp_threshold: int = 30
 
 
+class OcrConfig(BaseModel):
+    hp_roi: List[int] = []
+    mp_roi: List[int] = []
+    inventory_roi: List[int] = []
+    arrows_roi: List[int] = []
+
+
 class MultiClientConfig(BaseModel):
     count: int = 1
     rotation: List[int] = []
@@ -143,6 +150,7 @@ class AgentConfig(BaseModel):
     auto_loot: bool = False
     inventory_manager: bool = False
     potions: PotionsConfig = PotionsConfig()
+    ocr: OcrConfig = OcrConfig()
     priority: List[str] = list(TARGET_PRIORITY)
     teleport: TeleportConfig = TeleportConfig()
     channels: List[int] = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -168,6 +176,7 @@ __all__ = [
     "AutoPressConfig",
     "BuffConfig",
     "PotionsConfig",
+    "OcrConfig",
     "TeleportConfig",
     "TeleportSlot",
     "ChannelConfig",

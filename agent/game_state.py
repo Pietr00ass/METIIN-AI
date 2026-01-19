@@ -17,6 +17,10 @@ class GameState:
     minimap_open: bool = False
     inventory_slots: int = 0
     inventory_occupied: int = 0
+    inventory_full: bool = False
+    hp_ratio: float | None = None
+    mp_ratio: float | None = None
+    arrows_empty: bool = False
     player_pos: tuple[int, int] | None = None
 
     def reset(self) -> None:
@@ -25,6 +29,10 @@ class GameState:
         self.equipment_open = False
         self.minimap_open = False
         self.inventory_occupied = 0
+        self.inventory_full = False
+        self.hp_ratio = None
+        self.mp_ratio = None
+        self.arrows_empty = False
         self.player_pos = None
 
     # ------------------------------------------------------------------
