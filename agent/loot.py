@@ -9,6 +9,7 @@ from .detector import ObjectDetector
 from .template_matcher import TemplateMatcher
 from .interaction import click_bbox_center
 from .game_state import GameState
+from utils.classes import LOOT_CLASSES
 from utils.logging_config import logger
 
 
@@ -35,7 +36,7 @@ class LootCollector:
     ) -> None:
         self.detector = detector
         self.matcher = matcher
-        self.item_classes = list(item_classes) if item_classes else ["loot"]
+        self.item_classes = list(item_classes) if item_classes else list(LOOT_CLASSES)
         self.template_name = template_name
         self.win = win
         self.state = state

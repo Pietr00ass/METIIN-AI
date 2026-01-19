@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
 
+from utils.classes import YOLO_CLASSES
+
 
 class SettingsPanel(QtWidgets.QGroupBox):
     """Widget containing basic application settings."""
@@ -23,7 +25,7 @@ class SettingsPanel(QtWidgets.QGroupBox):
         layout.addRow(self.rl_model_label, self.rl_model_path)
 
         self.classes_label = QtWidgets.QLabel()
-        self.classes_edit = QtWidgets.QLineEdit("metin,boss,potwory")
+        self.classes_edit = QtWidgets.QLineEdit(",".join(YOLO_CLASSES))
         layout.addRow(self.classes_label, self.classes_edit)
 
         self.templates_label = QtWidgets.QLabel()

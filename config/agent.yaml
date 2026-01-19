@@ -19,7 +19,7 @@ humanizer:
   pause_jitter: 0.05
   cursor_jitter: 2.0
 detector:
-  classes: ["metin","boss","potwory"]
+  classes: ["metin","boss","mob_aggressive","mob_neutral","loot_label","ore","fish"]
   conf_thr: 0.5
   iou_thr: 0.45
   cv2_threads: null  # Set to an integer to override OpenCV's default thread count
@@ -53,7 +53,7 @@ buffs:
   - key: "f1"
     interval_sec: 60.0
 
-priority: ["boss","metin","potwory"]
+priority: ["boss","metin","mob_aggressive","mob_neutral","ore","fish","loot_label"]
 
 teleport:
   slots:
@@ -94,4 +94,3 @@ potions:
 logging:
   level: INFO
   retention: "7 days"
-

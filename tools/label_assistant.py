@@ -10,9 +10,10 @@ from typing import Iterable, List, Tuple
 import cv2
 from ultralytics import YOLO
 from utils.logging_config import logger
+from utils.classes import YOLO_CLASS_INDEX
 
 # YOLO label (cx, cy, w, h) — wartości znormalizowane do [0, 1]
-Box = Tuple[float, float, float, float]
+Box = Tuple[int, float, float, float, float]
 
 
 def _to_yolo_format(result, width: int, height: int) -> List[Box]:
@@ -24,8 +25,10 @@ def _to_yolo_format(result, width: int, height: int) -> List[Box]:
     if result is None or result.boxes is None or len(result.boxes) == 0:
         return boxes
 
+    names = result.names or {}
     # xyxy: [x1, y1, x2, y2] w pikselach
     xyxy = result.boxes.xyxy.cpu().numpy()
+    cls_ids = result.boxes.cls.cpu().numpy().astype(int)
 
     # konwersja do (cx, cy, w, h) w pikselach
     cx = (xyxy[:, 0] + xyxy[:, 2]) / 2.0
@@ -39,9 +42,21 @@ def _to_yolo_format(result, width: int, height: int) -> List[Box]:
     w /= float(width)
     h /= float(height)
 
-    boxes.extend(
-        [(float(cx[i]), float(cy[i]), float(w[i]), float(h[i])) for i in range(len(cx))]
-    )
+    for i in range(len(cx)):
+        raw_id = int(cls_ids[i])
+        if isinstance(names, dict):
+            name = names.get(raw_id, str(raw_id))
+        elif isinstance(names, (list, tuple)) and raw_id < len(names):
+            name = names[raw_id]
+        else:
+            name = str(raw_id)
+        mapped_id = YOLO_CLASS_INDEX.get(name)
+        if mapped_id is None:
+            logger.debug("Pomijam klasę bez mapowania: {}", name)
+            continue
+        boxes.append(
+            (mapped_id, float(cx[i]), float(cy[i]), float(w[i]), float(h[i]))
+        )
     return boxes
 
 
@@ -139,9 +154,8 @@ def main() -> None:
 
         # Zapis etykiet
         with open(label_path, "w", encoding="utf-8") as f:
-            for cx, cy, w, h in boxes:
-                # Domyślnie klasa 0; w razie potrzeby rozbuduj o mapowanie klas.
-                f.write(f"0 {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
+            for cls_id, cx, cy, w, h in boxes:
+                f.write(f"{cls_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
 
         logger.info("Zapisano {} (liczba bbox: {})", label_path, len(boxes))
 
