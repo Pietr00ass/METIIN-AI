@@ -26,6 +26,7 @@ from recorder.window_capture import WindowCapture
 from . import AgentConfig, get_config, reload_config as _reload_cfg
 from utils.humanizer import random_pause
 from .game_state import GameState
+from .hud_ocr import HudOcr
 from .wasd import KeyHold
 from utils.logging_config import logger
 
@@ -63,6 +64,7 @@ class GameController:
         self._cam_yaw = 0.0
         self._cam_pitch = 0.0
         self.state = GameState()
+        self._hud_ocr = HudOcr(cfg.ocr)
         self._strategies: List["AgentStrategy"] = []
         if not self.dry:
             try:
@@ -87,6 +89,7 @@ class GameController:
         self.keys.dry = self.dry
         pyautogui.PAUSE = cfg.controls.mouse_pause
         self._teleporter = None
+        self._hud_ocr.update_config(cfg.ocr)
         for strat in list(self._strategies):
             try:
                 strat.setup(cfg, getattr(strat, "win", self.win))
@@ -230,6 +233,23 @@ class GameController:
     def reset_state(self) -> None:
         """Restore :class:`GameState` to its default values."""
         self.state.reset()
+
+    def update_hud_state(self, frame) -> None:
+        """Refresh HUD OCR state from ``frame``."""
+        if self._hud_ocr:
+            self._hud_ocr.update_state(frame, self.state)
+
+    def apply_hud_potions(self) -> None:
+        """Use potions based on HUD OCR state."""
+        pot_cfg = getattr(self.cfg, "potions", None)
+        if pot_cfg is None:
+            return
+        if self.state.hp_ratio is not None and pot_cfg.hp_key:
+            if self.state.hp_ratio < pot_cfg.hp_threshold:
+                self.keys.tap(pot_cfg.hp_key)
+        if self.state.mp_ratio is not None and pot_cfg.mp_key:
+            if self.state.mp_ratio < pot_cfg.mp_threshold:
+                self.keys.tap(pot_cfg.mp_key)
 
     # ------------------------------------------------------------------
     # fail‑safe helpers

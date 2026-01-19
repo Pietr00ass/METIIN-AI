@@ -159,7 +159,40 @@ class HuntDestroy(AgentStrategy):
                 except Exception:  # pragma: no cover - defensive
                     logger.opt(exception=True).warning("ensure_logged_in failed")
             return
-        potion_manager.check_and_use(frame)
+        if controller is not None:
+            controller.update_hud_state(frame)
+            if controller.state.hp_ratio is None and controller.state.mp_ratio is None:
+                potion_manager.check_and_use(frame)
+            else:
+                controller.apply_hud_potions()
+            if controller.state.inventory_full:
+                self.keys.release_all()
+                if self.on_inventory_full:
+                    try:
+                        self.on_inventory_full()
+                    except Exception:  # pragma: no cover - defensive
+                        logger.opt(exception=True).warning("inventory callback failed")
+                else:
+                    try:
+                        slot = (
+                            self.cfg.teleport.slots[0].slot
+                            if self.cfg.teleport.slots
+                            else 1
+                        )
+                        self.teleporter.teleport_slot(slot)
+                    except Exception:  # pragma: no cover - defensive
+                        logger.opt(exception=True).warning(
+                            "Teleport on inventory full failed"
+                        )
+                self._last_tgt = None
+                return
+            if controller.state.arrows_empty:
+                self.keys.release_all()
+                logger.warning("Brak strzał: wstrzymuję walkę.")
+                self._last_tgt = None
+                return
+        else:
+            potion_manager.check_and_use(frame)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         if self.flow and self.flow.update(gray):
             self._recover_from_stuck()

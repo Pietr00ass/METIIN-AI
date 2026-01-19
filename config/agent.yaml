@@ -91,6 +91,12 @@ potions:
   mp_key: "f3"
   mp_threshold: 30
 
+ocr:
+  hp_roi: [30, 30, 120, 18]
+  mp_roi: [30, 50, 120, 18]
+  inventory_roi: [720, 560, 120, 20]
+  arrows_roi: [720, 530, 120, 20]
+
 logging:
   level: INFO
   retention: "7 days"
