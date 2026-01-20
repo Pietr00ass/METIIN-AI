@@ -1073,6 +1073,7 @@ class MainWindow(QtWidgets.QMainWindow):
         cfg.update(self.settings_panel.get_config())
         cfg.update(self.agent_panel.get_config())
         cfg.update(self.scan_panel.get_config(self.rotate_chk.isChecked()))
+        cfg.update(self.advanced_panel.get_route_config())
         default_hotkeys = ChannelConfig().hotkeys
         hotkeys = {
             i: self.ch_key_edits[i].text().strip() or default_hotkeys[i]
@@ -1160,6 +1161,23 @@ class MainWindow(QtWidgets.QMainWindow):
         scale = float(ui.get("scale", 1.0))
         self.scale_spin.setValue(scale)
         self.apply_scale(scale)
+        route_cfg = cfg.get("route", {})
+        self.advanced_panel.route_enabled_chk.setChecked(
+            bool(route_cfg.get("enabled", False))
+        )
+        self.advanced_panel.route_path_edit.setText(route_cfg.get("path", ""))
+        coord_mode = route_cfg.get("coordinate_mode", "window")
+        idx = self.advanced_panel.route_coord_combo.findText(coord_mode)
+        self.advanced_panel.route_coord_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.advanced_panel.route_start_delay.setValue(
+            float(route_cfg.get("start_delay_sec", 0.0))
+        )
+        self.advanced_panel.route_loop_chk.setChecked(
+            bool(route_cfg.get("loop", False))
+        )
+        self.advanced_panel.route_loop_pause.setValue(
+            float(route_cfg.get("loop_pause_sec", 1.0))
+        )
         self.prio_list.clear()
         for name in cfg.get("priority", []):
             self.prio_list.addItem(QtWidgets.QListWidgetItem(name))
