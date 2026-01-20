@@ -144,6 +144,17 @@ class RouteConfig(BaseModel):
     loop_pause_sec: float = 1.0
 
 
+class RespawnConfig(BaseModel):
+    enabled: bool = False
+    source: str = "api"
+    format: str = "json"
+    respawn_url: str = ""
+    cache_ttl_sec: int = 60
+    cache_path: str = "data/respawn_cache.json"
+    retry_attempts: int = 3
+    retry_backoff_sec: float = 1.0
+
+
 class AgentConfig(BaseModel):
     strategy: str = "hunt_destroy"
     window: WindowConfig = WindowConfig()
@@ -166,6 +177,7 @@ class AgentConfig(BaseModel):
     channel: ChannelConfig = ChannelConfig()
     cycle: CycleConfig = CycleConfig()
     route: RouteConfig = RouteConfig()
+    respawn: RespawnConfig = RespawnConfig()
     pathfinding: bool = False
     multi_client: MultiClientConfig = MultiClientConfig()
     dry_run: bool = False
@@ -192,6 +204,7 @@ __all__ = [
     "ChannelConfig",
     "CycleConfig",
     "RouteConfig",
+    "RespawnConfig",
     "MultiClientConfig",
     "LoggingConfig",
 ]

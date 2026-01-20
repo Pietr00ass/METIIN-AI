@@ -93,6 +93,16 @@ route:
   loop: false
   loop_pause_sec: 1.0
 
+respawn:
+  enabled: false
+  source: "api"
+  format: "json"
+  respawn_url: ""
+  cache_ttl_sec: 60
+  cache_path: "data/respawn_cache.json"
+  retry_attempts: 3
+  retry_backoff_sec: 1.0
+
 potions:
   hp_key: "f2"
   hp_threshold: 40
