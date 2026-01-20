@@ -166,3 +166,9 @@ ocr:
 logging:
   level: INFO
   retention: "7 days"
+
+notifications:
+  telegram_token: ""
+  telegram_chat_id: ""
+  discord_webhook: ""
+  include_screenshots: true

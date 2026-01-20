@@ -198,7 +198,12 @@ class HuntDestroy(AgentStrategy):
             self._recover_from_stuck()
             self.flow.reset()
             return
-        _, event = parse_message(frame)
+        text, event = parse_message(frame)
+        if controller is not None and (text or event):
+            try:
+                controller.notify_ocr_message(text, event, frame)
+            except Exception:  # pragma: no cover - best effort
+                logger.opt(exception=True).warning("OCR notification failed")
         if event:
             logger.info("Wykryto wiadomość: {}", event)
             if controller is not None:
@@ -212,6 +217,11 @@ class HuntDestroy(AgentStrategy):
                 return
             if event == "death":
                 self.keys.release_all()
+                if controller is not None:
+                    try:
+                        controller.notify_death(frame)
+                    except Exception:  # pragma: no cover - best effort
+                        logger.opt(exception=True).warning("death notification failed")
                 self._last_tgt = None
                 return
             if event == "inventory full":

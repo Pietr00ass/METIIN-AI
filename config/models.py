@@ -22,6 +22,13 @@ class LoggingConfig(BaseModel):
     retention: str = "7 days"
 
 
+class NotificationsConfig(BaseModel):
+    telegram_token: str | None = None
+    telegram_chat_id: str | None = None
+    discord_webhook: str | None = None
+    include_screenshots: bool = True
+
+
 class KeyBindings(BaseModel):
     forward: str = "w"
     left: str = "a"
@@ -243,6 +250,7 @@ class AgentConfig(BaseModel):
     multi_client: MultiClientConfig = MultiClientConfig()
     dry_run: bool = False
     logging: LoggingConfig = LoggingConfig()
+    notifications: NotificationsConfig = NotificationsConfig()
 
 
 __all__ = [
@@ -270,4 +278,5 @@ __all__ = [
     "DungeonFsmConfig",
     "MultiClientConfig",
     "LoggingConfig",
+    "NotificationsConfig",
 ]

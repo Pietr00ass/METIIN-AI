@@ -92,7 +92,12 @@ class DungeonPolana(AgentStrategy):
             return
 
         # check for overlay messages first
-        _, event = parse_message(frame)
+        text, event = parse_message(frame)
+        if controller is not None and (text or event):
+            try:
+                controller.notify_ocr_message(text, event, frame)
+            except Exception:  # pragma: no cover - best effort
+                logger.warning("OCR notification failed", exc_info=True)
         if event:
             logger.info("Detected message: %s", event)
             self.last_event = event

@@ -68,7 +68,12 @@ class DungeonMultiFloor(AgentStrategy):
                 except Exception:  # pragma: no cover - defensive
                     logger.warning("ensure_logged_in failed", exc_info=True)
             return
-        _, event = parse_message(frame)
+        text, event = parse_message(frame)
+        if controller is not None and (text or event):
+            try:
+                controller.notify_ocr_message(text, event, frame)
+            except Exception:  # pragma: no cover - best effort
+                logger.warning("OCR notification failed", exc_info=True)
         detections = self.det.infer(frame) if self.det else []
         transition = self.fsm.update(event, detections) if self.fsm else None
         if transition:

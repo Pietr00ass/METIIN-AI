@@ -29,6 +29,7 @@ from .game_state import GameState
 from .hud_ocr import HudOcr
 from .wasd import KeyHold
 from utils.logging_config import logger
+from utils.notifications import NotificationsClient, image_to_png_bytes
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers only
     from .teleport import Teleporter, TeleportResult
@@ -65,6 +66,9 @@ class GameController:
         self._cam_pitch = 0.0
         self.state = GameState()
         self._hud_ocr = HudOcr(cfg.ocr)
+        self._notifier = NotificationsClient.from_config(
+            getattr(cfg, "notifications", None)
+        )
         self._strategies: List["AgentStrategy"] = []
         if not self.dry:
             try:
@@ -90,6 +94,9 @@ class GameController:
         pyautogui.PAUSE = cfg.controls.mouse_pause
         self._teleporter = None
         self._hud_ocr.update_config(cfg.ocr)
+        self._notifier = NotificationsClient.from_config(
+            getattr(cfg, "notifications", None)
+        )
         for strat in list(self._strategies):
             try:
                 strat.setup(cfg, getattr(strat, "win", self.win))
@@ -269,6 +276,7 @@ class GameController:
     def relog(self) -> None:
         """Reset after a disconnect by teleporting to the first slot."""
         self.keys.release_all()
+        self.notify_disconnect()
         for cb in list(self._on_disconnect):
             try:
                 cb()
@@ -318,6 +326,52 @@ class GameController:
     def add_on_death(self, callback: Callable[[], None]) -> None:
         """Register ``callback`` for death events."""
         self._on_death.append(callback)
+
+    # ------------------------------------------------------------------
+    # notifications
+    # ------------------------------------------------------------------
+    def _capture_screenshot_bytes(self, frame=None) -> bytes | None:
+        if frame is None:
+            grabber = getattr(self.win, "grab", None)
+            if grabber is None:
+                return None
+            try:
+                frame = grabber()
+            except Exception:  # pragma: no cover - best effort
+                logger.opt(exception=True).warning("window grab failed for notifications")
+                return None
+        try:
+            return image_to_png_bytes(frame)
+        except Exception:  # pragma: no cover - best effort
+            logger.opt(exception=True).warning("screenshot conversion failed")
+            return None
+
+    def _notify(self, text: str, frame=None) -> None:
+        if not text or not self._notifier.has_targets:
+            return
+        self._notifier.send_message(text)
+        if self._notifier.settings.include_screenshots:
+            png_bytes = self._capture_screenshot_bytes(frame)
+            if png_bytes:
+                self._notifier.send_screenshot(png_bytes, caption=text)
+
+    def notify_disconnect(self, frame=None) -> None:
+        self._notify("Rozłączenie z serwerem.", frame)
+
+    def notify_death(self, frame=None) -> None:
+        self._notify("Śmierć postaci.", frame)
+
+    def notify_ocr_message(self, text: str, event: str | None, frame=None) -> None:
+        stripped = (text or "").strip()
+        if not stripped and not event:
+            return
+        parts = []
+        if stripped:
+            parts.append(stripped)
+        if event:
+            parts.append(f"event: {event}")
+        message = "OCR: " + " | ".join(parts)
+        self._notify(message, frame)
 
 
 controller: GameController | None = None
