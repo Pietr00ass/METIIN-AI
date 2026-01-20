@@ -40,6 +40,18 @@ class ControlsConfig(BaseModel):
 class HumanizerConfig(BaseModel):
     pause_jitter: float = 0.05
     cursor_jitter: float = 2.0
+    mouse_path_chance: float = 0.0
+    mouse_path_steps: int = 20
+    mouse_path_spread: float = 12.0
+    mouse_path_progress_min: float = 0.85
+    mouse_path_progress_max: float = 1.0
+    click_miss_chance: float = 0.0
+    click_miss_offset: float = 0.0
+    loot_miss_chance: float = 0.0
+    loot_miss_offset: float = 0.0
+    micro_pause_chance: float = 0.0
+    micro_pause_min: float = 0.0
+    micro_pause_max: float = 0.0
 
 
 class DetectorPolicy(BaseModel):

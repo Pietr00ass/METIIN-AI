@@ -18,6 +18,18 @@ controls:
 humanizer:
   pause_jitter: 0.05
   cursor_jitter: 2.0
+  mouse_path_chance: 0.35
+  mouse_path_steps: 18
+  mouse_path_spread: 10.0
+  mouse_path_progress_min: 0.9
+  mouse_path_progress_max: 1.0
+  click_miss_chance: 0.02
+  click_miss_offset: 3.0
+  loot_miss_chance: 0.04
+  loot_miss_offset: 4.0
+  micro_pause_chance: 0.2
+  micro_pause_min: 0.01
+  micro_pause_max: 0.04
 detector:
   classes: ["metin","boss","mob_aggressive","mob_neutral","loot_label","ore","fish"]
   conf_thr: 0.5
