@@ -8,6 +8,7 @@ from pathlib import Path
 import logging
 import os
 import time
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -199,6 +200,33 @@ class CycleThread(QtCore.QThread):
         finally:
             self.cycle_agent = None
             self.finished.emit()
+
+
+class RespawnRefreshThread(QtCore.QThread):
+    fetched = QtCore.Signal(list)
+    error = QtCore.Signal(str)
+
+    def __init__(self, cfg: dict):
+        super().__init__()
+        self.cfg = cfg
+
+    def run(self) -> None:  # pragma: no cover - GUI thread
+        try:
+            from agent.respawn_sync import RespawnSync
+
+            events = RespawnSync(self.cfg).fetch_schedule(force=True)
+            payload = [
+                {
+                    "channel": e.channel,
+                    "slot": e.slot,
+                    "respawn_at": e.respawn_at,
+                    "label": e.label,
+                }
+                for e in events
+            ]
+            self.fetched.emit(payload)
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 class ChannelThread(QtCore.QThread):
@@ -543,6 +571,46 @@ class MainWindow(QtWidgets.QMainWindow):
         ch_layout.addWidget(self.cooldown_spin)
         left.addWidget(self.ch_box)
 
+        # respawn scheduler
+        self.respawn_box = QtWidgets.QGroupBox()
+        respawn_layout = QtWidgets.QVBoxLayout(self.respawn_box)
+        self.respawn_enabled_chk = QtWidgets.QCheckBox()
+        respawn_layout.addWidget(self.respawn_enabled_chk)
+        respawn_form = QtWidgets.QFormLayout()
+        self.respawn_source_label = QtWidgets.QLabel()
+        self.respawn_source_combo = QtWidgets.QComboBox()
+        self.respawn_source_combo.addItems(["api", "html"])
+        self.respawn_format_label = QtWidgets.QLabel()
+        self.respawn_format_combo = QtWidgets.QComboBox()
+        self.respawn_format_combo.addItems(["json", "html"])
+        self.respawn_url_label = QtWidgets.QLabel()
+        self.respawn_url_edit = QtWidgets.QLineEdit()
+        self.respawn_cache_label = QtWidgets.QLabel()
+        self.respawn_cache_spin = QtWidgets.QSpinBox()
+        self.respawn_cache_spin.setRange(10, 3600)
+        self.respawn_cache_spin.setValue(60)
+        respawn_form.addRow(self.respawn_source_label, self.respawn_source_combo)
+        respawn_form.addRow(self.respawn_format_label, self.respawn_format_combo)
+        respawn_form.addRow(self.respawn_url_label, self.respawn_url_edit)
+        respawn_form.addRow(self.respawn_cache_label, self.respawn_cache_spin)
+        respawn_layout.addLayout(respawn_form)
+        self.respawn_refresh_btn = QtWidgets.QPushButton()
+        respawn_layout.addWidget(self.respawn_refresh_btn)
+        self.respawn_table = QtWidgets.QTableWidget(0, 4)
+        self.respawn_table.setHorizontalHeaderLabels(
+            ["CH", "Slot", "Respawn", "Za ile"]
+        )
+        self.respawn_table.horizontalHeader().setSectionResizeMode(
+            QtWidgets.QHeaderView.Stretch
+        )
+        self.respawn_table.setEditTriggers(
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
+        respawn_layout.addWidget(self.respawn_table)
+        self.respawn_status = QtWidgets.QLabel()
+        respawn_layout.addWidget(self.respawn_status)
+        left.addWidget(self.respawn_box)
+
         # UI scale selector
         self.scale_box = QtWidgets.QGroupBox()
         scale_layout = QtWidgets.QHBoxLayout(self.scale_box)
@@ -728,6 +796,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.train_thread: QtCore.QThread | None = None
         self.rl_thread: QtCore.QThread | None = None
         self.rl_agent_thread: QtCore.QThread | None = None
+        self.respawn_thread: RespawnRefreshThread | None = None
+        self.respawn_events: list[dict] = []
+        self.respawn_timer = QtCore.QTimer(self)
+        self.respawn_timer.timeout.connect(self.update_respawn_countdowns)
+        self.respawn_timer.start(1000)
         self._hotkey_listener = None
 
         # connections
@@ -745,9 +818,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_load_cfg.clicked.connect(self.load_config)
         self.btn_reload_cfg.clicked.connect(self.reload_agent_config)
         self.scale_spin.valueChanged.connect(self.apply_scale)
+        self.respawn_refresh_btn.clicked.connect(self.refresh_respawns)
+        self.respawn_enabled_chk.toggled.connect(self.on_respawn_toggle)
         self.cfg = agent.get_config()
         self.advanced_panel.load_from_config(self.cfg)
         self.advanced_panel.config_changed.connect(self.on_advanced_config_changed)
+        self.load_respawn_config(self.cfg)
         # hotkey F12
         self.start_hotkey_listener()
 
@@ -846,6 +922,41 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cooldown_label.setText(
             QtCore.QCoreApplication.translate("MainWindow", "Cooldown slotów (minuty):")
         )
+
+        # respawn box
+        self.respawn_box.setTitle(
+            QtCore.QCoreApplication.translate("MainWindow", "Respawny")
+        )
+        self.respawn_enabled_chk.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Włącz scheduler respawnów")
+        )
+        self.respawn_source_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Źródło")
+        )
+        self.respawn_format_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Format")
+        )
+        self.respawn_url_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "respawn_url")
+        )
+        self.respawn_cache_label.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Cache TTL [s]")
+        )
+        self.respawn_refresh_btn.setText(
+            QtCore.QCoreApplication.translate("MainWindow", "Odśwież respawny")
+        )
+        self.respawn_table.setHorizontalHeaderLabels(
+            [
+                QtCore.QCoreApplication.translate("MainWindow", "CH"),
+                QtCore.QCoreApplication.translate("MainWindow", "Slot"),
+                QtCore.QCoreApplication.translate("MainWindow", "Respawn"),
+                QtCore.QCoreApplication.translate("MainWindow", "Za ile"),
+            ]
+        )
+        if not self.respawn_status.text():
+            self.respawn_status.setText(
+                QtCore.QCoreApplication.translate("MainWindow", "Brak danych.")
+            )
 
         # scale box
         self.scale_box.setTitle(
@@ -959,6 +1070,123 @@ class MainWindow(QtWidgets.QMainWindow):
         # Ensure log view shows exactly three lines at the current scale
         metrics = QtGui.QFontMetrics(font)
         self.log_view.setFixedHeight(int(metrics.lineSpacing() * 4))
+
+    def load_respawn_config(self, cfg) -> None:
+        respawn_cfg = getattr(cfg, "respawn", None)
+        if not respawn_cfg:
+            return
+        self.respawn_enabled_chk.setChecked(bool(respawn_cfg.enabled))
+        source = getattr(respawn_cfg, "source", "api")
+        format_val = getattr(respawn_cfg, "format", "json")
+        url = getattr(respawn_cfg, "respawn_url", "")
+        ttl = int(getattr(respawn_cfg, "cache_ttl_sec", 60))
+        source_idx = self.respawn_source_combo.findText(source)
+        format_idx = self.respawn_format_combo.findText(format_val)
+        self.respawn_source_combo.setCurrentIndex(source_idx if source_idx >= 0 else 0)
+        self.respawn_format_combo.setCurrentIndex(format_idx if format_idx >= 0 else 0)
+        self.respawn_url_edit.setText(url)
+        self.respawn_cache_spin.setValue(ttl)
+
+    def get_respawn_config(self) -> dict:
+        existing = getattr(self.cfg, "respawn", None)
+        cache_path = getattr(existing, "cache_path", "data/respawn_cache.json")
+        retry_attempts = int(getattr(existing, "retry_attempts", 3))
+        retry_backoff_sec = float(getattr(existing, "retry_backoff_sec", 1.0))
+        return {
+            "respawn": {
+                "enabled": self.respawn_enabled_chk.isChecked(),
+                "source": self.respawn_source_combo.currentText(),
+                "format": self.respawn_format_combo.currentText(),
+                "respawn_url": self.respawn_url_edit.text().strip(),
+                "cache_ttl_sec": int(self.respawn_cache_spin.value()),
+                "cache_path": cache_path,
+                "retry_attempts": retry_attempts,
+                "retry_backoff_sec": retry_backoff_sec,
+            }
+        }
+
+    def on_respawn_toggle(self, checked: bool) -> None:
+        if checked:
+            self.refresh_respawns()
+        else:
+            self.respawn_events = []
+            self.respawn_table.setRowCount(0)
+            self.respawn_status.setText(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Respawny wyłączone."
+                )
+            )
+
+    def refresh_respawns(self) -> None:
+        if not self.respawn_enabled_chk.isChecked():
+            self.on_respawn_toggle(False)
+            return
+        cfg = self.build_cfg()
+        if self.respawn_thread and self.respawn_thread.isRunning():
+            return
+        self.respawn_thread = RespawnRefreshThread(cfg)
+        self.respawn_thread.fetched.connect(self.update_respawn_table)
+        self.respawn_thread.error.connect(
+            lambda msg: self.respawn_status.setText(
+                QtCore.QCoreApplication.translate(
+                    "MainWindow", "Błąd respawnów: {msg}"
+                ).format(msg=msg)
+            )
+        )
+        self.respawn_thread.start()
+
+    def update_respawn_table(self, events: list[dict]) -> None:
+        self.respawn_events = sorted(events, key=lambda e: e.get("respawn_at", 0.0))
+        self.respawn_table.setRowCount(0)
+        for event in self.respawn_events:
+            row = self.respawn_table.rowCount()
+            self.respawn_table.insertRow(row)
+            self.respawn_table.setItem(
+                row, 0, QtWidgets.QTableWidgetItem(str(event.get("channel", "")))
+            )
+            self.respawn_table.setItem(
+                row, 1, QtWidgets.QTableWidgetItem(str(event.get("slot", "")))
+            )
+            respawn_at = event.get("respawn_at", 0.0)
+            respawn_text = (
+                datetime.fromtimestamp(respawn_at).strftime("%H:%M:%S")
+                if respawn_at
+                else "-"
+            )
+            self.respawn_table.setItem(
+                row, 2, QtWidgets.QTableWidgetItem(respawn_text)
+            )
+            self.respawn_table.setItem(
+                row, 3, QtWidgets.QTableWidgetItem(self._format_countdown(respawn_at))
+            )
+        self.respawn_status.setText(
+            QtCore.QCoreApplication.translate(
+                "MainWindow", "Ostatnia aktualizacja: {time}"
+            ).format(time=datetime.now().strftime("%H:%M:%S"))
+        )
+
+    def update_respawn_countdowns(self) -> None:
+        if not self.respawn_events:
+            return
+        for row, event in enumerate(self.respawn_events):
+            respawn_at = event.get("respawn_at", 0.0)
+            item = self.respawn_table.item(row, 3)
+            if item is None:
+                item = QtWidgets.QTableWidgetItem()
+                self.respawn_table.setItem(row, 3, item)
+            item.setText(self._format_countdown(respawn_at))
+
+    def _format_countdown(self, respawn_at: float) -> str:
+        if not respawn_at:
+            return "-"
+        remaining = respawn_at - time.time()
+        if remaining <= 0:
+            return QtCore.QCoreApplication.translate("MainWindow", "teraz")
+        minutes, seconds = divmod(int(remaining), 60)
+        if minutes < 60:
+            return f"{minutes:02d}m {seconds:02d}s"
+        hours, minutes = divmod(minutes, 60)
+        return f"{hours:d}h {minutes:02d}m"
 
     def add_seq_row(self) -> None:
         """Append an empty step to the cycle sequence table."""
@@ -1074,6 +1302,7 @@ class MainWindow(QtWidgets.QMainWindow):
         cfg.update(self.agent_panel.get_config())
         cfg.update(self.scan_panel.get_config(self.rotate_chk.isChecked()))
         cfg.update(self.advanced_panel.get_route_config())
+        cfg.update(self.get_respawn_config())
         default_hotkeys = ChannelConfig().hotkeys
         hotkeys = {
             i: self.ch_key_edits[i].text().strip() or default_hotkeys[i]
@@ -1178,6 +1407,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.advanced_panel.route_loop_pause.setValue(
             float(route_cfg.get("loop_pause_sec", 1.0))
         )
+        respawn_cfg = cfg.get("respawn", {})
+        self.respawn_enabled_chk.setChecked(bool(respawn_cfg.get("enabled", False)))
+        source = respawn_cfg.get("source", "api")
+        format_val = respawn_cfg.get("format", "json")
+        url = respawn_cfg.get("respawn_url", "")
+        ttl = int(respawn_cfg.get("cache_ttl_sec", 60))
+        source_idx = self.respawn_source_combo.findText(source)
+        format_idx = self.respawn_format_combo.findText(format_val)
+        self.respawn_source_combo.setCurrentIndex(source_idx if source_idx >= 0 else 0)
+        self.respawn_format_combo.setCurrentIndex(format_idx if format_idx >= 0 else 0)
+        self.respawn_url_edit.setText(url)
+        self.respawn_cache_spin.setValue(ttl)
         self.prio_list.clear()
         for name in cfg.get("priority", []):
             self.prio_list.addItem(QtWidgets.QListWidgetItem(name))

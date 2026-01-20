@@ -11,6 +11,7 @@ from agent.detector import ObjectDetector
 from agent.strategy import AgentStrategy, load_strategy
 from agent.scanner import AreaScanner
 from agent.teleport import Teleporter
+from agent.respawn_sync import RespawnSync
 from agent.wasd import KeyHold
 from recorder.window_capture import WindowCapture
 from utils.logging_config import logger
@@ -95,6 +96,7 @@ class CycleFarm:
         # cooldown slotów
         self.cooldown = {}
         self.cooldown_min = int(cfg.cooldowns.slot_min)
+        self.respawn_sync = RespawnSync(cfg) if cfg.respawn.enabled else None
 
     def stop(self):
         """Stop agent components gracefully.
@@ -139,6 +141,10 @@ class CycleFarm:
         last = self.cooldown.get(key, 0)
         if now - last < self.cooldown_min * 60:
             logger.debug("Pomijam slot {} na kanale {} - cooldown", slot, ch)
+            return
+
+        await self._wait_for_respawn(ch, slot)
+        if self._stop:
             return
 
         logger.info("Teleportuję na slot {} (ch{})", slot, ch)
@@ -187,6 +193,25 @@ class CycleFarm:
             await asyncio.sleep(0)
 
         self.cooldown[key] = time.time()
+
+    async def _wait_for_respawn(self, ch: int, slot: int) -> None:
+        if not self.respawn_sync:
+            return
+        event = self.respawn_sync.next_respawn_for(ch, slot)
+        if not event:
+            return
+        remaining = event.seconds_until()
+        if remaining <= 0:
+            return
+        logger.info(
+            "Czekam {:.1f}s do respawnu (CH{} slot {})",
+            remaining,
+            ch,
+            slot,
+        )
+        while remaining > 0 and not self._stop:
+            await asyncio.sleep(min(1.0, remaining))
+            remaining = event.seconds_until()
 
     # ---- główna pętla cyklu ----
     async def run(
