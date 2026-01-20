@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from utils.classes import TARGET_PRIORITY, YOLO_CLASSES
 
@@ -155,6 +155,54 @@ class RespawnConfig(BaseModel):
     retry_backoff_sec: float = 1.0
 
 
+class DungeonStateConfig(BaseModel):
+    ocr_triggers: List[str] = []
+    detect_triggers: List[str] = []
+    timeout_sec: float = 90.0
+    next_state: str | None = None
+    cooldown_sec: float = 0.0
+    require_detections: List[str] = []
+    require_ocr_events: List[str] = []
+
+
+def _default_dungeon_states() -> Dict[str, DungeonStateConfig]:
+    return {
+        "floor_1": DungeonStateConfig(
+            ocr_triggers=["dungeon finished", "no boss"],
+            detect_triggers=["boss"],
+            timeout_sec=120.0,
+            next_state="floor_2",
+            cooldown_sec=3.0,
+        ),
+        "floor_2": DungeonStateConfig(
+            ocr_triggers=["dungeon finished", "no boss"],
+            detect_triggers=["boss"],
+            timeout_sec=150.0,
+            next_state="boss",
+            cooldown_sec=3.0,
+        ),
+        "boss": DungeonStateConfig(
+            ocr_triggers=["dungeon finished"],
+            detect_triggers=[],
+            timeout_sec=180.0,
+            next_state="reset",
+            cooldown_sec=5.0,
+        ),
+        "reset": DungeonStateConfig(
+            ocr_triggers=["dungeon finished", "no boss", "death"],
+            detect_triggers=[],
+            timeout_sec=30.0,
+            next_state="floor_1",
+            cooldown_sec=10.0,
+        ),
+    }
+
+
+class DungeonFsmConfig(BaseModel):
+    initial_state: str = "floor_1"
+    states: Dict[str, DungeonStateConfig] = Field(default_factory=_default_dungeon_states)
+
+
 class AgentConfig(BaseModel):
     strategy: str = "hunt_destroy"
     window: WindowConfig = WindowConfig()
@@ -178,6 +226,7 @@ class AgentConfig(BaseModel):
     cycle: CycleConfig = CycleConfig()
     route: RouteConfig = RouteConfig()
     respawn: RespawnConfig = RespawnConfig()
+    dungeon_fsm: DungeonFsmConfig = DungeonFsmConfig()
     pathfinding: bool = False
     multi_client: MultiClientConfig = MultiClientConfig()
     dry_run: bool = False
@@ -205,6 +254,8 @@ __all__ = [
     "CycleConfig",
     "RouteConfig",
     "RespawnConfig",
+    "DungeonStateConfig",
+    "DungeonFsmConfig",
     "MultiClientConfig",
     "LoggingConfig",
 ]

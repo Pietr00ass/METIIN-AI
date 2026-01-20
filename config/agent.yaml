@@ -103,6 +103,42 @@ respawn:
   retry_attempts: 3
   retry_backoff_sec: 1.0
 
+dungeon_fsm:
+  initial_state: "floor_1"
+  states:
+    floor_1:
+      ocr_triggers: ["dungeon finished", "no boss"]
+      detect_triggers: ["boss"]
+      timeout_sec: 120.0
+      next_state: "floor_2"
+      cooldown_sec: 3.0
+      require_detections: []
+      require_ocr_events: []
+    floor_2:
+      ocr_triggers: ["dungeon finished", "no boss"]
+      detect_triggers: ["boss"]
+      timeout_sec: 150.0
+      next_state: "boss"
+      cooldown_sec: 3.0
+      require_detections: []
+      require_ocr_events: []
+    boss:
+      ocr_triggers: ["dungeon finished"]
+      detect_triggers: []
+      timeout_sec: 180.0
+      next_state: "reset"
+      cooldown_sec: 5.0
+      require_detections: []
+      require_ocr_events: []
+    reset:
+      ocr_triggers: ["dungeon finished", "no boss", "death"]
+      detect_triggers: []
+      timeout_sec: 30.0
+      next_state: "floor_1"
+      cooldown_sec: 10.0
+      require_detections: []
+      require_ocr_events: []
+
 potions:
   hp_key: "f2"
   hp_threshold: 40
