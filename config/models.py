@@ -135,6 +135,15 @@ class CycleConfig(BaseModel):
     sequence: List[Dict[str, int]] = []
 
 
+class RouteConfig(BaseModel):
+    enabled: bool = False
+    path: str = ""
+    coordinate_mode: str = "window"
+    start_delay_sec: float = 0.0
+    loop: bool = False
+    loop_pause_sec: float = 1.0
+
+
 class AgentConfig(BaseModel):
     strategy: str = "hunt_destroy"
     window: WindowConfig = WindowConfig()
@@ -156,6 +165,7 @@ class AgentConfig(BaseModel):
     channels: List[int] = [1, 2, 3, 4, 5, 6, 7, 8]
     channel: ChannelConfig = ChannelConfig()
     cycle: CycleConfig = CycleConfig()
+    route: RouteConfig = RouteConfig()
     pathfinding: bool = False
     multi_client: MultiClientConfig = MultiClientConfig()
     dry_run: bool = False
@@ -181,6 +191,7 @@ __all__ = [
     "TeleportSlot",
     "ChannelConfig",
     "CycleConfig",
+    "RouteConfig",
     "MultiClientConfig",
     "LoggingConfig",
 ]

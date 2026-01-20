@@ -85,6 +85,14 @@ cycle:
   clear_sec: 6
   sequence: []
 
+route:
+  enabled: false
+  path: ""
+  coordinate_mode: "window"  # window = relative to game window, screen = absolute screen
+  start_delay_sec: 0.0
+  loop: false
+  loop_pause_sec: 1.0
+
 potions:
   hp_key: "f2"
   hp_threshold: 40
