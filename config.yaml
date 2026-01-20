@@ -1,0 +1,6 @@
+model_path: "runs/detect/train/weights/best.pt"
+region: [0, 0, 1280, 720]
+confidence: 0.5
+keys:
+  attack: "space"
+  loot: "z"

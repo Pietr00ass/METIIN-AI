@@ -20,3 +20,5 @@ psutil==5.9.8
 pytesseract==0.3.13
 spacy==3.7.5
 loguru==0.7.2
+mss==9.0.1
+pydirectinput==1.0.4
