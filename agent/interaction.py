@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import random
 
 import pyautogui
 import numpy as np
@@ -9,6 +10,10 @@ try:  # avoid circular import during tests
     from recorder.window_capture import WindowCapture
 except Exception:  # pragma: no cover - optional dependency in tests
     WindowCapture = None
+
+from . import get_config
+from utils.humanizer import maybe_micro_pause, maybe_mistake_offset
+from utils.mouse_paths import generate_bezier_path, move_along_path, path_as_int
 
 _LAST_CLICK_TS = 0.0
 _MAX_CPS = 5  # klików na sekundę (limit bezpieczeństwa)
@@ -63,7 +68,38 @@ def click_bbox_center(
             return False
 
     if not rate_limit or _rate_limit_ok():
-        pyautogui.moveTo(cx, cy, duration=0)
+        cfg = get_config()
+        humanizer = cfg.humanizer
+        dx, dy = maybe_mistake_offset(
+            humanizer.click_miss_chance,
+            humanizer.click_miss_offset,
+        )
+        cx = int(cx + dx)
+        cy = int(cy + dy)
+        if (
+            humanizer.mouse_path_chance > 0
+            and random.random() < humanizer.mouse_path_chance
+        ):
+            pos_fn = getattr(pyautogui, "position", None)
+            start = None
+            if callable(pos_fn):
+                try:
+                    start = pos_fn()
+                except Exception:
+                    start = None
+            if start is not None:
+                path = generate_bezier_path(
+                    (start[0], start[1]),
+                    (cx, cy),
+                    steps=humanizer.mouse_path_steps,
+                    spread=humanizer.mouse_path_spread,
+                )
+                move_along_path(pyautogui.moveTo, path_as_int(path), duration=0)
+            else:
+                pyautogui.moveTo(cx, cy, duration=0)
+        else:
+            pyautogui.moveTo(cx, cy, duration=0)
+        maybe_micro_pause()
         pyautogui.click(button=button)
         return True
     return False

@@ -5,12 +5,15 @@ from typing import Sequence
 
 import numpy as np
 
+import random
+
 from .detector import ObjectDetector
 from .template_matcher import TemplateMatcher
 from .interaction import click_bbox_center
 from .game_state import GameState
 from utils.classes import LOOT_CLASSES
 from utils.logging_config import logger
+from . import get_config
 
 
 @dataclass
@@ -83,7 +86,27 @@ class LootCollector:
             if self.state and self.state.inventory_free <= 0:
                 logger.debug("Inventory full; skipping remaining loot")
                 break
-            click_bbox_center(item.bbox, region, win=self.win)
+            bbox = item.bbox
+            humanizer = get_config().humanizer
+            if (
+                humanizer.loot_miss_chance > 0
+                and random.random() < humanizer.loot_miss_chance
+                and humanizer.loot_miss_offset > 0
+            ):
+                dx = random.uniform(
+                    -humanizer.loot_miss_offset, humanizer.loot_miss_offset
+                )
+                dy = random.uniform(
+                    -humanizer.loot_miss_offset, humanizer.loot_miss_offset
+                )
+                x1, y1, x2, y2 = bbox
+                bbox = (
+                    int(x1 + dx),
+                    int(y1 + dy),
+                    int(x2 + dx),
+                    int(y2 + dy),
+                )
+            click_bbox_center(bbox, region, win=self.win)
             if self.state:
                 self.state.add_items(1)
             count += 1

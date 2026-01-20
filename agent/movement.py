@@ -4,7 +4,10 @@ from .wasd import KeyHold
 from .game_controller import GameController
 from .detector import Detection
 from utils.logging_config import logger
+import random
+
 from utils.humanizer import jitter_move
+from utils.mouse_paths import bezier_point_between
 from . import get_config
 
 
@@ -70,8 +73,26 @@ class MovementController:
             x1, y1, x2, y2 = tgt.bbox
             cx_px = (x1 + x2) / 2
             cy_px = (y1 + y2) / 2
-            jitter = get_config().humanizer.cursor_jitter
-            cx_px, cy_px = jitter_move(cx_px, cy_px, jitter)
+            humanizer = get_config().humanizer
+            jitter = humanizer.cursor_jitter
+            jittered_x, jittered_y = jitter_move(cx_px, cy_px, jitter)
+            if (
+                humanizer.mouse_path_chance > 0
+                and random.random() < humanizer.mouse_path_chance
+            ):
+                progress_min = max(0.0, humanizer.mouse_path_progress_min)
+                progress_max = min(1.0, humanizer.mouse_path_progress_max)
+                if progress_max < progress_min:
+                    progress_max = progress_min
+                progress = random.uniform(progress_min, progress_max)
+                cx_px, cy_px = bezier_point_between(
+                    (cx_px, cy_px),
+                    (jittered_x, jittered_y),
+                    progress=progress,
+                    spread=humanizer.mouse_path_spread,
+                )
+            else:
+                cx_px, cy_px = jittered_x, jittered_y
             cx = cx_px / W
             bw = (x2 - x1) / W
             if abs(cx - 0.5) > self.deadzone:
