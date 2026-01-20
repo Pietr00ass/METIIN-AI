@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 
 import mss
@@ -16,14 +17,32 @@ class WindowCapture:
         self.poll_sec = poll_sec
         self.win = None  # pygetwindow.Window
         self.region = None  # (left, top, width, height)
-        self.sct = mss.mss()
+        self._thread_local = threading.local()
+        self._sct_lock = threading.Lock()
+        self._sct_instances: list[mss.mss] = []
+        self._closed = False
 
     def close(self) -> None:
         """Release underlying screenshot resources."""
-        try:
-            self.sct.close()
-        except Exception:
-            pass
+        self._closed = True
+        lock = getattr(self, "_sct_lock", None)
+        instances = []
+        if lock is not None:
+            with lock:
+                stored = getattr(self, "_sct_instances", None)
+                if stored:
+                    instances = list(stored)
+                    stored.clear()
+        else:
+            stored = getattr(self, "_sct_instances", None)
+            if stored:
+                instances = list(stored)
+                stored.clear()
+        for sct in instances:
+            try:
+                sct.close()
+            except Exception:
+                pass
 
     # -----------------------------------------------------
     # Context manager API
@@ -106,12 +125,16 @@ class WindowCapture:
 
     def grab(self, update_region: bool = False):
         """Zwraca mss.base.ScreenShot (BGRA)."""
+        if getattr(self, "_closed", False):
+            raise RuntimeError("WindowCapture has been closed")
         if update_region or self.region is None:
             self.update_region()
 
+        sct = self._get_sct()
+
         def _grab():
             left, top, width, height = self.region
-            return self.sct.grab(
+            return sct.grab(
                 {"left": left, "top": top, "width": width, "height": height}
             )
 
@@ -124,3 +147,35 @@ class WindowCapture:
                     "WindowCapture.grab captured empty image (zero width/height)"
                 )
         return img
+
+    def _get_sct(self) -> mss.mss:
+        """Return a thread-local :mod:`mss` instance for grabs."""
+
+        if not hasattr(self, "_thread_local"):
+            raise RuntimeError("WindowCapture thread-local storage is missing")
+        tls = self._thread_local
+        sct = getattr(tls, "sct", None)
+        if sct is not None:
+            return sct
+
+        if getattr(self, "_closed", False):
+            raise RuntimeError("WindowCapture has been closed")
+
+        sct = mss.mss()
+        setattr(tls, "sct", sct)
+
+        lock = getattr(self, "_sct_lock", None)
+        if lock is None:
+            raise RuntimeError("WindowCapture mutex missing for MSS instances")
+        with lock:
+            instances = getattr(self, "_sct_instances", None)
+            if instances is None:
+                raise RuntimeError("WindowCapture instance pool unavailable")
+            instances.append(sct)
+        return sct
+
+    @property
+    def sct(self) -> mss.mss:
+        """Return the current thread's :class:`mss.mss` instance."""
+
+        return self._get_sct()
